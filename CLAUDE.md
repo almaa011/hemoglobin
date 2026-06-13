@@ -68,8 +68,7 @@ Only fire the researcher once you have enough answers to write a clear brief.
 - Do not start writing until the researcher returns its summary
 
 ### Step 2 — Create the page file
-- Filename: `pages/YYYY-MM-DD_topic-slug.html` (use today's actual date)
-- Slug: short, lowercase, hyphenated (e.g. `2026-06-12_afe4490-signal-chain.html`)
+- Filename: `pages/topic-slug.html` — short, lowercase, hyphenated, no date prefix (e.g. `afe4490-signal-chain.html`)
 - Base it on the structure of existing pages in `pages/`
 - All styling must be self-contained — inline `<style>` block and/or CDN links in `<head>` are both fine. Do **not** link to `../style.css`
 
