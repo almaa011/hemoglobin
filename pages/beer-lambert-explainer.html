@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beer–Lambert Law — An Engineer's Guide</title>
+<style>
+  /* ── tokens ── */
+  :root {
+    --bg:      #080d14;
+    --bg2:     #0d1520;
+    --panel:   #111b27;
+    --panel2:  #162030;
+    --ink:     #e8f4f8;
+    --body:    #b8d0db;
+    --mut:     #6a8a9a;
+    --mut2:    #3d5a6a;
+    --line:    rgba(0,212,255,.10);
+    --line2:   rgba(0,212,255,.05);
+    --cyan:    #00d4ff;
+    --amber:   #f0a030;
+    --green:   #38e08c;
+    --red:     #ff5c6a;
+    --beam:    rgba(0,212,255,.70);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation: none !important; transition: none !important; }
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 17px;
+    line-height: 1.72;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ── layout ── */
+  .wrap { max-width: 820px; margin: 0 auto; padding: 0 24px; }
+
+  section {
+    padding: 72px 0;
+    border-top: 1px solid var(--line2);
+  }
+  section:first-of-type { border-top: none; }
+
+  /* ── typography ── */
+  h1, h2, h3, .sec-label {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -.02em;
+  }
+  h1 {
+    font-size: clamp(36px, 7vw, 64px);
+    line-height: 1.0;
+    margin: 0 0 22px;
+    color: var(--ink);
+  }
+  h1 em { font-style: normal; color: var(--cyan); }
+  h2 {
+    font-size: clamp(22px, 4vw, 32px);
+    line-height: 1.1;
+    margin: 0 0 8px;
+    color: var(--ink);
+  }
+  h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 32px 0 8px;
+    color: var(--cyan);
+  }
+  p { margin: 14px 0; color: var(--body); }
+  p strong { color: var(--ink); font-weight: 600; }
+  .lead {
+    font-size: clamp(16px, 2.2vw, 19px);
+    color: var(--body);
+    max-width: 660px;
+  }
+
+  /* ── section label ── */
+  .sec-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--mut);
+    margin: 0 0 18px;
+  }
+  .sec-label .n {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    color: var(--cyan);
+    background: rgba(0,212,255,.10);
+    border: 1px solid rgba(0,212,255,.22);
+    border-radius: 5px;
+    padding: 2px 7px;
+  }
+
+  /* ── hero ── */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0;
+    border-top: none;
+  }
+  .hero-glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 800px 500px at 80% 30%, rgba(0,212,255,.08), transparent 60%),
+      radial-gradient(ellipse 600px 400px at 10% 70%, rgba(240,160,48,.05), transparent 60%);
+  }
+  .hero .wrap {
+    position: relative;
+    z-index: 2;
+    padding-top: 100px;
+    padding-bottom: 80px;
+  }
+  .kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 11.5px;
+    color: var(--mut);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    padding: 7px 15px;
+    margin: 0 0 28px;
+    letter-spacing: .06em;
+  }
+  .kicker .pulse-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 12px var(--cyan);
+    animation: pulse-anim 2s ease-in-out infinite;
+  }
+  @keyframes pulse-anim {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: .3; transform: scale(.65); }
+  }
+  .hero-sub {
+    font-size: clamp(15px, 2.2vw, 18px);
+    color: var(--mut);
+    max-width: 560px;
+    margin: 0 0 36px;
+  }
+  .scroll-tip {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--mut2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 24px;
+  }
+  .scroll-tip .arr { animation: bob 2s ease-in-out infinite; }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(6px); }
+  }
+
+  /* ── canvas beam strip ── */
+  .beam-strip {
+    position: absolute;
+    top: 0; bottom: 0; right: 0;
+    width: 42%;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: .6;
+  }
+  @media (max-width: 640px) { .beam-strip { display: none; } }
+
+  /* ── equation block ── */
+  .eq-block {
+    background: linear-gradient(135deg, var(--panel) 0%, var(--panel2) 100%);
+    border: 1px solid rgba(0,212,255,.20);
+    border-radius: 16px;
+    padding: 32px 36px;
+    margin: 32px 0;
+    text-align: center;
+  }
+  .eq-main {
+    font-family: 'Courier New', monospace;
+    font-size: clamp(22px, 4vw, 34px);
+    color: var(--ink);
+    letter-spacing: .04em;
+    margin: 0 0 10px;
+  }
+  .eq-main .v-A  { color: var(--cyan); }
+  .eq-main .v-eps { color: var(--amber); }
+  .eq-main .v-c  { color: var(--green); }
+  .eq-main .v-l  { color: var(--red); }
+  .eq-main .eq-dot { color: var(--mut); font-size: .85em; margin: 0 2px; }
+  .eq-sub {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--mut);
+    letter-spacing: .06em;
+  }
+
+  /* ── variable table ── */
+  .var-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    margin: 28px 0;
+  }
+  .var-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .var-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 12px 12px 0 0;
+  }
+  .var-card.v-A::before  { background: var(--cyan); }
+  .var-card.v-eps::before { background: var(--amber); }
+  .var-card.v-c::before  { background: var(--green); }
+  .var-card.v-l::before  { background: var(--red); }
+  .var-card .sym {
+    font-family: 'Courier New', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    margin: 0 0 6px;
+  }
+  .var-card.v-A  .sym { color: var(--cyan); }
+  .var-card.v-eps .sym { color: var(--amber); }
+  .var-card.v-c  .sym { color: var(--green); }
+  .var-card.v-l  .sym { color: var(--red); }
+  .var-card .name { font-size: 13.5px; font-weight: 600; color: var(--ink); margin: 0 0 4px; }
+  .var-card .units {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--mut);
+    margin: 0 0 10px;
+    letter-spacing: .04em;
+  }
+  .var-card .desc { font-size: 13px; color: var(--body); margin: 0; line-height: 1.55; }
+
+  /* ── analogy cards ── */
+  .analogy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin: 26px 0;
+  }
+  .analogy-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .analogy-card .icon { font-size: 28px; margin: 0 0 10px; display: block; }
+  .analogy-card .label {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--mut);
+    margin: 0 0 4px;
+  }
+  .analogy-card .title { font-size: 15.5px; font-weight: 600; color: var(--ink); margin: 0 0 8px; }
+  .analogy-card .text  { font-size: 13.5px; color: var(--body); margin: 0; line-height: 1.55; }
+
+  /* ── interactive section ── */
+  .interactive-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+    margin-top: 28px;
+  }
+  @media (max-width: 680px) { .interactive-layout { grid-template-columns: 1fr; } }
+
+  .panel-box {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px;
+  }
+  .panel-box h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mut);
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    margin: 0 0 16px;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* sliders */
+  .slider-row {
+    margin-bottom: 20px;
+  }
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .slider-name {
+    font-size: 13.5px;
+    color: var(--body);
+  }
+  .slider-name code {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+  }
+  .slider-val {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--panel2);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 10px rgba(0,212,255,.5);
+    cursor: pointer;
+    transition: box-shadow .15s;
+  }
+  input[type=range]:hover::-webkit-slider-thumb { box-shadow: 0 0 16px rgba(0,212,255,.8); }
+  input[type=range].amber::-webkit-slider-thumb { background: var(--amber); box-shadow: 0 0 10px rgba(240,160,48,.5); }
+  input[type=range].amber:hover::-webkit-slider-thumb { box-shadow: 0 0 16px rgba(240,160,48,.8); }
+
+  /* readout */
+  .readout-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .readout-cell {
+    background: var(--bg2);
+    border: 1px solid var(--line2);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .readout-cell .r-label {
+    font-family: 'Courier New', monospace;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--mut);
+    margin: 0 0 5px;
+  }
+  .readout-cell .r-val {
+    font-family: 'Courier New', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .readout-cell.hi .r-val { color: var(--cyan); }
+  .readout-cell.lo .r-val { color: var(--amber); }
+
+  /* canvas */
+  canvas {
+    display: block;
+    border-radius: 10px;
+  }
+
+  /* ── log section ── */
+  .log-vis {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+    margin: 28px 0;
+  }
+  .log-vis h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mut);
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    margin: 0 0 16px;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ── limits section ── */
+  .limits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin: 26px 0;
+  }
+  .limit-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+    border-left: 3px solid var(--amber);
+  }
+  .limit-card .lc-icon { font-size: 22px; margin-bottom: 10px; display: block; }
+  .limit-card .lc-title { font-size: 14.5px; font-weight: 600; color: var(--ink); margin: 0 0 8px; }
+  .limit-card .lc-body  { font-size: 13px; color: var(--body); margin: 0; line-height: 1.55; }
+
+  /* ── callout ── */
+  .callout {
+    background: rgba(0,212,255,.06);
+    border: 1px solid rgba(0,212,255,.18);
+    border-left: 3px solid var(--cyan);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 22px 0;
+  }
+  .callout p { margin: 0; font-size: 14.5px; color: var(--body); }
+  .callout p strong { color: var(--ink); }
+
+  /* ── references ── */
+  .refs-list {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0 0;
+    font-size: 13px;
+    color: var(--mut);
+    font-family: 'Courier New', monospace;
+    line-height: 1.7;
+  }
+  .refs-list li { margin-bottom: 6px; }
+  .refs-list li::before {
+    content: attr(data-n) '  ';
+    color: var(--cyan);
+  }
+
+  /* ── footer ── */
+  footer {
+    border-top: 1px solid var(--line2);
+    padding: 28px 0;
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--mut2);
+    font-family: 'Courier New', monospace;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HERO ═══════════════════ -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="wrap">
+    <div class="kicker"><span class="pulse-dot"></span>Optics fundamentals · Spectroscopy</div>
+    <h1>The <em>Beer–Lambert</em> Law</h1>
+    <p class="hero-sub">
+      How light gets absorbed by matter — the equation behind every photometer,
+      pulse oximeter, and NIR sensor you will ever build.
+    </p>
+    <p class="lead">
+      No prior optics or chemistry assumed. If you know Ohm's law, you already
+      understand the structure of this one.
+    </p>
+    <div class="scroll-tip">
+      <span class="arr">↓</span> start reading
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ 1 · CORE IDEA ═══════════════════ -->
+<section id="s1">
+<div class="wrap">
+  <div class="sec-label"><span class="n">01</span> Core idea</div>
+  <h2>Light going through stuff gets absorbed</h2>
+
+  <p>
+    Shine a beam of light at one face of a glass of red wine. Less light comes out the other side.
+    Some of it was absorbed by the wine molecules along the way. Pour a second glass — stack them in the path
+    of the beam — and even less comes out. Fill the glass with a more concentrated wine, same thing.
+  </p>
+  <p>
+    The Beer–Lambert law turns that intuition into a precise, quantitative relationship. It says:
+  </p>
+  <div class="callout">
+    <p>
+      <strong>The amount of light absorbed depends linearly on two things:
+      how concentrated the absorbing substance is, and how much material the light has to travel through.</strong>
+      Double the concentration → double the absorption. Double the path length → double the absorption.
+    </p>
+  </div>
+  <p>
+    That is the entire idea. Everything else — the equation, the logarithm, the units — is bookkeeping around
+    this core relationship. When you understand why those details exist, the law becomes obvious rather than
+    arbitrary.
+  </p>
+
+  <h3>Why does absorption happen at all?</h3>
+  <p>
+    Molecules absorb light when a photon's energy matches the gap between two of their electronic or vibrational
+    energy levels. The photon disappears; its energy excites the molecule. Because each molecule has a characteristic
+    set of energy gaps, it absorbs strongly at certain wavelengths and barely at others — which is why hemoglobin
+    looks red (it absorbs green and blue light strongly) and why dissolved oxygen does not absorb visible light
+    at all (its energy levels don't match visible photons).
+  </p>
+  <p>
+    For the purposes of measurement, the key practical fact is: <strong>the amount absorbed is
+    proportional to how many absorbing molecules the light beam encounters</strong> — which depends on both
+    concentration and the length of the path.
+  </p>
+</div>
+</section>
+
+<!-- ═══════════════════ 2 · THE EQUATION ═══════════════════ -->
+<section id="s2">
+<div class="wrap">
+  <div class="sec-label"><span class="n">02</span> The equation</div>
+  <h2>A = ε · c · l</h2>
+
+  <div class="eq-block">
+    <div class="eq-main">
+      <span class="v-A">A</span>
+      <span style="color:var(--mut);"> = </span>
+      <span class="v-eps">ε</span>
+      <span class="eq-dot">·</span>
+      <span class="v-c">c</span>
+      <span class="eq-dot">·</span>
+      <span class="v-l">l</span>
+    </div>
+    <div class="eq-sub">Beer–Lambert Law &nbsp;·&nbsp; also written A = εcl or log(I₀/I) = εcl</div>
+  </div>
+
+  <p>Four variables. Each one is a real, measurable physical quantity:</p>
+
+  <div class="var-grid">
+    <div class="var-card v-A">
+      <div class="sym">A</div>
+      <div class="name">Absorbance</div>
+      <div class="units">dimensionless (AU)</div>
+      <div class="desc">How much light was absorbed. Defined as log₁₀(I₀ / I) — the log ratio of incoming to outgoing intensity. You derive this from your measurements; it is the left-hand side you are usually trying to predict or use.</div>
+    </div>
+    <div class="var-card v-eps">
+      <div class="sym">ε</div>
+      <div class="name">Molar absorptivity</div>
+      <div class="units">L · mol⁻¹ · cm⁻¹</div>
+      <div class="desc">How strongly this particular substance absorbs at this particular wavelength. A property of the molecule — you look it up or measure it. Haemoglobin at 660 nm has a very different ε than at 940 nm; that difference is what lets pulse oximetry work.</div>
+    </div>
+    <div class="var-card v-c">
+      <div class="sym">c</div>
+      <div class="name">Concentration</div>
+      <div class="units">mol · L⁻¹ (M)</div>
+      <div class="desc">How many moles of the absorbing substance are dissolved per litre. In blood work you might encounter g/dL or g/L — you need to convert to molar units using the substance's molecular weight before the equation is consistent.</div>
+    </div>
+    <div class="var-card v-l">
+      <div class="sym">l</div>
+      <div class="name">Path length</div>
+      <div class="units">cm</div>
+      <div class="desc">The distance the light beam travels through the absorbing medium. In a bench cuvette this is a known, fixed number (typically 1 cm). In tissue optics — a PPG probe or near-infrared spectroscopy — this is unknown and variable, which is the central engineering challenge.</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <p>
+      <strong>The logarithm note:</strong> Absorbance is defined as log₁₀(I₀/I), not I₀/I.
+      This is deliberate — see section 05 for the explanation. For now, just note that A is
+      what you compute from measured light intensities, and ε · c · l is what predicts it.
+    </p>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════ 3 · PHYSICAL MEANING ═══════════════════ -->
+<section id="s3">
+<div class="wrap">
+  <div class="sec-label"><span class="n">03</span> Physical meaning</div>
+  <h2>What each variable actually represents</h2>
+
+  <p>
+    Equations become intuitive when you can map each symbol to something you can picture or feel.
+    Here are four everyday analogies, one per variable.
+  </p>
+
+  <div class="analogy-grid">
+    <div class="analogy-card">
+      <span class="icon">☕</span>
+      <div class="label">Concentration · c</div>
+      <div class="title">Espresso vs. americano</div>
+      <div class="text">
+        An espresso is a concentrated shot — dark, opaque, absorbs nearly all the light. An americano
+        is the same shot diluted with water — lighter, more light gets through. Same molecules, different
+        count per cubic centimetre. That count is concentration.
+      </div>
+    </div>
+    <div class="analogy-card">
+      <span class="icon">🌫️</span>
+      <div class="label">Path length · l</div>
+      <div class="title">Fog on a motorway</div>
+      <div class="text">
+        Fog with a 50 m visibility is the same fog whether you're 10 m or 200 m into it — but more of it
+        lies between you and the car ahead at 200 m. Path length is simply the depth of material the
+        photons have to cross. Longer path = more encounters with absorbing molecules.
+      </div>
+    </div>
+    <div class="analogy-card">
+      <span class="icon">🔴</span>
+      <div class="label">Molar absorptivity · ε</div>
+      <div class="title">Coloured glass filters</div>
+      <div class="text">
+        A red glass filter passes red wavelengths and kills green. A neutral density filter absorbs all
+        wavelengths equally. The material itself determines which wavelengths it catches — that
+        selectivity is ε. Same concentration, same path, but different molecule → completely different
+        absorbance. This is why wavelength choice matters so much in sensor design.
+      </div>
+    </div>
+    <div class="analogy-card">
+      <span class="icon">💡</span>
+      <div class="label">Absorbance · A</div>
+      <div class="title">The output you measure</div>
+      <div class="text">
+        A is not a material property — it is your measurement. Put a photodiode at both ends of the
+        cuvette, record I₀ (lamp only) and I (lamp through sample), compute log₁₀(I₀/I). That
+        number is A. Everything else in the equation predicts it from the sample's physical properties.
+      </div>
+    </div>
+  </div>
+
+  <h3>The Ohm's law parallel</h3>
+  <p>
+    If you squint, the structure is the same as V = I · R. You have an output quantity (A / V),
+    a material property (ε / R), and two geometry/source variables (c and l / I and geometry of the
+    circuit). In both laws, doubling any one of the right-hand-side variables doubles the left-hand-side
+    output — they are both linear, proportional relationships in their respective domains.
+  </p>
+</div>
+</section>
+
+<!-- ═══════════════════ 4 · INTERACTIVE ═══════════════════ -->
+<section id="s4">
+<div class="wrap">
+  <div class="sec-label"><span class="n">04</span> Interactive</div>
+  <h2>See it live — adjust concentration and path length</h2>
+
+  <p>
+    The two panels below are linked. Drag the sliders and watch absorbance update in real time.
+    The beam canvas shows how transmitted intensity changes visually as you change the parameters.
+  </p>
+
+  <div class="interactive-layout">
+
+    <!-- left: controls + readout -->
+    <div>
+      <div class="panel-box">
+        <h4>Parameters</h4>
+
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-name"><code style="color:var(--green)">c</code> Concentration</span>
+            <span class="slider-val" id="val-c">0.50 mol/L</span>
+          </div>
+          <input type="range" id="sl-c" min="0.01" max="2.00" step="0.01" value="0.50">
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-name"><code style="color:var(--red)">l</code> Path length</span>
+            <span class="slider-val" id="val-l">1.00 cm</span>
+          </div>
+          <input type="range" id="sl-l" min="0.1" max="5.0" step="0.1" value="1.0" class="amber">
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-name"><code style="color:var(--amber)">ε</code> Molar absorptivity</span>
+            <span class="slider-val" id="val-e">1.00 L·mol⁻¹·cm⁻¹</span>
+          </div>
+          <input type="range" id="sl-e" min="0.1" max="5.0" step="0.1" value="1.0" class="amber">
+        </div>
+
+        <div class="readout-grid">
+          <div class="readout-cell hi">
+            <div class="r-label">Absorbance A</div>
+            <div class="r-val" id="out-A">0.500</div>
+          </div>
+          <div class="readout-cell lo">
+            <div class="r-label">Transmitted I/I₀</div>
+            <div class="r-val" id="out-T">31.6%</div>
+          </div>
+          <div class="readout-cell">
+            <div class="r-label">A = ε·c·l</div>
+            <div class="r-val" id="out-eq" style="font-size:12px;padding-top:4px;color:var(--body)">1.00×0.50×1.00</div>
+          </div>
+          <div class="readout-cell">
+            <div class="r-label">log₁₀(I₀/I)</div>
+            <div class="r-val" id="out-log" style="font-size:15px;color:var(--mut)">log₁₀(3.16)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- right: canvases -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="panel-box" style="padding:16px;">
+        <h4>Beam visualisation</h4>
+        <canvas id="cv-beam" width="340" height="100" style="width:100%;height:auto;border-radius:8px;"></canvas>
+      </div>
+      <div class="panel-box" style="padding:16px;">
+        <h4>Absorbance vs Concentration (fixed ε, l)</h4>
+        <canvas id="cv-chart" width="340" height="200" style="width:100%;height:auto;border-radius:8px;"></canvas>
+      </div>
+    </div>
+
+  </div><!-- /interactive-layout -->
+
+</div>
+</section>
+
+<!-- ═══════════════════ 5 · LOGARITHM ═══════════════════ -->
+<section id="s5">
+<div class="wrap">
+  <div class="sec-label"><span class="n">05</span> The log scale</div>
+  <h2>Why is there a logarithm in the definition?</h2>
+
+  <p>
+    Every layer of solution removes a fixed <em>fraction</em> of the remaining light — not a fixed absolute
+    amount. If the first 1 mm of a solution absorbs 50% of incoming photons, the next 1 mm absorbs
+    50% of what is left (25% of the original), and the next 1 mm absorbs 50% of that (12.5%), and
+    so on. The transmitted intensity falls exponentially with depth:
+  </p>
+
+  <div class="eq-block" style="text-align:center;">
+    <div class="eq-main" style="font-size:clamp(16px,3vw,24px);">
+      I = I₀ · 10<sup style="font-size:.6em">−εcl</sup>
+    </div>
+    <div class="eq-sub">Transmitted intensity — an exponential decay in depth</div>
+  </div>
+
+  <p>
+    That exponential is inconvenient: if you plot transmitted intensity against concentration, you get
+    a curve that is hard to read and harder to calibrate against. But if you take the base-10 log of
+    both sides, the exponential collapses and you get a straight line:
+  </p>
+
+  <div class="log-vis">
+    <h4>Linear vs. log domain comparison</h4>
+    <canvas id="cv-log" width="700" height="220" style="width:100%;height:auto;border-radius:8px;"></canvas>
+  </div>
+
+  <p>
+    <strong>A = log₁₀(I₀/I) = ε·c·l</strong> is a linear function of concentration. That matters
+    enormously in practice: a straight-line calibration curve is easy to fit, easy to extend, and
+    has a clear physical meaning. The log transform converts a law of fractions into a law of sums.
+  </p>
+
+  <div class="callout">
+    <p>
+      <strong>The acoustic parallel:</strong> The decibel (dB) scale for sound pressure does
+      exactly the same thing — takes the log of a ratio so that doubling the amplitude corresponds
+      to a fixed dB step, not an ever-changing fraction. Beer–Lambert absorbance is the optical
+      equivalent of the decibel.
+    </p>
+  </div>
+
+  <h3>Practical consequence for sensor design</h3>
+  <p>
+    When you design a spectrophotometric measurement system, you want to operate in the linear
+    (absorbance) domain. That means your signal-processing chain computes A = log₁₀(I₀/I) as early
+    as possible. Fitting models, regression, and machine learning features should all be built from
+    A values — not from raw intensities, which sit on the curved exponential side of the transform.
+  </p>
+</div>
+</section>
+
+<!-- ═══════════════════ 6 · LIMITATIONS ═══════════════════ -->
+<section id="s6">
+<div class="wrap">
+  <div class="sec-label"><span class="n">06</span> Limitations</div>
+  <h2>When the law breaks down</h2>
+
+  <p>
+    The Beer–Lambert law is a limiting approximation — it holds well under specific conditions, and
+    fails predictably outside them. Knowing the failure modes is as important as knowing the law itself.
+  </p>
+
+  <div class="limits-grid">
+    <div class="limit-card">
+      <span class="lc-icon">📈</span>
+      <div class="lc-title">High concentration</div>
+      <div class="lc-body">
+        Above roughly 0.01 mol/L, neighbouring molecules begin to interact electrostatically, altering
+        each other's absorption characteristics. ε is no longer constant — it decreases with increasing
+        concentration. The absorbance-vs-concentration curve bends downward. In practice: dilute your
+        samples, or build a non-linear calibration over the actual operating range.
+      </div>
+    </div>
+    <div class="limit-card">
+      <span class="lc-icon">💫</span>
+      <div class="lc-title">Light scattering</div>
+      <div class="lc-body">
+        The law assumes light is only lost by absorption. In turbid media — tissue, blood, milk,
+        emulsions — photons are also scattered, changing direction without being absorbed. Scattered
+        photons that exit the sample sideways are counted as "absorbed" by a naïve measurement.
+        Tissue optics requires the modified Beer–Lambert law, which introduces a differential
+        pathlength factor (DPF) to account for the extended path that scattered photons travel.
+      </div>
+    </div>
+    <div class="limit-card">
+      <span class="lc-icon">🔦</span>
+      <div class="lc-title">Stray light</div>
+      <div class="lc-body">
+        If your detector receives any light that did not pass through the sample — whether from
+        imperfect optical isolation, ambient leakage, or instrument stray light — it inflates I
+        artificially, making A read lower than true. This effect is most damaging at high absorbances,
+        where I is very small and even a tiny stray contribution is proportionally large.
+      </div>
+    </div>
+    <div class="limit-card">
+      <span class="lc-icon">🌈</span>
+      <div class="lc-title">Polychromatic light</div>
+      <div class="lc-body">
+        The law strictly applies to monochromatic light — a single wavelength. A broadband source
+        illuminating a sample whose ε varies across the bandwidth produces a mixed signal. If the
+        sample's absorption is not flat across the bandwidth, the apparent absorbance is a nonlinear
+        blend of multiple Beer–Lambert relationships. Narrow-band LEDs or tight bandpass filters
+        mitigate this.
+      </div>
+    </div>
+    <div class="limit-card">
+      <span class="lc-icon">⚗️</span>
+      <div class="lc-title">Chemical equilibria</div>
+      <div class="lc-body">
+        If the absorbing species is in chemical equilibrium with another form — for example,
+        haemoglobin cycling between oxy and deoxy states, or a pH indicator dissociating —
+        the effective concentration of each species depends on conditions beyond the nominal total
+        concentration. You must know the equilibrium distribution to apply the law correctly.
+      </div>
+    </div>
+    <div class="limit-card">
+      <span class="lc-icon">📏</span>
+      <div class="lc-title">Unknown path length</div>
+      <div class="lc-body">
+        In reflectance geometries — including every wearable PPG sensor — the path length l is
+        neither fixed nor known. Light scatters through tissue along curved, variable paths that
+        depend on optical properties, probe geometry, skin pigmentation, and vessel depth. This
+        is not a failure of the Beer–Lambert law; it is a geometric complication that requires
+        separate characterisation or a ratiometric approach that cancels l.
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <p>
+      <strong>Bottom line:</strong> In well-controlled bench chemistry (dilute solution, 1 cm cuvette,
+      monochromatic light, no scattering), Beer–Lambert is highly accurate. In complex real-world
+      media — tissue, whole blood, suspensions — it provides the conceptual framework but must be
+      extended or calibrated empirically to account for scattering and geometry.
+    </p>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════ REFERENCES ═══════════════════ -->
+<section id="refs">
+<div class="wrap">
+  <div class="sec-label"><span class="n">—</span> References</div>
+  <h2>Further reading</h2>
+  <p style="font-size:14px;color:var(--mut);">
+    Core sources underpinning the material in this document.
+  </p>
+  <ul class="refs-list">
+    <li data-n="[1]">Beer, A. (1852). Bestimmung der Absorption des rothen Lichts in farbigen Flüssigkeiten. <em>Annalen der Physik und Chemie</em>, 162(5), 78–88.</li>
+    <li data-n="[2]">Lambert, J. H. (1760). <em>Photometria, sive de mensura et gradibus luminis, colorum et umbrae</em>. Augsburg: Detleffsen.</li>
+    <li data-n="[3]">Skoog, D. A., Holler, F. J., &amp; Crouch, S. R. (2017). <em>Principles of Instrumental Analysis</em> (7th ed.). Cengage Learning. Chapter 13: Introduction to Ultraviolet-Visible Molecular Absorption Spectrometry.</li>
+    <li data-n="[4]">Delpy, D. T., &amp; Cope, M. (1997). Quantification in tissue near-infrared spectroscopy. <em>Philosophical Transactions of the Royal Society B</em>, 352(1354), 649–659. (Modified Beer–Lambert Law / DPF for tissue optics.)</li>
+    <li data-n="[5]">Zhu, J., et al. (2024). Multi-wavelength PPG for non-invasive haemoglobin estimation. <em>Biosensors</em>, 14(3). (Example of Beer–Lambert applied to reflectance PPG with the modified law.)</li>
+  </ul>
+</div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Beer–Lambert Law · Optics fundamentals reference · Self-contained offline document
+  </div>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  INTERACTIVE ENGINE
+// ═══════════════════════════════════════════════════════
+
+// ── helpers ──────────────────────────────────────────────
+function $(id){ return document.getElementById(id); }
+function parseNum(id){ return parseFloat(document.getElementById(id).value); }
+
+// ── colour palette (matches CSS vars) ─────────────────────
+const CLR = {
+  bg:    '#080d14',
+  bg2:   '#0d1520',
+  panel: '#111b27',
+  grid:  'rgba(0,212,255,0.08)',
+  cyan:  '#00d4ff',
+  amber: '#f0a030',
+  green: '#38e08c',
+  red:   '#ff5c6a',
+  mut:   '#6a8a9a',
+  mut2:  '#3d5a6a',
+  ink:   '#e8f4f8',
+  body:  '#b8d0db',
+};
+
+// ── shared state ──────────────────────────────────────────
+let g_c = 0.50, g_l = 1.00, g_e = 1.00;
+
+function computeA(c,l,e){ return e * c * l; }
+function computeT(A){ return Math.pow(10, -A); }  // I/I0
+
+// ── update all outputs ────────────────────────────────────
+function update(){
+  g_c = parseNum('sl-c');
+  g_l = parseNum('sl-l');
+  g_e = parseNum('sl-e');
+
+  const A = computeA(g_c, g_l, g_e);
+  const T = computeT(A);
+  const I0_over_I = Math.pow(10, A);
+
+  $('val-c').textContent = g_c.toFixed(2) + ' mol/L';
+  $('val-l').textContent = g_l.toFixed(1) + ' cm';
+  $('val-e').textContent = g_e.toFixed(1) + ' L·mol⁻¹·cm⁻¹';
+
+  $('out-A').textContent = A.toFixed(3);
+  $('out-T').textContent = (T * 100).toFixed(1) + '%';
+  $('out-eq').textContent = g_e.toFixed(2)+'×'+g_c.toFixed(2)+'×'+g_l.toFixed(2);
+  $('out-log').textContent = 'log₁₀(' + I0_over_I.toFixed(2) + ')';
+
+  drawBeam();
+  drawChart();
+}
+
+// ═══════════════════════════════════════════════════════
+//  BEAM CANVAS
+// ═══════════════════════════════════════════════════════
+function drawBeam(){
+  const cv = $('cv-beam');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0,0,W,H);
+
+  // background
+  ctx.fillStyle = CLR.panel;
+  ctx.fillRect(0,0,W,H);
+
+  const A = computeA(g_c, g_l, g_e);
+  // clamp T to prevent zero-width invisible beam
+  const T = Math.max(computeT(A), 0.001);
+
+  const pad = 16;
+  const medStart = 80;
+  const medEnd   = W - 60;
+  const medW     = medEnd - medStart;
+  const beamY    = H / 2;
+  const beamH    = 22;
+
+  // ── medium fill ──
+  // colour blends from transparent cyan to an absorbing tint as A grows
+  const absorb = Math.min(A / 3, 1);  // 0→1 as A goes 0→3
+  const r = Math.round(8  + absorb * 40);
+  const g = Math.round(20 + absorb * 5);
+  const b = Math.round(40 + absorb * 0);
+  ctx.fillStyle = `rgba(${r},${g},${b}, 0.70)`;
+  ctx.fillRect(medStart, 0, medW, H);
+
+  // medium border top/bottom
+  ctx.strokeStyle = 'rgba(0,212,255,0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(medStart,0); ctx.lineTo(medStart,H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(medEnd,0);   ctx.lineTo(medEnd,H);   ctx.stroke();
+
+  // ── incident beam (left of medium) ──
+  const incGrad = ctx.createLinearGradient(pad, beamY, medStart, beamY);
+  incGrad.addColorStop(0,   'rgba(0,212,255,0.0)');
+  incGrad.addColorStop(0.6, 'rgba(0,212,255,0.95)');
+  incGrad.addColorStop(1.0, 'rgba(0,212,255,0.95)');
+  ctx.fillStyle = incGrad;
+  ctx.fillRect(pad, beamY - beamH/2, medStart - pad, beamH);
+
+  // ── beam inside medium ── (fades as it travels)
+  const inGrad = ctx.createLinearGradient(medStart, 0, medEnd, 0);
+  inGrad.addColorStop(0,   'rgba(0,212,255,0.95)');
+  inGrad.addColorStop(1.0, `rgba(0,212,255,${(T * 0.95).toFixed(3)})`);
+  ctx.fillStyle = inGrad;
+  ctx.fillRect(medStart, beamY - beamH/2, medW, beamH);
+
+  // ── transmitted beam (right of medium) ──
+  const transAlpha = T * 0.95;
+  const transW = (W - medEnd - pad) * T;  // shorter beam = less transmitted
+  const transGrad = ctx.createLinearGradient(medEnd, 0, medEnd + transW, 0);
+  transGrad.addColorStop(0,   `rgba(0,212,255,${transAlpha.toFixed(3)})`);
+  transGrad.addColorStop(1.0, 'rgba(0,212,255,0.0)');
+  ctx.fillStyle = transGrad;
+  ctx.fillRect(medEnd, beamY - beamH/2, Math.max(transW, 2), beamH);
+
+  // ── labels ──
+  ctx.font = '10px Courier New';
+  ctx.fillStyle = CLR.mut;
+  ctx.textAlign = 'center';
+  ctx.fillText('I₀', medStart/2 + pad/2, beamY - 14);
+  ctx.fillText('I', medEnd + (W - medEnd)/2, beamY - 14);
+
+  ctx.font = '9px Courier New';
+  ctx.fillStyle = 'rgba(0,212,255,0.40)';
+  ctx.fillText('absorbing medium  (length = l)', (medStart + medEnd)/2, H - 7);
+
+  // ── T readout inside canvas ──
+  ctx.font = 'bold 11px Courier New';
+  ctx.fillStyle = CLR.cyan;
+  ctx.textAlign = 'right';
+  ctx.fillText((T*100).toFixed(1)+'% transmitted', W - pad, beamY + beamH/2 + 14);
+}
+
+// ═══════════════════════════════════════════════════════
+//  ABSORBANCE vs CONCENTRATION CHART
+// ═══════════════════════════════════════════════════════
+function drawChart(){
+  const cv = $('cv-chart');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0,0,W,H);
+
+  const P = { l:44, r:18, t:18, b:36 };
+  const IW = W - P.l - P.r;
+  const IH = H - P.t - P.b;
+
+  // bg
+  ctx.fillStyle = CLR.panel;
+  ctx.fillRect(0,0,W,H);
+
+  // axis ranges — absorbance goes up to ε·2·l (where c_max = 2.0)
+  const cMax = 2.0;
+  const aMax = g_e * cMax * g_l;
+  const yMax = Math.max(aMax * 1.1, 0.5);
+
+  // grid
+  const ySteps = 4;
+  for(let i=0; i<=ySteps; i++){
+    const yv = (yMax / ySteps) * i;
+    const py = P.t + IH - (yv/yMax)*IH;
+    ctx.strokeStyle = CLR.grid;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(P.l, py); ctx.lineTo(W-P.r, py); ctx.stroke();
+    ctx.font = '9px Courier New';
+    ctx.fillStyle = CLR.mut;
+    ctx.textAlign = 'right';
+    ctx.fillText(yv.toFixed(1), P.l - 5, py + 3.5);
+  }
+
+  // x ticks
+  for(let ci=0; ci<=4; ci++){
+    const cv_t = (cMax/4)*ci;
+    const px = P.l + (cv_t/cMax)*IW;
+    ctx.strokeStyle = CLR.grid;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px, P.t); ctx.lineTo(px, H-P.b); ctx.stroke();
+    ctx.font = '9px Courier New';
+    ctx.fillStyle = CLR.mut;
+    ctx.textAlign = 'center';
+    ctx.fillText(cv_t.toFixed(1), px, H - P.b + 12);
+  }
+
+  // axis labels
+  ctx.font = '9px Courier New';
+  ctx.fillStyle = CLR.mut;
+  ctx.textAlign = 'center';
+  ctx.fillText('concentration c (mol/L)', P.l + IW/2, H - 4);
+
+  // rotated y-axis label
+  ctx.save();
+  ctx.translate(10, P.t + IH/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText('absorbance A', 0, 0);
+  ctx.restore();
+
+  // line for current ε and l
+  ctx.strokeStyle = CLR.cyan;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for(let ci=0; ci<=100; ci++){
+    const cVal = (cMax/100)*ci;
+    const aVal = g_e * cVal * g_l;
+    const px = P.l + (cVal/cMax)*IW;
+    const py = P.t + IH - (aVal/yMax)*IH;
+    if(ci===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+
+  // current point
+  const px_c = P.l + (g_c/cMax)*IW;
+  const py_c = P.t + IH - (computeA(g_c,g_l,g_e)/yMax)*IH;
+  ctx.beginPath();
+  ctx.arc(px_c, py_c, 5, 0, Math.PI*2);
+  ctx.fillStyle = CLR.amber;
+  ctx.fill();
+  ctx.strokeStyle = CLR.bg;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // dotted drop lines to axes
+  ctx.setLineDash([3,4]);
+  ctx.strokeStyle = 'rgba(240,160,48,0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(px_c, py_c); ctx.lineTo(px_c, H-P.b); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(px_c, py_c); ctx.lineTo(P.l, py_c); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // current A label
+  const A_now = computeA(g_c,g_l,g_e);
+  ctx.font = 'bold 10px Courier New';
+  ctx.fillStyle = CLR.amber;
+  ctx.textAlign = 'left';
+  const labelY = Math.min(py_c - 8, H - P.b - 10);
+  ctx.fillText('A='+A_now.toFixed(2), px_c + 7, labelY);
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOG SECTION CHART
+// ═══════════════════════════════════════════════════════
+(function drawLogChart(){
+  const cv = $('cv-log');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.fillStyle = CLR.panel;
+  ctx.fillRect(0,0,W,H);
+
+  const P = { l:52, r:16, t:20, b:36 };
+  const IW = (W - P.l - P.r) / 2 - 24;
+  const IH = H - P.t - P.b;
+  const gapX = 48;
+  const lx1 = P.l;              // left chart start
+  const lx2 = P.l + IW + gapX;  // right chart start
+  const cMax = 2.0;
+  const eps = 1.0, l_fixed = 1.0;
+
+  function drawPane(ox, labelX, labelY, curveFn, lineCol, title, yLabel){
+    // border
+    ctx.strokeStyle = 'rgba(0,212,255,0.12)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(ox, P.t, IW, IH);
+
+    // grid
+    for(let i=0;i<=4;i++){
+      const py = P.t + (i/4)*IH;
+      ctx.strokeStyle = CLR.grid; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(ox,py); ctx.lineTo(ox+IW,py); ctx.stroke();
+    }
+    for(let i=0;i<=4;i++){
+      const px = ox + (i/4)*IW;
+      ctx.strokeStyle = CLR.grid; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(px,P.t); ctx.lineTo(px,H-P.b); ctx.stroke();
+      ctx.font='9px Courier New'; ctx.fillStyle=CLR.mut; ctx.textAlign='center';
+      ctx.fillText(((cMax/4)*i).toFixed(1), px, H-P.b+12);
+    }
+
+    // title
+    ctx.font = 'bold 10px Courier New';
+    ctx.fillStyle = lineCol;
+    ctx.textAlign = 'center';
+    ctx.fillText(title, ox + IW/2, P.t - 6);
+
+    // x label
+    ctx.font = '9px Courier New';
+    ctx.fillStyle = CLR.mut;
+    ctx.fillText('c (mol/L)', ox + IW/2, H - 4);
+
+    // y label
+    ctx.save();
+    ctx.translate(ox - 36, P.t + IH/2);
+    ctx.rotate(-Math.PI/2);
+    ctx.fillText(yLabel, 0, 0);
+    ctx.restore();
+
+    // compute y extent for normalisation
+    const samples = 101;
+    let yMin=Infinity, yMax=-Infinity;
+    for(let i=0;i<samples;i++){
+      const c=(cMax/(samples-1))*i;
+      const y=curveFn(c); if(y<yMin)yMin=y; if(y>yMax)yMax=y;
+    }
+    const yRange = yMax - yMin || 1;
+
+    // curve
+    ctx.strokeStyle = lineCol;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    for(let i=0;i<samples;i++){
+      const c=(cMax/(samples-1))*i;
+      const yv=curveFn(c);
+      const px = ox + (c/cMax)*IW;
+      const py = P.t + IH - ((yv-yMin)/yRange)*IH;
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+  }
+
+  // Left pane: transmitted intensity I/I0 (exponential)
+  drawPane(
+    lx1,
+    lx1 + IW/2, H-4,
+    c => Math.pow(10, -eps*c*l_fixed),
+    CLR.amber,
+    'Transmitted intensity  I/I₀',
+    'I/I₀ (fraction)'
+  );
+
+  // Right pane: absorbance A (linear)
+  drawPane(
+    lx2,
+    lx2 + IW/2, H-4,
+    c => eps*c*l_fixed,
+    CLR.cyan,
+    'Absorbance  A = εcl',
+    'A (dimensionless)'
+  );
+
+  // divider label
+  ctx.font = 'bold 11px Courier New';
+  ctx.fillStyle = CLR.mut2;
+  ctx.textAlign = 'center';
+  ctx.fillText('→ log₁₀ →', lx1 + IW + gapX/2, H/2 + 4);
+})();
+
+// ── bind sliders ─────────────────────────────────────────
+['sl-c','sl-l','sl-e'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', update);
+});
+
+// initial render
+update();
+</script>
+</body>
+</html>

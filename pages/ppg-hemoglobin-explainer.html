@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Multi-Wavelength PPG Reads Hemoglobin — A Builder's Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c0a0d; --bg2:#130e12; --panel:#181219; --panel2:#1f1721;
+    --ink:#f2ebe6; --mut:#a8978f; --mut2:#7e716c;
+    --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.05);
+    --oxy:#ff5a52;        /* HbO2 - oxygenated, bright red */
+    --deoxy:#5b8cff;      /* Hb - deoxygenated, bluish (looks blue in a vein) */
+    --anchor:#f5b942;     /* 805nm isosbestic anchor - gold */
+    --good:#5fd0a6; --warn:#f0a24b; --bad:#ff6b6b;
+    --w590:#ff9e2c; --w660:#ff3b30; --w735:#d11a3a; --w805:#f5b942; --w880:#b14b86; --w940:#7a4bbf;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif; line-height:1.7;
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  @media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *{animation:none!important;transition:none!important} }
+
+  /* ---- layout ---- */
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  section{padding:64px 0;border-top:1px solid var(--line2)}
+  h1,h2,h3,.eyebrow{font-family:'Space Grotesk',sans-serif;letter-spacing:-.01em}
+  h2{font-size:clamp(26px,4.4vw,38px);font-weight:700;line-height:1.1;margin:0 0 6px}
+  h3{font-size:20px;font-weight:600;margin:36px 0 10px;color:var(--ink)}
+  p{margin:14px 0;color:#e2d8d1}
+  a{color:var(--anchor)}
+  .lead{font-size:18px;color:#ede3dc}
+  .mut{color:var(--mut)}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--anchor);margin:0 0 14px}
+  .secnum{font-family:'JetBrains Mono',monospace;color:var(--mut2);font-size:13px}
+
+  /* ---- hero ---- */
+  .hero{position:relative;padding:0;border-top:none;min-height:100vh;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+  .hero-bg{position:absolute;inset:0;background:
+     radial-gradient(900px 600px at 70% 20%, rgba(255,90,82,.10), transparent 60%),
+     radial-gradient(700px 500px at 20% 80%, rgba(91,140,255,.09), transparent 60%);
+     pointer-events:none}
+  .hero .wrap{position:relative;z-index:2;padding-top:80px;padding-bottom:60px}
+  .kicker{display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:12px;
+     color:var(--mut);border:1px solid var(--line);border-radius:100px;padding:6px 13px;margin-bottom:26px}
+  .kicker .dot{width:7px;height:7px;border-radius:50%;background:var(--oxy);box-shadow:0 0 10px var(--oxy);animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+  h1{font-size:clamp(34px,7vw,62px);font-weight:700;line-height:1.02;margin:0 0 20px}
+  h1 .hl{color:var(--anchor)}
+  .hero-sub{font-size:clamp(17px,2.4vw,20px);color:var(--mut);max-width:620px;margin:0 0 30px}
+  .scrolltip{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut2);margin-top:28px;display:flex;align-items:center;gap:10px}
+  .scrolltip .arr{animation:bob 1.8s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
+
+  /* ---- chart panel ---- */
+  .panel{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);border-radius:16px;padding:20px;margin:26px 0}
+  .panel-h{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+  .panel-t{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px}
+  .panel-s{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mut2)}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .cap{font-size:13px;color:var(--mut);margin-top:10px;line-height:1.55}
+  .cap b{color:var(--ink);font-weight:600}
+
+  /* ---- inline gloss / jargon ---- */
+  .gloss{color:var(--mut);font-style:italic}
+  .term{border-bottom:1px dotted var(--anchor);cursor:help}
+
+  /* ---- decoder card ---- */
+  .decoder{background:rgba(245,185,66,.06);border:1px solid rgba(245,185,66,.22);border-left:3px solid var(--anchor);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .decoder .lbl{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--anchor);margin-bottom:6px}
+  .decoder p{margin:6px 0;font-size:15px}
+
+  /* ---- toggle ---- */
+  .toggle{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px}
+  .toggle button{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut);background:none;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;transition:.15s}
+  .toggle button.on{background:var(--panel2);color:var(--ink)}
+  .toggle button:hover{color:var(--ink)}
+
+  /* ---- spectral ruler / wavelength chips ---- */
+  .ruler{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:24px 0}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px;position:relative;overflow:hidden}
+  .chip .bar{position:absolute;top:0;left:0;right:0;height:4px}
+  .chip .nm{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:17px}
+  .chip .role{font-size:12.5px;color:var(--mut);margin-top:4px;line-height:1.45}
+  .chip.anchor{border-color:rgba(245,185,66,.5);background:rgba(245,185,66,.05)}
+  .invis{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mut2);letter-spacing:.05em}
+
+  /* ---- error cards ---- */
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin:24px 0}
+  .ecard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .ecard h4{font-family:'Space Grotesk',sans-serif;font-size:15.5px;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+  .ecard .ico{width:9px;height:9px;border-radius:2px;background:var(--bad)}
+  .ecard p{font-size:13.5px;margin:6px 0;color:#d8cdc6}
+  .ecard .fix{font-size:13px;color:var(--good);margin-top:8px}
+  .ecard .fix b{color:var(--good)}
+
+  /* ---- compare table ---- */
+  .cmp{width:100%;border-collapse:collapse;margin:22px 0;font-size:14.5px}
+  .cmp th,.cmp td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .cmp th{font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--mut);font-weight:600}
+  .cmp td:first-child{color:var(--mut);font-size:13.5px}
+  .cmp .spo{color:var(--deoxy)} .cmp .thb{color:var(--oxy)}
+  .cmp tr:last-child td{border-bottom:none}
+
+  /* ---- checklist ---- */
+  .check{list-style:none;padding:0;margin:22px 0;counter-reset:c}
+  .check li{position:relative;padding:16px 16px 16px 56px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:11px;counter-increment:c;font-size:15px}
+  .check li::before{content:counter(c);position:absolute;left:14px;top:15px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+     font-family:'JetBrains Mono',monospace;font-weight:600;font-size:13px;background:rgba(245,185,66,.12);color:var(--anchor);border-radius:8px}
+  .check li b{color:var(--ink)}
+
+  /* ---- callout / aside ---- */
+  .aside{border-left:3px solid var(--line);padding:4px 0 4px 18px;margin:22px 0;color:var(--mut)}
+  .keynote{background:linear-gradient(180deg,rgba(255,90,82,.07),rgba(255,90,82,.02));border:1px solid rgba(255,90,82,.2);border-radius:12px;padding:18px 20px;margin:24px 0}
+  .keynote .lbl{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--oxy);margin-bottom:6px}
+
+  /* ---- sources (collapsed) ---- */
+  details.src{border:1px solid var(--line);border-radius:12px;background:var(--panel);margin-top:18px}
+  details.src summary{cursor:pointer;padding:16px 20px;font-family:'Space Grotesk',sans-serif;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center}
+  details.src summary::-webkit-details-marker{display:none}
+  details.src summary .chev{transition:.2s;color:var(--mut)}
+  details.src[open] summary .chev{transform:rotate(180deg)}
+  .srcbody{padding:0 20px 18px;font-size:13px;color:var(--mut);line-height:1.7}
+  .srcbody h5{font-family:'Space Grotesk',sans-serif;color:var(--ink);font-size:13.5px;margin:16px 0 6px}
+  .srcbody a{word-break:break-word;color:var(--mut)}
+  .srcbody a:hover{color:var(--anchor)}
+
+  /* progress bar */
+  #prog{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--oxy),var(--anchor));z-index:99;transition:width .1s}
+
+  footer{padding:50px 0 70px;text-align:center;color:var(--mut2);font-size:13px;border-top:1px solid var(--line2)}
+
+  .tt{position:fixed;z-index:80;background:#0a080b;border:1px solid var(--line);border-radius:9px;padding:9px 12px;max-width:240px;font-size:12.5px;color:var(--ink);line-height:1.5;pointer-events:none;opacity:0;transition:opacity .12s;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+  .tt .ttn{font-family:'JetBrains Mono',monospace;color:var(--anchor);font-weight:600}
+  @media (max-width:560px){ section{padding:48px 0} .hero .wrap{padding-top:60px} }
+</style>
+</head>
+<body>
+<div id="prog"></div>
+<div class="tt" id="tt"></div>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <div class="kicker"><span class="dot"></span> NON-INVASIVE HEMOGLOBIN · FROM FIRST PRINCIPLES</div>
+    <h1>Reading blood with <span class="hl">light</span>,<br>one wavelength at a time.</h1>
+    <p class="hero-sub">How a multi-wavelength PPG sensor turns a tiny flicker of light through your fingertip into a hemoglobin number — and why the physics fights you the whole way. Written for someone who builds hardware, not someone who reads pathology reports.</p>
+
+    <!-- HERO CHART: the absorption spectrum, the iconic image of the field -->
+    <div class="panel" style="margin-top:8px">
+      <div class="panel-h">
+        <div class="panel-t">Hemoglobin's optical fingerprint</div>
+        <div class="panel-s">molar extinction ε · log scale · 560–960 nm</div>
+      </div>
+      <div id="spectrum"></div>
+      <div class="cap"><b>Everything starts here.</b> Two curves: oxygenated hemoglobin (<span style="color:var(--oxy)">red</span>) and deoxygenated hemoglobin (<span style="color:var(--deoxy)">blue</span>) absorb light differently at every colour. They cross once near <b style="color:var(--anchor)">805 nm</b> — the <span class="term" data-n="Isosbestic point" data-d="A wavelength where both forms of hemoglobin absorb light equally. Here, absorption depends only on how much hemoglobin there is — not whether it's carrying oxygen.">isosbestic point</span>, the one wavelength where the sensor stops caring about oxygen and only sees total hemoglobin. Hover the markers.</div>
+    </div>
+
+    <div class="scrolltip"><span class="arr">↓</span> roughly a 12-minute read · six diagrams · sources parked at the bottom</div>
+  </div>
+</header>
+
+<!-- ============ TL;DR ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow">The whole thing in one breath</p>
+    <h2>What this device actually does</h2>
+    <p class="lead">It shines several colours of light into your finger, watches the light <em>flicker</em> in time with your pulse, and reads how much each colour dims. Because each colour is absorbed differently by hemoglobin, those readings — combined — point to one number: <b>how much hemoglobin is in your blood</b>, in grams per decilitre.</p>
+
+    <p>A regular pulse oximeter (the SpO₂ clip) does almost the same thing with just <b>two</b> colours. That works for oxygen <em>saturation</em> because saturation is a <em>ratio</em> — and ratios let most of the messy, unknown stuff cancel out. But total hemoglobin is an <em>absolute amount</em>, not a ratio. Nothing cancels. So you need more colours, more maths, and you still hit a wall the algorithm can't climb over.</p>
+
+    <div class="keynote">
+      <div class="lbl">The honest punchline</div>
+      <p style="margin:0">The physics sets a floor. Lab machines hit ±0.5 g/dL. A good optical device specs ±1 g/dL — but in the real world, independent studies land around <b>±2–3 g/dL</b>. That gap isn't bad engineering. It's missing information: a light sensor pressed to skin never measures how far the photons actually travelled, and that unknown leaks straight into the answer. Build for screening and trends, not transfusion calls.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 1 ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">01</span> &nbsp;What the sensor sees</p>
+    <h2>It's all in the flicker</h2>
+    <p><b>PPG</b> — <span class="gloss">photoplethysmography, "light + blood-volume + measuring"</span> — is just this: an LED shines into tissue, a photodiode catches whatever light makes it back out, and you watch that light level wobble over time.</p>
+
+    <p>What makes it wobble is <em>blood</em>. Every heartbeat pushes a fresh slug of arterial blood into the finger. Blood absorbs light hard, so for a split second more light gets swallowed and the detected level dips. Between beats it recovers. That repeating dip-and-recover <em>is</em> the signal.</p>
+
+    <div class="panel">
+      <div class="panel-h">
+        <div class="panel-t">The PPG waveform on a scope</div>
+        <div class="toggle" id="acToggle">
+          <button data-mode="real" class="on">real scale</button>
+          <button data-mode="exag">exaggerate AC ×20</button>
+        </div>
+      </div>
+      <div id="scope"></div>
+      <div class="cap"><b>Two parts stacked together.</b> The big steady band is the <span style="color:var(--anchor)">DC</span> — all the stuff that <em>doesn't</em> pulse: skin, bone, fat, melanin, still venous blood. The tiny ripple riding on it is the <span style="color:var(--oxy)">AC</span> — the pulsing arterial blood, and the <em>only</em> part carrying blood-composition info. Flip to "real scale" and watch the ripple almost vanish: in a fingertip the AC is about <b>1% of the DC</b>. That 1% is the entire challenge.</div>
+    </div>
+
+    <div class="decoder">
+      <div class="lbl">Decoder · AC, DC & Perfusion Index</div>
+      <p><b style="color:var(--anchor)">DC</b> = the steady baseline. Tissue and static blood. Carries info about <em>what's in the way</em>.</p>
+      <p><b style="color:var(--oxy)">AC</b> = the pulsing part. Pure arterial blood. Carries info about <em>what's in the blood</em>.</p>
+      <p><b>Perfusion Index (PI)</b> = AC ÷ DC × 100%. In a finger, ~1%. In cold or poorly-perfused hands it can drop below 0.5%, and your signal drowns.</p>
+    </div>
+
+    <p>The clever bit, first spotted by Takuo Aoyagi in the 1970s: <b>only the arteries pulse</b>. Everything else — skin, melanin, bone, the still venous blood — sits in both the "heartbeat in" and "heartbeat out" snapshots and <em>subtracts away</em> when you look at the change. So the difference between systole and diastole is almost pure arterial blood. That's why the little ripple, not the big baseline, is where hemoglobin hides.</p>
+
+    <h3>The self-cancelling trick: the ratio R</h3>
+    <p>Take the ripple size divided by the baseline at one colour — <span class="mono">AC/DC</span>. That single division quietly cancels a pile of unknowns you'd otherwise have to measure: how bright the LED is, how sensitive the photodiode is, how the sensor sits on the skin, the overall gain of your front-end. All of it scales both AC and DC equally, so it divides out.</p>
+    <p>Now divide one colour's AC/DC by another's, and you get the <span class="term" data-n="Ratio-of-ratios (R)" data-d="Dividing one wavelength's AC/DC by another's. It cancels the common pathlength and perfusion factors shared by both colours, leaving a number that depends on blood composition — not on the particular finger.">ratio-of-ratios, R</span>. This is the workhorse of pulse oximetry. It turns a hopeless absolute-brightness problem into a ratio that mostly ignores <em>your specific finger</em> and just reports the <em>shape</em> of the blood's absorption. Hold onto that idea — it's exactly what makes the two-colour SpO₂ trick work, and exactly what <em>isn't</em> enough for hemoglobin.</p>
+  </div>
+</section>
+
+<!-- ============ SECTION 2 ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">02</span> &nbsp;Why the textbook law breaks</p>
+    <h2>Light doesn't travel in straight lines through you</h2>
+    <p>The clean version — the <span class="term" data-n="Beer–Lambert law" data-d="The classic relationship: absorbance = extinction × concentration × pathlength. It assumes light travels in a straight line through a clear liquid. Tissue is neither clear nor straight.">Beer–Lambert law</span> — says absorbance equals how strongly a substance absorbs, times how much of it there is, times how far the light travelled. In a glass cuvette of clear liquid, perfect.</p>
+
+    <p>Tissue is not a cuvette. It's cloudy. Photons don't go straight from LED to photodiode — they ricochet off cells thousands of times and wander along long, curved, <b>banana-shaped paths</b>. Two problems fall out of that:</p>
+
+    <div class="panel">
+      <div class="panel-h"><div class="panel-t">Where the photons actually go</div><div class="panel-s">reflectance geometry</div></div>
+      <div id="banana"></div>
+      <div class="cap"><b>The straight-line distance is a lie.</b> The true path a photon travels is much longer than the gap between LED and detector — and you never know exactly how much longer for a given person. That unknown multiplier is the <b style="color:var(--anchor)">DPF</b>, and it's the villain of this whole story.</div>
+    </div>
+
+    <div class="decoder">
+      <div class="lbl">Decoder · DPF & the modified law</div>
+      <p><b style="color:var(--anchor)">DPF</b> (Differential Pathlength Factor) = how many times longer the real photon path is than the straight-line LED-to-detector gap. Always &gt; 1. Depends on wavelength, the person, and the body site.</p>
+      <p>The <b>modified Beer–Lambert law</b> just bolts two fixes onto the clean version: multiply the distance by DPF, and add a scatter-loss term. Tidy on paper. The catch: <b>you don't know the DPF for the finger in front of you.</b> It was never measured. That single missing number is the root of the irreducible error later on.</p>
+    </div>
+
+    <p>So how does PPG cope with an unknown pathlength? It cheats with <em>time</em> instead of <em>space</em>. By comparing the same finger at systole versus diastole (the AC trick again), every static term — including most of the geometry — is identical in both snapshots and cancels. What's left is governed only by the slug of arterial blood that just arrived. That's the whole reason the messy modified law collapses back into something usable: <span class="mono">ΔA ≈ AC/DC</span>.</p>
+  </div>
+</section>
+
+<!-- ============ SECTION 3 ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">03</span> &nbsp;Picking your colours</p>
+    <h2>Six wavelengths, six jobs</h2>
+    <p>Scroll back to the hero chart for a second — those two crossing curves are the map. Where you place an LED on that map decides what it tells you. Pick badly and your colours all say the same thing; pick well and each one pries apart a different unknown.</p>
+
+    <p>The hero of the set is <b style="color:var(--anchor)">805 nm</b>, the isosbestic crossing. There, oxygenated and deoxygenated hemoglobin absorb <em>identically</em>, so the reading no longer depends on oxygen — it's a clean shot at <b>total</b> hemoglobin. Every other colour is positioned relative to it: some below to catch deoxy-Hb, some above to catch oxy-Hb, one in the visible to gauge skin pigment.</p>
+
+    <div class="ruler" id="ruler"></div>
+
+    <div class="decoder">
+      <div class="lbl">Decoder · why two colours can't do this job</div>
+      <p><b>SpO₂ is a ratio</b> — oxy ÷ (oxy + deoxy). Two colours, two species, and the unknown pathlength <em>divides away</em>. Done.</p>
+      <p><b>Total hemoglobin is an absolute amount.</b> There's no second hemoglobin quantity to divide the unknowns into. Pathlength, scattering, melanin and water all stay in the equation — so you need extra colours, each adding one more independent clue, to pin them down. More unknowns ⇒ more wavelengths. That's the entire reason this device is harder than a pulse oximeter.</p>
+    </div>
+
+    <p class="aside">A practical edge: don't go past ~970 nm. Beyond there, <b>water</b> starts absorbing hard and swamps the hemoglobin signal. That's why 940 nm is the usual top of the band — deep penetration, but still safely under the water wall.</p>
+  </div>
+</section>
+
+<!-- ============ SECTION 4 ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">04</span> &nbsp;Raw photons → a number</p>
+    <h2>The signal chain, end to end</h2>
+    <p>One photodiode can't tell colours apart. So the front-end fires the LEDs <b>one at a time</b>, very fast, and samples the photodiode in lockstep with each flash. Only one LED is ever lit, so every sample belongs to exactly one colour. This is time-multiplexing, and it's what an integrated <span class="gloss">analog front-end (AFE)</span> like the TI AFE4490/4404 is built to do.</p>
+
+    <div class="panel">
+      <div class="panel-h"><div class="panel-t">From LED flash to hemoglobin estimate</div><div class="panel-s">six stages</div></div>
+      <div id="chain"></div>
+      <div class="cap"><b>Each stage strips away a problem.</b> The AFE turns flickering photocurrent into clean per-colour numbers; software pulls out the ripple, throws away the junk beats, builds physics-based features, and a trained model maps them to grams per decilitre.</div>
+    </div>
+
+    <h3>The four software steps, in plain terms</h3>
+    <p><b>1 · Acquire.</b> Fire LEDs in sequence; sample in sync. Between flashes, the AFE also reads the photodiode with <em>all LEDs off</em> to measure ambient light (sunlight, room lights) and subtract it. Pulsing at a known fast rate also lets it reject 50/60 Hz flicker.</p>
+    <p><b>2 · Clean.</b> Split each colour into baseline (DC, via low-pass) and ripple (AC, via band-pass, roughly 0.5–8 Hz). Then fight <b>motion</b> — the number-one corruptor — usually with an accelerometer feeding an adaptive filter, plus throwing out any beat that doesn't look like a clean pulse.</p>
+    <p><b>3 · Extract features.</b> Per colour: AC/DC. Across colours: the ratios and ratio-of-ratios. Plus pulse <em>shape</em> (upstroke, dicrotic notch, decay) and often age/sex. These physics-informed features are what let a model trained on many people generalise to a new finger.</p>
+    <p><b>4 · Estimate.</b> Feed those features to a calibrated model. Could be a simple polynomial fit, but modern systems use machine learning — gradient-boosted trees, stacking regressors, sometimes CNNs on the waveform shape — because the feature-to-hemoglobin map in scattering tissue is nonlinear.</p>
+
+    <div class="aside">Key honesty point for your own build: the Beer–Lambert physics gives you the <em>form</em> of the relationship, but never the <em>constants</em>. You <b>must</b> calibrate against real lab hemoglobin draws, on real people. There is no first-principles shortcut to the coefficients.</div>
+  </div>
+</section>
+
+<!-- ============ SECTION 5 ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">05</span> &nbsp;What wrecks the reading</p>
+    <h2>Eight ways it goes wrong</h2>
+    <p>Each of these chips away at that fragile 1% signal. The good news: most have a known mitigation. The one that doesn't fully go away — skin pigment — gets its own section next.</p>
+
+    <div class="grid2" id="errors"></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 6 ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">06</span> &nbsp;Not just a fancy pulse oximeter</p>
+    <h2>SpO₂ vs total hemoglobin</h2>
+    <p>They look like cousins. They are not the same difficulty class.</p>
+
+    <table class="cmp">
+      <thead><tr><th></th><th class="spo">SpO₂ (pulse oximeter)</th><th class="thb">tHb (this device)</th></tr></thead>
+      <tbody>
+        <tr><td>What it measures</td><td class="spo">A ratio (% saturation)</td><td class="thb">An absolute amount (g/dL)</td></tr>
+        <tr><td>Wavelengths</td><td class="spo">2 (≈660 + 940 nm)</td><td class="thb">3 to 8+, commonly 4–6</td></tr>
+        <tr><td>Unknown pathlength</td><td class="spo">Cancels in the ratio</td><td class="thb">Does <b>not</b> cancel — must be wrangled</td></tr>
+        <tr><td>Clean equation?</td><td class="spo">Yes, calibrated R → SpO₂</td><td class="thb">No — needs an empirical / ML model</td></tr>
+        <tr><td>805 nm anchor</td><td class="spo">Optional</td><td class="thb">Essential</td></tr>
+        <tr><td>Typical accuracy</td><td class="spo">±1–2 %</td><td class="thb">±1 g/dL spec · ±2–3 g/dL real-world</td></tr>
+      </tbody>
+    </table>
+
+    <h3>The skin-tone problem is physics, not negligence</h3>
+    <p>Melanin sits in the epidermis and absorbs strongly at the shorter (visible/red) wavelengths. Two consequences: it steals photons before they reach the blood (lower signal on darker skin), and — worse — its absorption isn't perfectly separable from hemoglobin's with a limited set of colours. So a model trained mostly on lighter skin blames some of that pigment absorption on hemoglobin and reads <b>high</b>. Published data on Masimo's SpHb backs this up: overestimation that scales with pigmentation. The defence is unglamorous but real — <b>train on a deliberately pigment-diverse population</b>, and lean on the NIR colours where melanin is weakest.</p>
+
+    <h3>The floor you can't engineer past</h3>
+    <p>This is the most important chart in the document. It shows how tightly different methods agree with a real lab draw — the <span class="gloss">"limits of agreement," i.e. the band where 95% of readings land</span>.</p>
+
+    <div class="panel">
+      <div class="panel-h"><div class="panel-t">How close to a lab draw can you actually get?</div><div class="panel-s">95% limits of agreement · g/dL</div></div>
+      <div id="floor"></div>
+      <div class="cap"><b>Read it as: narrower = better.</b> A lab analyser nails it. A standard continuous-wave optical device — no matter how clever the algorithm — drifts out to ±2–3 g/dL in the field, because the missing pathlength and scattering information simply isn't in the measurement. The only way to tighten it (bottom bar) is to <em>measure</em> pathlength — time-resolved or diffuse-reflectance optics — not assume it.</p></div>
+    </div>
+
+    <div class="keynote">
+      <div class="lbl">Why no algorithm fixes this</div>
+      <p style="margin:0">You cannot compute information you never captured. A continuous-wave intensity reading doesn't contain the subject's true pathlength or scattering, so no amount of ML can recover them. Hemodilution studies make it stark: noninvasive hemoglobin has good <em>bias</em> (the average is about right) but poor <em>precision</em> — only ~40–45% of the variation tracks the real lab value. The rest is the person's own optics. <b>This is a precision problem baked into the medium, not a sensitivity problem you can train away.</b></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BUILDER CHECKLIST ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow">If you're the one building it</p>
+    <h2>A hardware engineer's checklist</h2>
+    <ol class="check">
+      <li><b>Anchor at 805 nm, then bracket it.</b> Put colours on both sides (e.g. 660/735 below, 880/940 above) plus one visible band (~590 nm) for melanin sensing. Treat 940 nm as the ceiling — never past ~970 nm where water takes over.</li>
+      <li><b>Spec the AFE for ambient rejection and dynamic range first.</b> You want dark-phase subtraction, synchronous detection, per-LED current DACs, a 19–24-bit ADC, and an auto-gain loop targeting ~30–40% of full scale. With a 1% signal, front-end SNR is the gate on everything.</li>
+      <li><b>Build physics-informed features, then fit empirically.</b> AC/DC per colour, cross-wavelength ratios, the isosbestic total-Hb feature → feed a gradient-boosted-tree or stacking model. Always cross-validate <em>by subject</em>, never by beat, or you'll fool yourself with leakage.</li>
+      <li><b>Calibrate against a real lab reference on a pigment- and Hb-diverse cohort.</b> Span at least 5–20 g/dL and the full skin-tone range. Training-set diversity is your single best defence against pigment bias — more than any clever optics.</li>
+      <li><b>Gate every output on signal quality.</b> Show a confidence flag, not a falsely precise 12.3. A wrong number with a decimal point is worse than an honest "low signal."</li>
+    </ol>
+
+    <div class="decoder">
+      <div class="lbl">When to change strategy</div>
+      <p>If validated error exceeds ~1.5 g/dL (or limits of agreement exceed ±2.5–3): you have a <b>screening/trend</b> device, not a transfusion-decision device. Position it that way and require a lab draw near the 7–8 g/dL decision zone.</p>
+      <p>If you genuinely need lab-grade absolute accuracy (&lt;1 g/dL): continuous-wave PPG won't get there. Escalate to time-resolved, frequency-domain, or diffuse-reflectance optics that actually <em>measure</em> pathlength.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CAVEATS ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Keeping me honest</p>
+    <h2>What's solid vs. what's representative</h2>
+    <p><b>Rock solid:</b> the Beer–Lambert framework, the isosbestic point, the AC/DC and ratio-of-ratios maths, and the published hemoglobin absorption spectra. These are textbook.</p>
+    <p><b>Representative, not gospel:</b> the exact 590/660/735/805/880/940 nm set, the per-channel weightings, AFE duty cycles, filter corners, and model choices vary by implementation — and commercial vendors (Masimo especially) don't publish their precise wavelength sets, calibration coefficients, or ML architectures. Treat those numbers as well-motivated defaults, not vendor-confirmed specs.</p>
+    <p class="mut" style="font-size:14px">The absorption curve in the hero is plotted through the six tabulated extinction values from the source document; the smooth line between those points is an illustrative guide, not measured data. Values at 735 and 805 nm are interpolated from a 2-nm reference grid, and 590 nm sits near — not exactly at — the visible isosbestic (the true crossing is closer to ~584–586 nm). The ±2–3 g/dL real-world figure is a synthesis of several independent studies, not one authoritative number.</p>
+  </div>
+</section>
+
+<!-- ============ SOURCES (collapsed, at the very end) ============ -->
+<section style="border-top:1px solid var(--line)">
+  <div class="wrap">
+    <p class="eyebrow">References</p>
+    <h2 style="margin-bottom:10px">Sources</h2>
+    <p class="mut" style="font-size:14px">Parked down here on purpose — nothing above interrupts the reading. Tap to expand the full bibliography from the source treatment.</p>
+    <details class="src">
+      <summary>Full bibliography <span class="chev">▾</span></summary>
+      <div class="srcbody">
+        <h5>PPG fundamentals</h5>
+        Allen J., "Photoplethysmography: state-of-the-art methods and applications," <i>Physiological Measurement</i> (IOPscience).<br>
+        Charlton P. et al., "Photoplethysmography Signal Processing and Synthesis."<br>
+        "Photoplethysmogram," Wikipedia. · "Principles of pulse oximetry," Deranged Physiology (Aoyagi history, ratio-of-ratios).
+
+        <h5>Beer–Lambert &amp; pathlength</h5>
+        "Modified Beer–Lambert Law," openfnirs. · "Beer–Lambert Law — an overview," ScienceDirect Topics.<br>
+        Oshina &amp; Spigulis, "Beer–Lambert law for optical tissue diagnostics," <i>J. Biomedical Optics</i> 26(10).<br>
+        "Optical Absorption of Hemoglobin" (µa conversion), OMLC — omlc.org/spectra/hemoglobin/
+
+        <h5>Hemoglobin absorption spectrum</h5>
+        Prahl S., "Tabulated Molar Extinction Coefficient for Hemoglobin in Water," OMLC — omlc.org/spectra/hemoglobin/summary.html<br>
+        "Absorption, scattering, and refractive index of blood and its components: a review," <i>Frontiers in Photonics</i> (2025).<br>
+        "Near-infrared window in biological tissue," Wikipedia. · Double-integrating-sphere blood spectrophotometry, arXiv:2212.08763. · "Skin Optics Summary" (melanin λ⁻³·³), OMLC.
+
+        <h5>Signal processing pipeline</h5>
+        "How to Design Peripheral Oxygen Saturation (SpO2)," TI SLAA655. · "AFE4400/4490/4403/4404 FAQs," TI E2E. · "AFE4404," Farnell. · "MAXM86161," Analog Devices datasheet. · "How to Design a Better Pulse Oximeter," Analog Devices.<br>
+        US Patents 11,109,783 (LED duty cycle); 7,190,985 (ambient cancellation); 9,005,129 (motion filter); 12,329,503 (ratio quality).<br>
+        Acharya S. et al., "Non-Invasive Estimation of Hemoglobin Using a Multi-Model Stacking Regressor," IEEE JBHI (PMID 31751256). · Lychagov V. et al., multi-wavelength reflectance PPG + CNN, IEEE EMBC 2023 (PMID 38082910). · Ensemble Extreme Learning Machine for Hb, PMC10974404.
+
+        <h5>Sources of error</h5>
+        "Quality Assessment of PPG Signals," arXiv:2307.08766. · Aoyagi T. et al., "Multiwavelength pulse oximetry: theory for the future," <i>Anesthesia &amp; Analgesia</i> 105(6).
+
+        <h5>Differences &amp; accuracy limits</h5>
+        Issa-Boube M. et al., "Utility of Noninvasive Hemoglobin Monitoring (SpHb) in African Surgical Patients," <i>J. Surgical Research</i>. · Shah N. et al., <i>Int. J. Lab Hematology</i> (PMC4232003). · "Review of the effect of skin pigmentation on pulse oximeter accuracy," <i>Physiological Measurement</i> (IOP, acd51a). · Al Aseri Z. et al., Masimo SpHb in the ED, <i>Am. J. Emergency Medicine</i>. · Rad-67 perioperative evaluation, PMC11763668. · Pediatric SpHb sensitivity/specificity, PMC11821669. · "Noninvasive hemoglobin using dynamic spectrum" (scattering limit), ScienceDirect S1350449522000305. · Wearable diffuse-reflectance Hb system, PMC10942696. · Masimo SpHb technology page (ARMS 1 g/dL). · Continuous noninvasive Hb monitor in the ICU, PMC3068358.
+      </div>
+    </details>
+  </div>
+</section>
+
+<footer>
+  Rebuilt from your engineering treatment · diagrams computed from the source's tabulated values · <span class="mono">for R&amp;D planning</span>
+</footer>
+
+<script>
+// ---------- progress bar ----------
+const prog=document.getElementById('prog');
+addEventListener('scroll',()=>{const h=document.documentElement;const p=h.scrollTop/(h.scrollHeight-h.clientHeight);prog.style.width=(p*100)+'%';},{passive:true});
+
+// ---------- tooltip for .term ----------
+const tt=document.getElementById('tt');
+function showTT(el,e){tt.innerHTML='<span class="ttn">'+el.dataset.n+'</span><br>'+el.dataset.d;tt.style.opacity='1';moveTT(e);}
+function moveTT(e){const x=e.clientX||(e.touches&&e.touches[0].clientX)||0;const y=e.clientY||(e.touches&&e.touches[0].clientY)||0;let lx=x+14,ly=y+14;if(lx+250>innerWidth)lx=x-254;if(ly+120>innerHeight)ly=y-110;tt.style.left=lx+'px';tt.style.top=ly+'px';}
+function hideTT(){tt.style.opacity='0';}
+document.querySelectorAll('.term').forEach(el=>{
+  el.addEventListener('mouseenter',e=>showTT(el,e));
+  el.addEventListener('mousemove',moveTT);
+  el.addEventListener('mouseleave',hideTT);
+  el.addEventListener('click',e=>{showTT(el,e);setTimeout(hideTT,2600);});
+});
+
+const NS='http://www.w3.org/2000/svg';
+function el(t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;}
+
+// ================= SPECTRUM =================
+(function(){
+  const W=820,H=360,P={l:54,r:18,t:22,b:42};
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Hemoglobin absorption spectrum'});
+  const xmin=560,xmax=960, ymin=200,ymax=32000;
+  const X=v=>P.l+(v-xmin)/(xmax-xmin)*(W-P.l-P.r);
+  const lY=Math.log10(ymin),hY=Math.log10(ymax);
+  const Y=v=>P.t+(1-(Math.log10(v)-lY)/(hY-lY))*(H-P.t-P.b);
+  // grid (log decades)
+  [200,1000,10000,30000].forEach(g=>{
+    svg.appendChild(el('line',{x1:P.l,y1:Y(g),x2:W-P.r,y2:Y(g),stroke:'rgba(255,255,255,.06)'}));
+    const tx=el('text',{x:P.l-8,y:Y(g)+4,'text-anchor':'end',fill:'#7e716c','font-size':10,'font-family':'JetBrains Mono'});tx.textContent=(g>=1000?g/1000+'k':g);svg.appendChild(tx);
+  });
+  [600,700,800,900].forEach(g=>{
+    svg.appendChild(el('line',{x1:X(g),y1:P.t,x2:X(g),y2:H-P.b,stroke:'rgba(255,255,255,.04)'}));
+    const tx=el('text',{x:X(g),y:H-P.b+18,'text-anchor':'middle',fill:'#7e716c','font-size':10,'font-family':'JetBrains Mono'});tx.textContent=g;svg.appendChild(tx);
+  });
+  const ax=el('text',{x:(W)/2,y:H-6,'text-anchor':'middle',fill:'#a8978f','font-size':11});ax.textContent='wavelength (nm)';svg.appendChild(ax);
+
+  // data (from source's tabulated extinction values)
+  const HbO2=[[590,14401],[660,320],[735,408],[805,840],[880,1154],[940,1214]];
+  const Hb  =[[590,28324],[660,3227],[735,1102],[805,734],[880,726],[940,693]];
+  // smooth path via Catmull-Rom in screen space
+  function smooth(pts){
+    const p=pts.map(d=>[X(d[0]),Y(d[1])]);
+    let s=`M ${p[0][0]} ${p[0][1]}`;
+    for(let i=0;i<p.length-1;i++){
+      const p0=p[i-1]||p[i],p1=p[i],p2=p[i+1],p3=p[i+2]||p2;
+      const c1x=p1[0]+(p2[0]-p0[0])/6,c1y=p1[1]+(p2[1]-p0[1])/6;
+      const c2x=p2[0]-(p3[0]-p1[0])/6,c2y=p2[1]-(p3[1]-p1[1])/6;
+      s+=` C ${c1x} ${c1y} ${c2x} ${c2y} ${p2[0]} ${p2[1]}`;
+    }
+    return s;
+  }
+  // isosbestic marker
+  svg.appendChild(el('line',{x1:X(805),y1:P.t,x2:X(805),y2:H-P.b,stroke:'#f5b942','stroke-width':1.4,'stroke-dasharray':'4 4',opacity:.7}));
+  const ib=el('text',{x:X(805),y:P.t-6,'text-anchor':'middle',fill:'#f5b942','font-size':11,'font-weight':600,'font-family':'Space Grotesk'});ib.textContent='805 nm · isosbestic';svg.appendChild(ib);
+
+  svg.appendChild(el('path',{d:smooth(Hb),fill:'none',stroke:'#5b8cff','stroke-width':2.6,'stroke-linecap':'round'}));
+  svg.appendChild(el('path',{d:smooth(HbO2),fill:'none',stroke:'#ff5a52','stroke-width':2.6,'stroke-linecap':'round'}));
+
+  // wavelength role data for hover
+  const roles={590:'Visible band. Shallow reach — good for surface total-Hb AND a melanin/skin reference. The most pigment-confounded channel.',660:'Classic red. Maximum oxy/deoxy contrast (Hb ≈ 10× HbO₂). Carries oxygenation info.',735:'Still deoxy-sensitive but reaches deeper than 660. Helps separate the deoxy contribution.',805:'The isosbestic anchor. Absorption is oxygen-independent here → a clean total-hemoglobin reading.',880:'Above the crossing, oxy-weighted. Good NIR penetration, low water absorption. An oxy-side lever.',940:'Deepest penetration, oxy-weighted. The classic IR pulse-ox colour, sitting just under the water wall.'};
+  const wcol={590:'#ff9e2c',660:'#ff3b30',735:'#d11a3a',805:'#f5b942',880:'#b14b86',940:'#7a4bbf'};
+  // markers
+  [...HbO2,...Hb].forEach(d=>{
+    svg.appendChild(el('circle',{cx:X(d[0]),cy:Y(d[1]),r:3.4,fill:'#0c0a0d',stroke:HbO2.includes(d)?'#ff5a52':'#5b8cff','stroke-width':2}));
+  });
+  // interactive wavelength hit-zones
+  [590,660,735,805,880,940].forEach(w=>{
+    const hz=el('rect',{x:X(w)-13,y:P.t,width:26,height:H-P.t-P.b,fill:'transparent',style:'cursor:pointer'});
+    hz.dataset.n=w+' nm';hz.dataset.d=roles[w];
+    hz.addEventListener('mouseenter',e=>{showTT(hz,e);hz.firstChild&&0;});
+    hz.addEventListener('mousemove',moveTT);hz.addEventListener('mouseleave',hideTT);
+    hz.addEventListener('click',e=>{showTT(hz,e);setTimeout(hideTT,2600);});
+    svg.appendChild(hz);
+    svg.appendChild(el('circle',{cx:X(w),cy:H-P.b-6,r:3,fill:wcol[w]}));
+  });
+  // legend
+  function leg(x,c,t){const g=el('g',{});g.appendChild(el('rect',{x:x,y:P.t,width:14,height:3,rx:1.5,fill:c}));const tx=el('text',{x:x+20,y:P.t+5,fill:'#e2d8d1','font-size':11,'font-family':'Space Grotesk'});tx.textContent=t;g.appendChild(tx);return g;}
+  svg.appendChild(leg(P.l+8,'#ff5a52','HbO₂ (oxygenated)'));
+  svg.appendChild(leg(P.l+150,'#5b8cff','Hb (deoxygenated)'));
+  document.getElementById('spectrum').appendChild(svg);
+})();
+
+// ================= PPG SCOPE =================
+(function(){
+  const W=820,H=300,P={l:20,r:20,t:20,b:24};
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'PPG waveform'});
+  document.getElementById('scope').appendChild(svg);
+  // grid
+  for(let i=0;i<=8;i++){svg.appendChild(el('line',{x1:P.l+i*(W-P.l-P.r)/8,y1:P.t,x2:P.l+i*(W-P.l-P.r)/8,y2:H-P.b,stroke:'rgba(255,255,255,.04)'}));}
+  for(let i=0;i<=4;i++){svg.appendChild(el('line',{x1:P.l,y1:P.t+i*(H-P.t-P.b)/4,x2:W-P.r,y2:P.t+i*(H-P.t-P.b)/4,stroke:'rgba(255,255,255,.04)'}));}
+
+  // one arterial pulse (blood-volume / upright convention)
+  function pulse(t){ // t in [0,1)
+    const sys=Math.exp(-Math.pow((t-0.16)/0.052,2));
+    const dic=0.34*Math.exp(-Math.pow((t-0.40)/0.075,2));
+    const tail=0.18*Math.exp(-Math.pow((t-0.62)/0.22,2));
+    return sys+dic+tail;
+  }
+  const dcLevel=H*0.42; // y of DC baseline (lower = higher signal visually)
+  let mode='real', amp=1, target=1;
+  const path=el('path',{fill:'none',stroke:'#ff5a52','stroke-width':2.4,'stroke-linecap':'round','stroke-linejoin':'round',filter:'url(#glow)'});
+  const dcline=el('line',{x1:P.l,y1:dcLevel,x2:W-P.r,y2:dcLevel,stroke:'#f5b942','stroke-width':1,'stroke-dasharray':'5 5',opacity:.55});
+  // glow filter
+  const defs=el('defs',{});defs.innerHTML='<filter id="glow" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
+  svg.appendChild(defs);svg.appendChild(dcline);svg.appendChild(path);
+
+  // labels
+  const lblDC=el('text',{x:P.l+6,y:dcLevel-6,fill:'#f5b942','font-size':11,'font-family':'JetBrains Mono'});lblDC.textContent='DC baseline (static tissue)';svg.appendChild(lblDC);
+  const lblAC=el('text',{x:W-P.r-6,y:P.t+16,'text-anchor':'end',fill:'#ff5a52','font-size':11,'font-family':'JetBrains Mono'});svg.appendChild(lblAC);
+  const lblNotch=el('text',{x:0,y:0,fill:'#a8978f','font-size':10,'font-family':'JetBrains Mono',opacity:0});lblNotch.textContent='↙ dicrotic notch';svg.appendChild(lblNotch);
+
+  const beats=3.2, span=W-P.l-P.r;
+  let phase=0,raf;
+  function draw(){
+    amp+=(target-amp)*0.12;
+    const baseAmp = mode==='real'? 5 : 100; // px peak-to-trough scaling
+    const A=baseAmp*amp;
+    let d='',notchXY=null;
+    const Npts=400;
+    for(let i=0;i<=Npts;i++){
+      const fx=i/Npts; const x=P.l+fx*span;
+      const tt2=((fx*beats)+phase)%1;
+      const v=pulse(tt2);
+      const y=dcLevel - v*A; // upright: peak goes UP from baseline
+      d+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)+' ';
+      if(Math.abs(tt2-0.40)<0.004 && !notchXY){notchXY=[x,y];}
+    }
+    path.setAttribute('d',d);
+    lblAC.textContent = mode==='real' ? 'AC ≈ 1% of DC  (tiny!)' : 'AC exaggerated ×20';
+    if(notchXY && mode==='exag'){lblNotch.setAttribute('x',notchXY[0]+6);lblNotch.setAttribute('y',notchXY[1]-6);lblNotch.setAttribute('opacity','0.9');}else{lblNotch.setAttribute('opacity','0');}
+    phase=(phase+0.0016)%1;
+    raf=requestAnimationFrame(draw);
+  }
+  const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  if(reduce){ // static frame
+    target=1;amp=1;mode='real';
+    const A=5;let d='';for(let i=0;i<=400;i++){const fx=i/400;const x=P.l+fx*span;const tt2=(fx*beats)%1;const y=dcLevel-pulse(tt2)*A;d+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)+' ';}path.setAttribute('d',d);lblAC.textContent='AC ≈ 1% of DC';
+  } else { draw(); }
+
+  document.querySelectorAll('#acToggle button').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('#acToggle button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on'); mode=b.dataset.mode; target=1;
+      if(reduce){const A=mode==='real'?5:100;let d='';for(let i=0;i<=400;i++){const fx=i/400;const x=P.l+fx*span;const tt2=(fx*beats)%1;const y=dcLevel-pulse(tt2)*A;d+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)+' ';}path.setAttribute('d',d);lblAC.textContent=mode==='real'?'AC ≈ 1% of DC':'AC exaggerated ×20';lblNotch.setAttribute('opacity',mode==='exag'?'0.9':'0');}
+    });
+  });
+})();
+
+// ================= BANANA PATHS =================
+(function(){
+  const W=820,H=260;
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Photon scattering paths in tissue'});
+  // tissue block
+  svg.appendChild(el('rect',{x:0,y:70,width:W,height:H-70,fill:'rgba(255,90,82,.04)',stroke:'none'}));
+  svg.appendChild(el('line',{x1:0,y1:70,x2:W,y2:70,stroke:'rgba(255,255,255,.12)'}));
+  const skin=el('text',{x:12,y:92,fill:'#7e716c','font-size':11,'font-family':'JetBrains Mono'});skin.textContent='skin surface';svg.appendChild(skin);
+  // LED and detector
+  const ledX=W*0.30, detX=W*0.70, sy=70;
+  svg.appendChild(el('rect',{x:ledX-22,y:46,width:44,height:22,rx:5,fill:'#181219',stroke:'#ff5a52'}));
+  const lt=el('text',{x:ledX,y:61,'text-anchor':'middle',fill:'#ff5a52','font-size':11,'font-family':'JetBrains Mono','font-weight':600});lt.textContent='LED';svg.appendChild(lt);
+  svg.appendChild(el('rect',{x:detX-22,y:46,width:44,height:22,rx:5,fill:'#181219',stroke:'#5fd0a6'}));
+  const dt=el('text',{x:detX,y:61,'text-anchor':'middle',fill:'#5fd0a6','font-size':11,'font-family':'JetBrains Mono','font-weight':600});dt.textContent='PD';svg.appendChild(dt);
+  // straight-line distance d
+  svg.appendChild(el('line',{x1:ledX,y1:sy,x2:detX,y2:sy,stroke:'#7e716c','stroke-dasharray':'4 4'}));
+  const dl=el('text',{x:(ledX+detX)/2,y:sy-7,'text-anchor':'middle',fill:'#a8978f','font-size':11,'font-family':'JetBrains Mono'});dl.textContent='d  (straight-line gap — what you measure)';svg.appendChild(dl);
+  // banana paths
+  function banana(depth,col,op){
+    const c1x=ledX+(detX-ledX)*0.28, c2x=ledX+(detX-ledX)*0.72;
+    const dy=sy+depth;
+    return el('path',{d:`M ${ledX} ${sy} C ${c1x} ${dy} ${c2x} ${dy} ${detX} ${sy}`,fill:'none',stroke:col,'stroke-width':1.6,opacity:op});
+  }
+  svg.appendChild(banana(60,'#ff5a52',.30));
+  svg.appendChild(banana(95,'#ff5a52',.5));
+  svg.appendChild(banana(130,'#ff5a52',.32));
+  // a real vessel marker deep down
+  svg.appendChild(el('ellipse',{cx:(ledX+detX)/2,cy:sy+118,rx:34,ry:9,fill:'rgba(91,140,255,.25)',stroke:'#5b8cff'}));
+  const vt=el('text',{x:(ledX+detX)/2,y:sy+122,'text-anchor':'middle',fill:'#9fb6ff','font-size':10,'font-family':'JetBrains Mono'});vt.textContent='arteriole';svg.appendChild(vt);
+  // caption arrow
+  const at=el('text',{x:(ledX+detX)/2,y:sy+165,'text-anchor':'middle',fill:'#f5b942','font-size':11,'font-family':'Space Grotesk','font-weight':600});at.textContent='true path = d × DPF  (longer, curved, and unknown)';svg.appendChild(at);
+  document.getElementById('banana').appendChild(svg);
+})();
+
+// ================= 6-WAVELENGTH RULER =================
+(function(){
+  const data=[
+    {nm:'590',c:'var(--w590)',role:'Visible · melanin + surface total-Hb reference. Most pigment-confounded.',vis:true},
+    {nm:'660',c:'var(--w660)',role:'Red · max oxy/deoxy contrast. The classic SpO₂ red.',vis:true},
+    {nm:'735',c:'var(--w735)',role:'Deoxy-sensitive, deeper reach than 660.',vis:true},
+    {nm:'805',c:'var(--w805)',role:'Isosbestic anchor · oxygen-independent total-Hb.',anchor:true},
+    {nm:'880',c:'var(--w880)',role:'Oxy-weighted, good NIR penetration. Invisible.',vis:false},
+    {nm:'940',c:'var(--w940)',role:'Deepest reach, just under the water wall. Invisible.',vis:false},
+  ];
+  const r=document.getElementById('ruler');
+  data.forEach(d=>{
+    const div=document.createElement('div');div.className='chip'+(d.anchor?' anchor':'');
+    div.innerHTML=`<div class="bar" style="background:${d.c}"></div>
+      <div class="nm">${d.nm}<span style="font-size:11px;color:var(--mut2)"> nm</span></div>
+      <div class="role">${d.role}</div>
+      ${d.anchor?'<div class="invis" style="color:var(--anchor)">★ the anchor</div>':(d.vis?'':'<div class="invis">invisible (IR)</div>')}`;
+    r.appendChild(div);
+  });
+})();
+
+// ================= SIGNAL CHAIN =================
+(function(){
+  const stages=[
+    {t:'LED seq',s:'fire colours one at a time',c:'#ff5a52'},
+    {t:'Photodiode',s:'light → current',c:'#ff9e2c'},
+    {t:'TIA + AFE',s:'current → clean per-colour V',c:'#f5b942'},
+    {t:'ADC',s:'digitise each channel',c:'#5fd0a6'},
+    {t:'DSP',s:'split AC/DC, kill motion',c:'#5b8cff'},
+    {t:'ML model',s:'features → Hb (g/dL)',c:'#b14b86'},
+  ];
+  const W=820,H=140,n=stages.length, gap=14;
+  const bw=(W-gap*(n-1))/n;
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Signal chain'});
+  stages.forEach((st,i)=>{
+    const x=i*(bw+gap);
+    svg.appendChild(el('rect',{x:x,y:30,width:bw,height:70,rx:10,fill:'#181219',stroke:st.c,'stroke-width':1.3}));
+    svg.appendChild(el('rect',{x:x,y:30,width:bw,height:4,rx:2,fill:st.c}));
+    const t=el('text',{x:x+bw/2,y:62,'text-anchor':'middle',fill:'#f2ebe6','font-size':13,'font-weight':600,'font-family':'Space Grotesk'});t.textContent=st.t;svg.appendChild(t);
+    const s=el('text',{x:x+bw/2,y:82,'text-anchor':'middle',fill:'#a8978f','font-size':9.5,'font-family':'JetBrains Mono'});s.textContent=st.s;svg.appendChild(s);
+    const num=el('text',{x:x+bw/2,y:22,'text-anchor':'middle',fill:'#7e716c','font-size':10,'font-family':'JetBrains Mono'});num.textContent='0'+(i+1);svg.appendChild(num);
+    if(i<n-1){const ax=x+bw+gap/2;svg.appendChild(el('path',{d:`M ${ax-4} 65 l 8 0 M ${ax+1} 61 l 4 4 l -4 4`,stroke:'#7e716c','stroke-width':1.4,fill:'none'}));}
+  });
+  document.getElementById('chain').appendChild(svg);
+})();
+
+// ================= ERROR CARDS =================
+(function(){
+  const errs=[
+    {t:'Motion',d:'Movement modulates skin coupling and venous blood — large signals that swamp the 1% AC.',fix:'Accelerometer-fed adaptive filter + cross-wavelength consistency + reject bad beats.'},
+    {t:'Skin melanin / tone',d:'Static pigment absorption (strongest in visible) cuts the photon budget and biases Hb high if untrained.',fix:'Weight toward NIR + melanin reference channel + pigment-diverse calibration set.'},
+    {t:'Ambient light',d:'Sunlight and room flicker add DC and 50/60 Hz noise the photodiode can\'t tell from signal.',fix:'Dark-phase subtraction + synchronous high-frequency detection + shielding.'},
+    {t:'Poor perfusion',d:'Cold, vasoconstriction or low volume shrink the AC — perfusion index collapses, SNR with it.',fix:'Warm the site, auto-gain to a DC target, longer averaging, gate on a PI threshold.'},
+    {t:'Venous pulsation',d:'A dependent or congested limb makes veins pulse too, breaking the "only arteries pulse" rule.',fix:'Good limb positioning, gentle pressure, extra wavelengths (Aoyagi\'s 5-λ theory).'},
+    {t:'Probe pressure',d:'Too tight squeezes blood out and changes pathlength; too loose lets ambient light and motion in.',fix:'Consistent, controlled clip force + pressure-tolerant geometry + quality checks.'},
+    {t:'Respiration',d:'Breathing sways the baseline and modulates pulse amplitude (the basis of PVI).',fix:'Band-pass above the respiratory band; average over several breaths.'},
+    {t:'Anatomy varies',d:'Finger thickness, fat, vessel depth all change DPF — same blood, different raw signal per person.',fix:'Ratiometric features + large diverse training set + demographic covariates. (This is the floor.)'},
+  ];
+  const g=document.getElementById('errors');
+  errs.forEach(e=>{
+    const d=document.createElement('div');d.className='ecard';
+    d.innerHTML=`<h4><span class="ico"></span>${e.t}</h4><p>${e.d}</p><p class="fix"><b>Fix:</b> ${e.fix}</p>`;
+    g.appendChild(d);
+  });
+})();
+
+// ================= ACCURACY FLOOR =================
+(function(){
+  const W=820,H=250,P={l:20,r:20,t:30,b:40};
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Limits of agreement comparison'});
+  const xmin=-3.5,xmax=3.5;
+  const X=v=>P.l+(v-xmin)/(xmax-xmin)*(W-P.l-P.r);
+  // zero line + grid
+  for(let g=-3;g<=3;g++){
+    svg.appendChild(el('line',{x1:X(g),y1:P.t,x2:X(g),y2:H-P.b,stroke:g===0?'rgba(255,255,255,.2)':'rgba(255,255,255,.05)','stroke-width':g===0?1.4:1}));
+    const tx=el('text',{x:X(g),y:H-P.b+18,'text-anchor':'middle',fill:'#7e716c','font-size':10,'font-family':'JetBrains Mono'});tx.textContent=(g>0?'+':'')+g;svg.appendChild(tx);
+  }
+  const axl=el('text',{x:(W)/2,y:H-6,'text-anchor':'middle',fill:'#a8978f','font-size':11});axl.textContent='disagreement with lab draw (g/dL) — narrower is better';svg.appendChild(axl);
+
+  const rows=[
+    {label:'Lab CO-oximeter',lo:-0.5,hi:0.5,c:'#5fd0a6'},
+    {label:'Optical spec (Masimo ARMS)',lo:-1.0,hi:1.0,c:'#f5b942'},
+    {label:'Real-world ED study',lo:-2.58,hi:2.87,c:'#ff6b6b'},
+    {label:'Diffuse-reflectance (measures pathlength)',lo:-1.98,hi:1.98,c:'#5b8cff'},
+  ];
+  const rh=(H-P.t-P.b)/rows.length;
+  rows.forEach((r,i)=>{
+    const y=P.t+i*rh+rh/2;
+    svg.appendChild(el('line',{x1:X(r.lo),y1:y,x2:X(r.hi),y2:y,stroke:r.c,'stroke-width':9,'stroke-linecap':'round',opacity:.85}));
+    svg.appendChild(el('line',{x1:X(r.lo),y1:y-7,x2:X(r.lo),y2:y+7,stroke:r.c,'stroke-width':2}));
+    svg.appendChild(el('line',{x1:X(r.hi),y1:y-7,x2:X(r.hi),y2:y+7,stroke:r.c,'stroke-width':2}));
+    const tx=el('text',{x:X(0),y:y-13,'text-anchor':'middle',fill:'#e2d8d1','font-size':11.5,'font-family':'Space Grotesk','font-weight':600});tx.textContent=r.label;svg.appendChild(tx);
+    const rg=el('text',{x:X(r.hi)+8,y:y+4,fill:r.c,'font-size':10,'font-family':'JetBrains Mono'});rg.textContent=`${r.lo} … +${r.hi}`;
+    if(X(r.hi)+70>W-P.r){rg.setAttribute('x',X(r.lo)-8);rg.setAttribute('text-anchor','end');}
+    svg.appendChild(rg);
+  });
+  document.getElementById('floor').appendChild(svg);
+})();
+</script>
+</body>
+</html>

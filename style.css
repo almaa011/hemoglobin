@@ -1,0 +1,225 @@
+/* Base */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #0f1117;
+  color: #e8e8e8;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+/* Layout */
+.page-wrapper {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+/* Index header */
+.site-header {
+  border-bottom: 1px solid #2a2d3a;
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.site-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.site-subtitle {
+  color: #888;
+  margin-top: 0.25rem;
+}
+
+/* Page list */
+.page-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.page-list li a {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #c8d6f0;
+  transition: background 0.15s;
+}
+
+.page-list li a:hover {
+  background: #1c1f2e;
+  color: #ffffff;
+}
+
+.page-list li a:visited {
+  color: #9aadcc;
+}
+
+/* Page header */
+.page-header {
+  border-bottom: 1px solid #2a2d3a;
+  padding-bottom: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 1.25rem;
+  color: #6c8ebf;
+  text-decoration: none;
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+}
+
+.back-link:hover {
+  color: #99b8e8;
+}
+
+.page-header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.5rem;
+}
+
+.meta {
+  color: #666;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.summary {
+  color: #aab8cc;
+  font-size: 0.975rem;
+  line-height: 1.6;
+}
+
+/* Dates / monospace elements */
+.date {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 0.85em;
+  color: #777;
+}
+
+/* Body content */
+.page-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.page-content h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #d0ddf0;
+  margin-top: 1rem;
+}
+
+.page-content h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #c0ccdf;
+}
+
+.page-content p {
+  color: #d8d8d8;
+}
+
+.page-content ul,
+.page-content ol {
+  padding-left: 1.5rem;
+  color: #d8d8d8;
+}
+
+.page-content code {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 0.875em;
+  background: #1c1f2e;
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  color: #a8c4e8;
+}
+
+.page-content pre {
+  background: #1c1f2e;
+  border: 1px solid #2a2d3a;
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.page-content pre code {
+  background: none;
+  padding: 0;
+}
+
+sup {
+  font-size: 0.7em;
+  color: #6c8ebf;
+}
+
+/* References footer */
+.page-footer {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #2a2d3a;
+}
+
+.page-footer h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.75rem;
+}
+
+.references {
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.references li {
+  font-size: 0.825rem;
+  color: #777;
+  line-height: 1.5;
+}
+
+.references li a {
+  color: #5a7db5;
+  word-break: break-all;
+}
+
+.references li a:hover {
+  color: #8aabd8;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .page-wrapper {
+    padding: 1.25rem 1rem 3rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .page-list li a {
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+}

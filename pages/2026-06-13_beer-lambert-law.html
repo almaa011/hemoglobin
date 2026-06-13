@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beer–Lambert Law in Pulse Oximetry — An Engineer's Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0c0a0d; --bg2:#130e12; --panel:#181219; --panel2:#1f1721;
+    --ink:#f2ebe6; --body:#e2d8d1; --mut:#a8978f; --mut2:#7e716c;
+    --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.05);
+    --amber:#f5b942; --oxy:#ff5a52; --deoxy:#5b8cff;
+    --green:#5fd0a6; --red:#ff5a52;
+    --w660:#ff3b30; --w940:#7a4bbf; --iso:#f5b942;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif; font-size:17px;
+    line-height:1.72; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  section{padding:64px 0;border-top:1px solid var(--line2)}
+  h1,h2,h3,.eyebrow{font-family:'Space Grotesk',sans-serif;letter-spacing:-.01em}
+  h2{font-size:clamp(26px,4.4vw,38px);font-weight:700;line-height:1.1;margin:0 0 6px}
+  h3{font-size:20px;font-weight:600;margin:36px 0 10px}
+  p{margin:14px 0;color:var(--body)}
+  a{color:var(--amber)}
+  .lead{font-size:18px;color:#ede3dc}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin:0 0 14px}
+  .secnum{font-family:'JetBrains Mono',monospace;color:var(--mut2);font-size:13px}
+  sup a{color:var(--amber);font-size:11px;text-decoration:none}
+  sup a:hover{text-decoration:underline}
+
+  /* hero */
+  .hero{position:relative;padding:0;border-top:none;min-height:100vh;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+  .hero-bg{position:absolute;inset:0;background:
+    radial-gradient(900px 600px at 70% 20%,rgba(245,185,66,.08),transparent 60%),
+    radial-gradient(700px 500px at 20% 80%,rgba(91,140,255,.07),transparent 60%);
+    pointer-events:none}
+  .hero .wrap{position:relative;z-index:2;padding-top:80px;padding-bottom:60px}
+  .kicker{display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:12px;
+    color:var(--mut);border:1px solid var(--line);border-radius:100px;padding:6px 13px;margin-bottom:26px}
+  .kicker .dot{width:7px;height:7px;border-radius:50%;background:var(--amber);
+    box-shadow:0 0 10px var(--amber);animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+  h1{font-size:clamp(34px,7vw,62px);font-weight:700;line-height:1.02;margin:0 0 20px}
+  h1 .hl{color:var(--amber)}
+  .hero-sub{font-size:clamp(17px,2.4vw,20px);color:var(--mut);max-width:620px;margin:0 0 30px}
+  .meta-row{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut2);margin-top:20px}
+  .back-link{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:13px;
+    color:var(--mut);text-decoration:none;margin-bottom:20px}
+  .back-link:hover{color:var(--ink)}
+
+  /* panels */
+  .panel{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);
+    border-radius:16px;padding:20px;margin:26px 0}
+  .panel-h{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+  .panel-t{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px}
+  .panel-s{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mut2)}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .cap{font-size:13px;color:var(--mut);margin-top:10px;line-height:1.55}
+  .cap b{color:var(--ink);font-weight:600}
+
+  /* equation boxes */
+  .eq{background:rgba(245,185,66,.06);border:1px solid rgba(245,185,66,.22);
+    border-left:3px solid var(--amber);border-radius:10px;padding:16px 20px;margin:22px 0}
+  .eq .eq-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--amber);margin-bottom:8px;font-family:'Space Grotesk',sans-serif;font-weight:600}
+  .eq .formula{font-family:'JetBrains Mono',monospace;color:var(--ink);font-size:16px;margin:6px 0}
+  .eq .vars{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--mut);margin-top:8px}
+  .eq .vars span{display:block;margin:3px 0}
+
+  /* callouts */
+  .callout{border-radius:10px;padding:14px 18px;margin:20px 0}
+  .callout.warn{background:rgba(255,90,82,.07);border:1px solid rgba(255,90,82,.25)}
+  .callout.info{background:rgba(91,140,255,.07);border:1px solid rgba(91,140,255,.22)}
+  .callout.tip{background:rgba(95,208,166,.07);border:1px solid rgba(95,208,166,.22)}
+  .callout p{margin:0;font-size:15px}
+  .callout .cl{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;margin-bottom:6px;font-weight:600}
+  .callout.warn .cl{color:var(--red)}
+  .callout.info .cl{color:#5b8cff}
+  .callout.tip .cl{color:var(--green)}
+
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:18px 0}
+  th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--mut);font-weight:500;text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+  td{padding:10px 12px;border-bottom:1px solid var(--line2);color:var(--body);
+    font-family:'JetBrains Mono',monospace;font-size:13px}
+  tr:last-child td{border-bottom:none}
+  .td-hl{color:var(--ink);font-weight:600}
+
+  /* references */
+  details{margin-top:40px}
+  summary{cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;color:var(--mut);padding:10px 0}
+  .refs{font-size:13px;color:var(--mut);line-height:1.7;padding-left:20px}
+  .refs li{margin:8px 0}
+  .refs a{color:var(--amber)}
+  .unverified{color:#f0a24b;font-style:italic}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+    <div class="kicker"><span class="dot"></span>Optical Sensing · Beer–Lambert</div>
+    <h1>Beer–Lambert Law<br><span class="hl">for Pulse Oximetry</span></h1>
+    <p class="hero-sub">How a 19th-century chemistry law became the foundation of every SpO₂ sensor — and why tissue breaks every assumption it makes. This page covers the standard and modified Beer–Lambert equations, the molar extinction coefficients that drive LED wavelength choice, the ratio-of-ratios SpO₂ derivation, how the AFE4490 signal chain is structured around these equations, and the four failure modes that expose the limits of the 2-wavelength approach.</p>
+    <p class="meta-row">2026-06-13 · Broad overview · Hardware-focused · Moderate biology depth</p>
+  </div>
+</section>
+
+<!-- 01: THE LAW -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">01 /</span> The Law</p>
+    <h2>Beer–Lambert: light attenuation through matter</h2>
+    <p class="lead">Before tissue, scattering, and hemoglobin — start with the cleanest case: a single absorber in solution, a monochromatic LED, straight-line propagation.</p>
+
+    <p>When a photon beam passes through a medium, molecules absorb photons proportionally to their concentration and the path length traversed. Beer–Lambert formalizes this:<sup><a href="#r1">[1]</a></sup></p>
+
+    <div class="eq">
+      <div class="eq-label">Beer–Lambert Law</div>
+      <div class="formula">A = ε · c · L</div>
+      <div class="vars">
+        <span><b>A</b> = absorbance = log₁₀(I₀ / I) &nbsp;[dimensionless]</span>
+        <span><b>ε</b> = molar extinction coefficient &nbsp;[cm⁻¹/(mol·L⁻¹)]</span>
+        <span><b>c</b> = absorber concentration &nbsp;[mol·L⁻¹]</span>
+        <span><b>L</b> = optical path length &nbsp;[cm]</span>
+      </div>
+    </div>
+
+    <p>In hardware terms: <b>I₀</b> is the radiant flux emitted by the LED before it enters the sample; <b>I</b> is the flux that exits and lands on the photodiode. Absorbance A = log₁₀(I₀/I) links your photodiode current reading back to the hemoglobin concentration you actually want to measure.<sup><a href="#r1">[1]</a></sup></p>
+
+    <p>The equation bakes in four assumptions, all of which are violated when you shine light through a fingertip:</p>
+
+    <table>
+      <thead><tr><th>Assumption</th><th>Meaning</th><th>Status in tissue</th></tr></thead>
+      <tbody>
+        <tr><td class="td-hl">Monochromatic light</td><td>Single wavelength only</td><td style="color:#f0a24b">LEDs have finite spectral width</td></tr>
+        <tr><td class="td-hl">Dilute solution</td><td>Absorbers don't interact</td><td style="color:#f0a24b">Blood is not dilute</td></tr>
+        <tr><td class="td-hl">Homogeneous medium</td><td>Same composition throughout</td><td style="color:#ff5a52">Multiple tissue layers, multiple absorbers</td></tr>
+        <tr><td class="td-hl">No scattering</td><td>All attenuation is absorption</td><td style="color:#ff5a52">Scattering is 30–93× stronger than absorption<sup><a href="#r9">[9]</a></sup></td></tr>
+      </tbody>
+    </table>
+
+    <p>Despite all of this, Beer–Lambert is still the mathematical skeleton of every pulse oximeter. The rest of this page explains how engineers work around each broken assumption.</p>
+  </div>
+</section>
+
+<!-- 02: TISSUE -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">02 /</span> Tissue</p>
+    <h2>Why tissue breaks the law — and the fix</h2>
+
+    <h3>Scattering dominates absorption</h3>
+    <p>In the near-infrared optical window (650–950 nm), scattering is not a minor perturbation — it is the dominant photon–tissue interaction. At 660 nm in skin, the reduced scattering coefficient μs′ (think of it as a diffusion-broadening coefficient per unit length) is <span class="mono">1.8–2.8 mm⁻¹</span>, versus an absorption coefficient μa (resistive loss per unit length) of only <span class="mono">0.03–0.06 mm⁻¹</span>. That gives a scattering-to-absorption ratio of <b>30 to 93:1</b>.<sup><a href="#r9">[9]</a></sup></p>
+
+    <p>Standard Beer–Lambert assumes photons travel in a straight line from source to detector. In tissue they do not. They bounce off collagen fibers, cell membranes, and organelles, executing a random walk. The effective optical path is far longer than the physical source-to-detector distance — by a factor called the <b>DPF</b>.</p>
+
+    <div class="panel">
+      <div class="panel-h">
+        <span class="panel-t">Photon path through skin (reflectance geometry)</span>
+        <span class="panel-s">LED and PD on same surface, ~3–5 mm separation</span>
+      </div>
+      <div id="tissue-diagram"></div>
+      <p class="cap">Photons take a curved random-walk ("banana") path through tissue. <b>r</b> is the straight-line source-detector distance; the actual mean photon path is <b>r × DPF</b>. Dashed grey path = photons scattered so far off-axis they never reach the PD (the G loss term in modified Beer–Lambert). Scattering is 30–93× stronger than absorption at 660 nm.<sup><a href="#r9">[9]</a></sup></p>
+    </div>
+
+    <h3>Multiple absorbers</h3>
+    <p>Tissue is not a single-species solution. Each layer has its own absorbers: oxyhemoglobin (HbO₂) and deoxyhemoglobin (Hb) in blood, melanin in the epidermis, water throughout, and lipids in adipose tissue. Standard Beer–Lambert handles one absorber. Tissue has at least five.</p>
+
+    <h3>The Modified Beer–Lambert Law</h3>
+    <p>Tissue scattering adds two correction terms to the standard equation:<sup><a href="#r3">[3]</a></sup></p>
+
+    <div class="eq">
+      <div class="eq-label">Modified Beer–Lambert Law</div>
+      <div class="formula">A = ε · c · r · DPF + G</div>
+      <div class="vars">
+        <span><b>r</b> = physical source-to-detector distance [cm]</span>
+        <span><b>DPF</b> = Differential Pathlength Factor [dimensionless] — the "detour factor"</span>
+        <span><b>G</b> = scattering loss: photons that never reach the detector [OD = optical density = absorbance units]</span>
+      </div>
+    </div>
+
+    <p>DPF is the ratio of mean photon path length to physical separation. A DPF of 6 means photons travel 6× the geometric distance before reaching the detector. In functional near-infrared spectroscopy (fNIRS — an adjacent field that uses the same modified Beer–Lambert framework for brain monitoring), it has been common practice to use a DPF value between 3 and 6, with DPF = 6 commonly adopted as a practical approximation for adult continuous-wave fNIRS data.<sup><a href="#r5">[5]</a></sup></p>
+
+    <p>Monte Carlo simulations of layered human skin give DPF at <span class="mono">650 nm</span> ranging from <span class="mono">7.73</span> (0.5 mm separation) to <span class="mono">10.24</span> (8 mm). At <span class="mono">950 nm</span>, DPF ranges from <span class="mono">9.32</span> (0.5 mm) down to <span class="mono">4.45</span> (8 mm).<sup><a href="#r4">[4]</a></sup> DPF is a function of both wavelength and sensor geometry — not a universal constant.</p>
+
+    <div class="callout info">
+      <div class="cl">Hardware implication</div>
+      <p>DPF is wavelength-dependent because scattering in the NIR scales as ~λ⁻⁰·⁷.<sup><a href="#r10">[10]</a></sup> This means the effective optical path is longer at 660 nm than at 940 nm. The modified Beer–Lambert equation includes a path-length ratio (l₂/l₁) to correct for this asymmetry when computing SpO₂.<sup><a href="#r6">[6]</a></sup> In practice, manufacturers absorb this into their empirical calibration curve rather than computing it analytically.</p>
+    </div>
+
+    <p>The G term accounts for photons scattered so far off-axis they never reach the detector — pure insertion loss. When taking differential measurements (ΔA between two states), G cancels. In absolute SpO₂ measurement it does not cancel exactly, which is another reason empirical calibration is always required.<sup><a href="#r3">[3]</a></sup></p>
+  </div>
+</section>
+
+<!-- 03: SPECTRA -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">03 /</span> Spectra</p>
+    <h2>Absorption spectra — why 660 nm and 940 nm</h2>
+    <p class="lead">The two LED wavelengths are not arbitrary. They exploit a specific crossover in the molar extinction coefficients of HbO₂ and Hb.</p>
+
+    <div class="panel">
+      <div class="panel-h">
+        <span class="panel-t">HbO₂ vs. Hb — molar extinction coefficients</span>
+        <span class="panel-s">cm⁻¹/(mol·L⁻¹) · Source: Prahl/OMLC<sup><a href="#r2">[2]</a></sup></span>
+      </div>
+      <div id="spectra-chart"></div>
+      <p class="cap">
+        Filled circles are <b>verified data points</b> from the OMLC hemoglobin table.<sup><a href="#r2">[2]</a></sup> Curve shapes between marked points are stylized for readability — intermediate values are not cited.
+        <b style="color:#ff3b30">Hb (deoxy)</b> at 660 nm: <b>3226 cm⁻¹/M</b>.
+        <b style="color:#7a4bbf">HbO₂ (oxy)</b> at 940 nm: <b>1214 cm⁻¹/M</b>.
+        <b style="color:#f5b942">Isobestic ~805 nm</b>: both species absorb equally.
+      </p>
+    </div>
+
+    <p>Verified extinction coefficients at the two working wavelengths, from the Oregon Medical Laser Center database (Prahl, compiled from Gratzer and Kollias):<sup><a href="#r2">[2]</a></sup></p>
+
+    <table>
+      <thead><tr><th>Species</th><th>660 nm (red)</th><th>940 nm (NIR)</th><th>Ratio (660/940)</th></tr></thead>
+      <tbody>
+        <tr>
+          <td style="color:#7a4bbf;font-weight:600">HbO₂ (oxy)</td>
+          <td>319.6 cm⁻¹/M</td>
+          <td>1214 cm⁻¹/M</td>
+          <td>0.26</td>
+        </tr>
+        <tr>
+          <td style="color:#ff3b30;font-weight:600">Hb (deoxy)</td>
+          <td>3226.56 cm⁻¹/M</td>
+          <td>693.44 cm⁻¹/M</td>
+          <td>4.65</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>At <b style="color:#ff3b30">660 nm</b>: Hb absorbs roughly 10× more than HbO₂. At <b style="color:#7a4bbf">940 nm</b>: the roles partially reverse — HbO₂ absorbs ~1.75× more than Hb. This large opposing contrast at each wavelength is what makes the two-equation system mathematically well-conditioned: small SpO₂ changes produce large, measurable changes in the relative signals.</p>
+
+    <h3>The isobestic point</h3>
+    <p>Around <b style="color:#f5b942">805 nm</b>, HbO₂ and Hb have equal extinction coefficients — the isobestic point.<sup><a href="#r11">[11]</a></sup> The OMLC table shows the crossover falling between 800 and 806 nm; the commonly cited value of 805 nm comes from secondary clinical sources.<sup><a href="#r2">[2]</a></sup><sup><a href="#r11">[11]</a></sup> At this wavelength, absorbance is proportional to total hemoglobin regardless of oxygenation fraction — useful as a calibration reference point independent of SpO₂.</p>
+
+    <div class="callout info">
+      <div class="cl">Why two wavelengths are required</div>
+      <p>Two unknowns — [HbO₂] and [Hb] — require two equations. Each wavelength provides one Beer–Lambert equation, yielding a 2×2 linear system solvable for both concentrations simultaneously.<sup><a href="#r6">[6]</a></sup> One wavelength alone cannot separate the two species.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 04: SpO2 RATIO -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">04 /</span> SpO₂</p>
+    <h2>The ratio-of-ratios — Beer–Lambert becomes SpO₂</h2>
+    <p class="lead">The photodiode sees two superimposed signals: a large DC baseline from static tissue, and a tiny AC pulsatile component from the arterial heartbeat. Beer–Lambert applies only to the AC component.</p>
+
+    <div class="panel">
+      <div class="panel-h">
+        <span class="panel-t">AC vs. DC decomposition of the PPG signal</span>
+        <span class="panel-s">Scale exaggerated for visibility — AC is ~0.5–1% of total signal</span>
+      </div>
+      <div id="acdc-chart"></div>
+      <p class="cap">The pulsatile (AC) component is typically only <b>0.5–1%</b> of the total photocurrent.<sup><a href="#r12">[12]</a></sup> The remaining 99%+ is the DC pedestal: static tissue, venous blood, non-pulsatile arterial baseline. AC/DC × 100% = <b>Perfusion Index (PI)</b>. Values below 0.5% indicate low perfusion where accuracy degrades.<sup><a href="#r16">[16]</a></sup></p>
+    </div>
+
+    <p>The AC/DC ratio normalizes out LED drive current, fiber coupling, and fixed tissue attenuation. The SpO₂ calculation uses the ratio of these ratios across the two wavelengths:<sup><a href="#r6">[6]</a></sup></p>
+
+    <div class="eq">
+      <div class="eq-label">Ratio-of-Ratios</div>
+      <div class="formula">R = (AC₆₆₀ / DC₆₆₀) / (AC₉₄₀ / DC₉₄₀)</div>
+    </div>
+
+    <p>Solving the two modified Beer–Lambert equations simultaneously for the oxygenation fraction yields a theoretical SpO₂:<sup><a href="#r6">[6]</a></sup></p>
+
+    <div class="eq">
+      <div class="eq-label">Theoretical SpO₂ from Beer–Lambert</div>
+      <div class="formula">SpO₂ = (ε<sub>Hb,660</sub> − R·ε<sub>Hb,940</sub>) / [R(ε<sub>HbO₂,940</sub> − ε<sub>Hb,940</sub>) + (ε<sub>Hb,660</sub> − ε<sub>HbO₂,660</sub>)]</div>
+      <div class="vars">
+        <span>A path-length ratio correction (l₂/l₁) is required when DPF differs between wavelengths<sup><a href="#r6">[6]</a></sup></span>
+      </div>
+    </div>
+
+    <h3>Empirical calibration — why theory isn't enough</h3>
+    <p>The theoretical derivation assumes known DPF and perfectly monochromatic LEDs. In reality, DPF is subject-variable, LEDs have finite spectral width (requiring a spectrally weighted effective ε), and tissue has absorbers beyond HbO₂ and Hb. So manufacturers use an empirical R–SpO₂ lookup table instead.</p>
+
+    <p>Calibration is performed on healthy volunteers whose SaO₂ (arterial oxygen saturation measured invasively from a blood gas analyser — the gold-standard reference; SpO₂ is the non-invasive pulse oximeter estimate of this value) is stepped from 100% down to approximately 70% using a hypoxic breathing protocol (subjects breathe a reduced-oxygen gas mixture under medical supervision). R is recorded at each controlled saturation level.<sup><a href="#r13">[13]</a></sup></p>
+
+    <p>A widely-cited linear approximation is:<sup><a href="#r14">[14]</a></sup></p>
+
+    <div class="eq">
+      <div class="eq-label">Empirical linear approximation (Webster's formula)</div>
+      <div class="formula">SpO₂ ≈ 110 − 25·R</div>
+      <div class="vars">
+        <span>R = 0.4 → SpO₂ ≈ 100% &nbsp;|&nbsp; R = 1.0 → SpO₂ ≈ 85% &nbsp;|&nbsp; R = 1.6 → SpO₂ ≈ 70%</span>
+        <span>A second cited approximation: SpO₂ = −39.4·R + 112.9<sup><a href="#r13">[13]</a></sup></span>
+        <span>Both are rough linear fits; device firmware uses proprietary nonlinear lookup tables</span>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <div class="cl">Calibration validity range</div>
+      <p>Empirical calibration data only covers <b>70–100% SpO₂</b>. Below 70%, values are extrapolated — not measured. Pulse oximeter readings are typically within <b>±2% accuracy</b> compared to arterial blood gas analysis, within ±4% in 95% of cases.<sup><a href="#r15">[15]</a></sup></p>
+    </div>
+  </div>
+</section>
+
+<!-- 05: HARDWARE -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">05 /</span> Hardware</p>
+    <h2>Hardware implications — from Beer–Lambert to signal chain</h2>
+
+    <div class="panel">
+      <div class="panel-h">
+        <span class="panel-t">SpO₂ AFE signal chain</span>
+        <span class="panel-s">Beer–Lambert variables mapped to hardware blocks</span>
+      </div>
+      <div id="signal-chain"></div>
+      <p class="cap">I₀ is set by LED drive current. Tissue is the absorbing medium (ε, c, r·DPF, G). I is the photodiode current. TIA converts I → V; ADC digitizes it. AC/DC separation and R calculation happen in firmware.</p>
+    </div>
+
+    <h3>The dynamic range problem</h3>
+    <p>The AC pulsatile signal is only <b>0.5–1%</b> of total photocurrent — 100–200× smaller than the DC pedestal.<sup><a href="#r12">[12]</a></sup> If the TIA is sized for the full DC without headroom compression, the ADC spends essentially all of its full-scale range on the DC level and the pulsatile signal is buried near the quantization noise floor.</p>
+
+    <p>Perfusion Index (PI) quantifies this: PI = AC/DC × 100%. At PI = 0.5%, the signal of interest is 1/200th of full scale. Below PI = 0.5%, SpO₂ accuracy degrades significantly.<sup><a href="#r16">[16]</a></sup></p>
+
+    <div class="callout tip">
+      <div class="cl">AFE4490 response to the dynamic range problem</div>
+      <p>Texas Instruments AFE4490: <b>22-bit ADC</b>, <b>programmable TIA gain</b> (7 feedback resistor settings — values 10 kΩ to 1 MΩ confirmed in the AFE4400 family datasheet, same architecture<sup><a href="#r8">[8]</a></sup>), <b>analog ambient light cancellation DAC</b> (1–10 µA adjustable), <b>110 dB dynamic range</b>, LED drive programmable at 50/75/100/150/200 mA ranges. Noise-free resolution at 5 µA PD current: <b>13.5 bits</b>, input-referred noise: <b>50 pA<sub>RMS</sub></b>.<sup><a href="#r7">[7]</a></sup></p>
+    </div>
+
+    <h3>Ambient light cancellation</h3>
+    <p>The AFE4490 includes an analog ambient-light cancellation DAC (1–10 µA adjustable) that injects a programmable current opposing the photodiode's ambient-light DC component before the TIA stage, reducing the DC burden before digitization.<sup><a href="#r7">[7]</a></sup> A current-driven 22-bit DAC provides the cancellation current.<sup><a href="#r17">[17]</a></sup> LED duty cycles as low as 2–10% are used in low-power designs.<sup><a href="#r17">[17]</a></sup></p>
+
+    <table>
+      <thead><tr><th>Parameter</th><th>AFE4490 specification</th></tr></thead>
+      <tbody>
+        <tr><td>ADC resolution</td><td class="td-hl">22-bit</td></tr>
+        <tr><td>LED drive current ranges</td><td class="td-hl">50 / 75 / 100 / 150 / 200 mA (8-bit resolution within range)</td></tr>
+        <tr><td>TIA feedback R settings</td><td class="td-hl">7 values: 10 kΩ → 1 MΩ (confirmed AFE4400 family<sup><a href="#r8">[8]</a></sup>)</td></tr>
+        <tr><td>Ambient light cancellation</td><td class="td-hl">Analog DAC, 1–10 µA adjustable</td></tr>
+        <tr><td>Dynamic range</td><td class="td-hl">110 dB</td></tr>
+        <tr><td>Noise-free bits (@ 5 µA PD)</td><td class="td-hl">13.5 bits</td></tr>
+        <tr><td>Input-referred noise (@ 5 µA PD)</td><td class="td-hl">50 pA<sub>RMS</sub></td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:var(--mut)">Source: TI AFE4490 product page.<sup><a href="#r7">[7]</a></sup> 7 Rf values confirmed from AFE4400 family datasheet (same TIA architecture).<sup><a href="#r8">[8]</a></sup></p>
+  </div>
+</section>
+
+<!-- 06: FAILURE MODES -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">06 /</span> Failure Modes</p>
+    <h2>Where Beer–Lambert breaks down in practice</h2>
+    <p class="lead">A 2-wavelength pulse oximeter solves a 2×2 system: two equations, two unknowns. Anything that introduces a third unknown — or corrupts the AC/DC measurement — breaks the system.</p>
+
+    <h3>Motion artifacts</h3>
+    <p>Motion causes venous blood in tissue to shift, creating optical signals that mimic arterial pulsations but are not synchronous with the cardiac cycle.<sup><a href="#r15">[15]</a></sup> These corrupt the AC amplitude and DC baseline estimates at both wavelengths, randomizing R. Comparative testing across three commercial pulse oximeters showed motion increased SpO₂ ARMS error by <b>30–78%</b>: from a baseline of 1.79–2.40 up to 2.45–4.15 under motion conditions.<sup><a href="#r18">[18]</a></sup></p>
+
+    <h3>Low perfusion</h3>
+    <p>When PI falls below 0.5%, signal quality is considered poor.<sup><a href="#r16">[16]</a></sup> At PI &lt; 1.0, SpO₂ error across three commercial devices ranged from 3.24 to 4.76 — already above the ±2% accuracy target. At PI 0.1–0.3, errors reached 4.52–5.55. At ultra-low PI, some devices began reporting signal loss entirely.<sup><a href="#r18">[18]</a></sup></p>
+
+    <h3>Carboxyhemoglobin (CO-Hb)</h3>
+    <p>CO-Hb has nearly identical absorption to HbO₂ at 660 nm, so the 2-wavelength system counts it as oxyhemoglobin. But CO-Hb absorbs very little at 940 nm — so it contributes to the numerator of R without contributing to the denominator. Result: CO-Hb is invisible to a standard pulse oximeter, and a patient with significant CO poisoning may show SpO₂ = 98% while their true functional saturation is far lower. The error grows proportionally with CO-Hb level.<sup><a href="#r19">[19]</a></sup></p>
+
+    <h3>Methemoglobin (Met-Hb)</h3>
+    <p>Met-Hb absorbs strongly at <i>both</i> 660 nm and 940 nm. As Met-Hb concentration rises, it pulls the absorbance ratio toward R ≈ 1.0. On the empirical calibration curve, R = 1.0 maps to SpO₂ ≈ 85% (consistent with SpO₂ = 110 − 25×1.0 = 85). So Met-Hb causes SpO₂ readings to plateau near 85% regardless of actual saturation — whether the patient is truly at 98% or 30%. At Met-Hb ≈ 30–35%, this plateau is well established.<sup><a href="#r20">[20]</a></sup></p>
+
+    <div class="callout warn">
+      <div class="cl">The two-equation limit</div>
+      <p>CO-Hb and Met-Hb are third and fourth hemoglobin species the 2×2 system has no equations for. Detecting them requires a <b>co-oximeter</b> — a multi-wavelength device that adds equations to resolve each species individually.<sup><a href="#r21">[21]</a></sup></p>
+    </div>
+
+    <h3>Skin tone and melanin</h3>
+    <p>Melanin is a broadband absorber concentrated in the epidermis. Monte Carlo simulations of three skin types at 660 nm and 3 mm source-detector separation show: light skin detects <b>1,791 photons per million launched</b>; dark skin detects only <b>55</b> — a <b>32.5× reduction</b>. At 940 nm, the impact is minimal (&lt;0.2% difference).<sup><a href="#r22">[22]</a></sup></p>
+
+    <p>In a perfect system, melanin wouldn't bias R because it attenuates AC and DC equally at each wavelength, and the ratio cancels it. In practice, the 32× photon reduction at 660 nm raises shot noise on the AC component, increasing variance in the SpO₂ estimate. Clinical data indicates dark-skinned patients were <b>three times as likely</b> as white patients to have low oxygen saturation missed by standard pulse oximeters.<sup><a href="#r15">[15]</a></sup></p>
+
+    <details>
+      <summary>References</summary>
+      <ol class="refs">
+        <li id="r1">Beer–Lambert law. Wikipedia. <a href="https://en.wikipedia.org/wiki/Beer%E2%80%93Lambert_law">https://en.wikipedia.org/wiki/Beer%E2%80%93Lambert_law</a></li>
+        <li id="r2">Prahl, S.A. "Tabulated Molar Extinction Coefficient for Hemoglobin in Water." Oregon Medical Laser Center. Data compiled from W.B. Gratzer (MRC Labs) and N. Kollias (Wellman Laboratories, Harvard Medical School). <a href="https://omlc.org/spectra/hemoglobin/summary.html">https://omlc.org/spectra/hemoglobin/summary.html</a></li>
+        <li id="r3">Modified Beer–Lambert Law. OpenFNIRS, 2024. <a href="https://openfnirs.org/2024/01/01/modified-beer-lambert-law/">https://openfnirs.org/2024/01/01/modified-beer-lambert-law/</a></li>
+        <li id="r4">Estimation of Differential Pathlength Factor for Human Skin Using Monte Carlo Simulations. PMC9858156. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9858156/">https://pmc.ncbi.nlm.nih.gov/articles/PMC9858156/</a></li>
+        <li id="r5">Differential Pathlength Factor in CW-fNIRS. PMC6689143. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6689143/">https://pmc.ncbi.nlm.nih.gov/articles/PMC6689143/</a></li>
+        <li id="r6">Pulse Oximetry with Two Infrared Wavelengths without Calibration in Subjects. PMC6211094. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6211094/">https://pmc.ncbi.nlm.nih.gov/articles/PMC6211094/</a></li>
+        <li id="r7">AFE4490 Product Page. Texas Instruments. <a href="https://www.ti.com/product/AFE4490">https://www.ti.com/product/AFE4490</a></li>
+        <li id="r8">AFE4400 Datasheet. Texas Instruments. <a href="https://www.ti.com/product/AFE4400">https://www.ti.com/product/AFE4400</a></li>
+        <li id="r9">In Vivo NIR Optical Properties of Human Skin. PMC2626348. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2626348/">https://pmc.ncbi.nlm.nih.gov/articles/PMC2626348/</a></li>
+        <li id="r10">Near-Infrared Window in Biological Tissue. Wikipedia. <a href="https://en.wikipedia.org/wiki/Near-infrared_window_in_biological_tissue">https://en.wikipedia.org/wiki/Near-infrared_window_in_biological_tissue</a></li>
+        <li id="r11">Isobestic point at 805 nm — clinical description. LitFL / PartOne. <a href="https://partone.litfl.com/pulse_oximetry.html">https://partone.litfl.com/pulse_oximetry.html</a></li>
+        <li id="r12" class="unverified">AC/DC signal ratio in pulse oximetry. — UNVERIFIED LEAD — Quoted language: "Typically, only about 0.5% to about 1% of the total signal measured by the pulse oximetry photodetector is attributable to the AC signal." Found in US patent literature (cross-confirmed by multiple secondary sources); specific patent number and primary URL not retrieved in this research.</li>
+        <li id="r13">Principles of Pulse Oximetry. Deranged Physiology. <a href="https://derangedphysiology.com/main/cicm-primary-exam/respiratory-system/Chapter-410/principles-pulse-oximetry">https://derangedphysiology.com/main/cicm-primary-exam/respiratory-system/Chapter-410/principles-pulse-oximetry</a></li>
+        <li id="r14" class="unverified">SpO₂ = 110 − 25R — cited as "Webster's formula" in patent US6714803 and secondary literature. Primary source: J. Webster, <i>Medical Instrumentation: Application and Design</i> — UNVERIFIED LEAD: primary textbook citation not confirmed in this research.</li>
+        <li id="r15">Pulse Oximetry. Wikipedia. <a href="https://en.wikipedia.org/wiki/Pulse_oximetry">https://en.wikipedia.org/wiki/Pulse_oximetry</a></li>
+        <li id="r16">Perfusion Index and SpO₂ accuracy. scienceinsights.org. <a href="https://scienceinsights.org/what-does-the-perfusion-index-pi-on-a-pulse-oximeter-mean/">https://scienceinsights.org/what-does-the-perfusion-index-pi-on-a-pulse-oximeter-mean/</a></li>
+        <li id="r17">Ambient light cancellation architecture — AFE4490/AFE4400. Electronic Design. <a href="https://www.electronicdesign.com/trends-amp-analysis/plethysmograph-afes-follow-trend-toward-application-specialization">https://www.electronicdesign.com/trends-amp-analysis/plethysmograph-afes-follow-trend-toward-application-specialization</a></li>
+        <li id="r18">Comparative analysis of SpO₂ accuracy under motion and low perfusion. PMC10651546. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10651546/">https://pmc.ncbi.nlm.nih.gov/articles/PMC10651546/</a></li>
+        <li id="r19">Carboxyhemoglobin and pulse oximetry error. Storm Anesthesia. <a href="https://stormanesthesia.com/anesthesia-material/storm-anesthesia-answers/pulse-oximetry-carboxyhemoglobin">https://stormanesthesia.com/anesthesia-material/storm-anesthesia-answers/pulse-oximetry-carboxyhemoglobin</a></li>
+        <li id="r20">Methemoglobinemia. StatPearls, NIH. <a href="https://www.ncbi.nlm.nih.gov/books/NBK537317/">https://www.ncbi.nlm.nih.gov/books/NBK537317/</a></li>
+        <li id="r21">Pulse Oximetry — dyshemoglobinemias. StatPearls, NIH. <a href="https://www.ncbi.nlm.nih.gov/books/NBK470348/">https://www.ncbi.nlm.nih.gov/books/NBK470348/</a></li>
+        <li id="r22">Monte Carlo simulation of melanin effect on PPG signal. PMC10999454. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10999454/">https://pmc.ncbi.nlm.nih.gov/articles/PMC10999454/</a></li>
+      </ol>
+    </details>
+  </div>
+</section>
+
+<script>
+// ── Absorption Spectra Chart ──────────────────────────────────────────────────
+(function () {
+  const W = 600, H = 260;
+  const ml = 60, mr = 20, mt = 20, mb = 40;
+  const cw = W - ml - mr;   // 520
+  const ch = H - mt - mb;   // 200
+  const wlMin = 620, wlMax = 980, yMax = 3500;
+
+  function xOf(wl)  { return ml + (wl - wlMin) / (wlMax - wlMin) * cw; }
+  function yOf(val) { return mt + ch - val / yMax * ch; }
+
+  // Hb (deoxy) — stylized curve anchored to verified points (660→3226, ~805→800, 940→693)
+  const hbPts = [
+    [620,2200],[640,2900],[660,3226],[680,2500],[700,1700],
+    [730,1100],[760,950],[780,860],[800,810],[805,800],
+    [830,760],[870,730],[900,710],[940,693],[960,680],[980,670]
+  ];
+  // HbO2 (oxy) — stylized curve anchored to verified points (660→319.6, ~805→800, 940→1214)
+  const hbO2Pts = [
+    [620,180],[640,250],[660,320],[680,400],[700,520],
+    [730,610],[760,680],[780,750],[800,790],[805,800],
+    [830,870],[870,1000],[900,1160],[940,1214],[960,1200],[980,1150]
+  ];
+
+  function toPath(pts) {
+    return pts.map((p,i) => `${i===0?'M':'L'}${xOf(p[0]).toFixed(1)},${yOf(p[1]).toFixed(1)}`).join(' ');
+  }
+
+  // Grid
+  const yTicks = [0,500,1000,1500,2000,2500,3000,3500];
+  const yGrid = yTicks.map(v => {
+    const y = yOf(v).toFixed(1);
+    return `<line x1="${ml}" y1="${y}" x2="${ml+cw}" y2="${y}" stroke="rgba(255,255,255,.05)"/>
+            <text x="${ml-6}" y="${y}" text-anchor="end" dominant-baseline="middle" fill="#7e716c" font-size="11" font-family="JetBrains Mono,monospace">${v}</text>`;
+  }).join('');
+
+  // X labels
+  const xLbls = [640,660,700,760,805,860,940,980].map(wl => {
+    const x = xOf(wl).toFixed(1);
+    const col = wl===660 ? '#ff3b30' : wl===940 ? '#7a4bbf' : wl===805 ? '#f5b942' : '#7e716c';
+    return `<text x="${x}" y="${mt+ch+16}" text-anchor="middle" fill="${col}" font-size="11" font-family="JetBrains Mono,monospace">${wl}</text>`;
+  }).join('');
+
+  // Wavelength marker lines
+  const mkrs = [
+    {wl:660, col:'#ff3b30', ly:42},
+    {wl:805, col:'#f5b942', ly: yOf(800)-16},
+    {wl:940, col:'#7a4bbf', ly:85}
+  ];
+  const markerSVG = mkrs.map(m => {
+    const x = xOf(m.wl).toFixed(1);
+    return `<line x1="${x}" y1="${mt}" x2="${x}" y2="${mt+ch}" stroke="${m.col}" stroke-width="1.5" stroke-dasharray="6,3" opacity="0.65"/>
+            <text x="${parseFloat(x)+5}" y="${m.ly}" fill="${m.col}" font-size="12" font-family="JetBrains Mono,monospace" font-weight="600">${m.wl} nm</text>`;
+  }).join('');
+
+  // Isobestic dot
+  const ix = xOf(805).toFixed(1), iy = yOf(800).toFixed(1);
+  const isoPt = `<circle cx="${ix}" cy="${iy}" r="6" fill="none" stroke="#f5b942" stroke-width="2"/>
+                 <circle cx="${ix}" cy="${iy}" r="2.5" fill="#f5b942"/>`;
+
+  // Verified data point annotations
+  const pts660Hb   = [xOf(660), yOf(3226)];
+  const pts660HbO2 = [xOf(660), yOf(320)];
+  const pts940HbO2 = [xOf(940), yOf(1214)];
+  const pts940Hb   = [xOf(940), yOf(693)];
+
+  const annots = `
+    <circle cx="${pts660Hb[0]}"   cy="${pts660Hb[1]}"   r="4.5" fill="#ff3b30"/>
+    <text x="${pts660Hb[0]-9}"    y="${pts660Hb[1]-10}"  text-anchor="middle" fill="#ff3b30" font-size="10.5" font-family="JetBrains Mono,monospace" font-weight="600">3227</text>
+    <circle cx="${pts660HbO2[0]}" cy="${pts660HbO2[1]}" r="4.5" fill="#7a4bbf"/>
+    <text x="${pts660HbO2[0]+18}" y="${pts660HbO2[1]+4}" text-anchor="start" fill="#7a4bbf" font-size="10.5" font-family="JetBrains Mono,monospace">320</text>
+    <circle cx="${pts940HbO2[0]}" cy="${pts940HbO2[1]}" r="4.5" fill="#7a4bbf"/>
+    <text x="${pts940HbO2[0]-9}"  y="${pts940HbO2[1]-11}" text-anchor="middle" fill="#7a4bbf" font-size="10.5" font-family="JetBrains Mono,monospace" font-weight="600">1214</text>
+    <circle cx="${pts940Hb[0]}"   cy="${pts940Hb[1]}"   r="4.5" fill="#ff3b30"/>
+    <text x="${pts940Hb[0]-9}"    y="${pts940Hb[1]+16}" text-anchor="middle" fill="#ff3b30" font-size="10.5" font-family="JetBrains Mono,monospace">693</text>
+  `;
+
+  // Legend
+  const lx = ml + cw - 215, ly = mt + 8;
+  const legend = `
+    <rect x="${lx}" y="${ly}" width="210" height="50" rx="6" fill="rgba(0,0,0,.45)" stroke="rgba(255,255,255,.07)"/>
+    <line x1="${lx+8}"  y1="${ly+17}" x2="${lx+46}" y2="${ly+17}" stroke="#ff3b30" stroke-width="2.5"/>
+    <circle cx="${lx+27}" cy="${ly+17}" r="3.5" fill="#ff3b30"/>
+    <text x="${lx+53}" y="${ly+21}" fill="#ff5a52" font-size="12" font-family="Inter,sans-serif" font-weight="600">Hb (deoxy)</text>
+    <line x1="${lx+8}"  y1="${ly+36}" x2="${lx+46}" y2="${ly+36}" stroke="#7a4bbf" stroke-width="2.5"/>
+    <circle cx="${lx+27}" cy="${ly+36}" r="3.5" fill="#7a4bbf"/>
+    <text x="${lx+53}" y="${ly+40}" fill="#a07de0" font-size="12" font-family="Inter,sans-serif" font-weight="600">HbO₂ (oxy)</text>
+  `;
+
+  document.getElementById('spectra-chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    ${yGrid}
+    <path d="${toPath(hbPts)}"   fill="none" stroke="#ff3b30" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="${toPath(hbO2Pts)}" fill="none" stroke="#7a4bbf" stroke-width="2.5" stroke-linejoin="round"/>
+    ${markerSVG}
+    ${isoPt}
+    ${annots}
+    ${xLbls}
+    <text x="${ml+cw/2}" y="${H-3}" text-anchor="middle" fill="#7e716c" font-size="11" font-family="JetBrains Mono,monospace">wavelength (nm)</text>
+    <text x="13" y="${mt+ch/2}" text-anchor="middle" fill="#7e716c" font-size="11" font-family="JetBrains Mono,monospace" transform="rotate(-90 13 ${mt+ch/2})">ε (cm⁻¹/M)</text>
+    ${legend}
+  </svg>`;
+})();
+
+
+// ── AC/DC chart ───────────────────────────────────────────────────────────────
+(function () {
+  const W = 600, H = 200;
+  const dcY = 152, acAmp = 34;
+
+  function ppgY(x, period) {
+    const t = ((x / period) % 1);
+    if (t < 0.15) return -acAmp * Math.pow(t / 0.15, 2);
+    if (t < 0.25) return -acAmp * (1 - (t-0.15)/0.1 * 0.2);
+    if (t < 0.35) return -acAmp * (0.8 - (t-0.25)/0.1 * 0.15);
+    if (t < 0.45) return -acAmp * (0.65 - (t-0.35)/0.1 * 0.05);
+    return -acAmp * 0.6 * Math.pow(1-(t-0.45)/0.55, 1.8);
+  }
+
+  const period = 118;
+  let wavePts = [];
+  for (let x = 0; x <= 590; x += 2) {
+    const y = dcY + ppgY(x + period*0.72, period);
+    wavePts.push(`${x===0?'M':'L'}${x},${y.toFixed(1)}`);
+  }
+
+  document.getElementById('acdc-chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="${dcY}" width="590" height="${H-dcY-6}" fill="rgba(91,140,255,.06)"/>
+    <line x1="0" y1="${dcY}" x2="590" y2="${dcY}" stroke="rgba(255,255,255,.18)" stroke-dasharray="6,4"/>
+    <path d="${wavePts.join(' ')}" fill="none" stroke="#5fd0a6" stroke-width="2.2" stroke-linejoin="round"/>
+    <!-- AC amplitude brace -->
+    <line x1="8" y1="${dcY-acAmp}" x2="8" y2="${dcY}" stroke="#5fd0a6" stroke-width="1.5"/>
+    <line x1="4" y1="${dcY-acAmp}" x2="12" y2="${dcY-acAmp}" stroke="#5fd0a6" stroke-width="1.5"/>
+    <line x1="4" y1="${dcY}" x2="12" y2="${dcY}" stroke="#5fd0a6" stroke-width="1.5"/>
+    <!-- Labels -->
+    <text x="300" y="28" text-anchor="middle" fill="#5fd0a6" font-size="13" font-family="JetBrains Mono,monospace" font-weight="600">AC / DC ≈ 0.5–1% (Perfusion Index)</text>
+    <text x="594" y="${dcY+4}" fill="#a8978f" font-size="11" font-family="JetBrains Mono,monospace">DC</text>
+    <text x="594" y="${dcY-acAmp+4}" fill="#5fd0a6" font-size="11" font-family="JetBrains Mono,monospace">AC</text>
+    <!-- Callout boxes -->
+    <rect x="390" y="${dcY+12}" width="160" height="28" rx="5" fill="rgba(91,140,255,.12)" stroke="rgba(91,140,255,.3)"/>
+    <text x="470" y="${dcY+30}" text-anchor="middle" fill="#5b8cff" font-size="12" font-family="Inter,sans-serif">DC: tissue + venous</text>
+    <rect x="190" y="${dcY-acAmp-38}" width="180" height="28" rx="5" fill="rgba(95,208,166,.12)" stroke="rgba(95,208,166,.3)"/>
+    <text x="280" y="${dcY-acAmp-20}" text-anchor="middle" fill="#5fd0a6" font-size="12" font-family="Inter,sans-serif">AC: pulsatile arterial</text>
+  </svg>`;
+})();
+
+
+// ── Tissue diagram ────────────────────────────────────────────────────────────
+(function () {
+  const W = 600, H = 200;
+  const surfY = 32;
+
+  const layers = [
+    {y:surfY,    h:14, fill:'rgba(255,160,80,.14)', label:'Epidermis (melanin)', tx:390},
+    {y:surfY+14, h:62, fill:'rgba(255,90,82,.09)',  label:'Dermis (capillaries, collagen)', tx:365},
+    {y:surfY+76, h:60, fill:'rgba(91,140,255,.06)', label:'Subcutaneous tissue', tx:415},
+  ];
+
+  const layerSVG = layers.map(l =>
+    `<rect x="0" y="${l.y}" width="${W}" height="${l.h}" fill="${l.fill}"/>
+     <line x1="0" y1="${l.y}" x2="${W}" y2="${l.y}" stroke="rgba(255,255,255,.07)"/>
+     <text x="${l.tx}" y="${l.y+l.h/2+4}" fill="rgba(255,255,255,.28)" font-size="10.5" font-family="Inter,sans-serif">${l.label}</text>`
+  ).join('');
+
+  const ledX = 90, pdX = 360;
+
+  const ledSVG = `
+    <rect x="${ledX-18}" y="${surfY-30}" width="36" height="26" rx="5" fill="rgba(255,59,48,.28)" stroke="#ff3b30" stroke-width="1.5"/>
+    <text x="${ledX}" y="${surfY-13}" text-anchor="middle" fill="#ff3b30" font-size="11.5" font-family="JetBrains Mono,monospace" font-weight="600">LED</text>
+    <text x="${ledX}" y="${surfY-23}" text-anchor="middle" fill="#ff5a52" font-size="9.5" font-family="JetBrains Mono,monospace">660/940 nm</text>
+    <text x="${ledX}" y="${surfY+14}" text-anchor="middle" fill="#ff5a52" font-size="11" font-family="JetBrains Mono,monospace">I₀</text>`;
+
+  const pdSVG = `
+    <rect x="${pdX-18}" y="${surfY-30}" width="36" height="26" rx="5" fill="rgba(95,208,166,.18)" stroke="#5fd0a6" stroke-width="1.5"/>
+    <text x="${pdX}" y="${surfY-13}" text-anchor="middle" fill="#5fd0a6" font-size="11.5" font-family="JetBrains Mono,monospace" font-weight="600">PD</text>
+    <text x="${pdX}" y="${surfY+14}" text-anchor="middle" fill="#5fd0a6" font-size="11" font-family="JetBrains Mono,monospace">I</text>`;
+
+  // Banana paths (detected photons)
+  const banana1 = `M${ledX},${surfY} C${ledX+50},${surfY+105} ${pdX-50},${surfY+105} ${pdX},${surfY}`;
+  const banana2 = `M${ledX},${surfY} C${ledX+35},${surfY+68} ${pdX-35},${surfY+68} ${pdX},${surfY}`;
+  // Lost photon
+  const lost = `M${ledX},${surfY} C${ledX+60},${surfY+130} ${ledX+25},${surfY+160} ${ledX-15},${surfY+180}`;
+
+  // Physical distance label
+  const midX = (ledX + pdX) / 2;
+  const distLine = `
+    <line x1="${ledX}" y1="${surfY-46}" x2="${pdX}" y2="${surfY-46}" stroke="rgba(255,255,255,.25)" stroke-width="1"/>
+    <line x1="${ledX}" y1="${surfY-50}" x2="${ledX}" y2="${surfY-42}" stroke="rgba(255,255,255,.25)" stroke-width="1"/>
+    <line x1="${pdX}"  y1="${surfY-50}" x2="${pdX}"  y2="${surfY-42}" stroke="rgba(255,255,255,.25)" stroke-width="1"/>
+    <text x="${midX}" y="${surfY-50}" text-anchor="middle" fill="#a8978f" font-size="11" font-family="JetBrains Mono,monospace">r (physical distance)</text>`;
+
+  const dpfLabel = `
+    <text x="${midX+60}" y="${surfY+112}" text-anchor="middle" fill="#f5b942" font-size="12.5" font-family="JetBrains Mono,monospace" font-weight="600">mean path = r × DPF</text>
+    <text x="${midX+60}" y="${surfY+128}" text-anchor="middle" fill="#a8978f" font-size="11" font-family="JetBrains Mono,monospace">DPF ≈ 7–10 at 660 nm in skin</text>`;
+
+  const lostLabel = `<text x="${ledX-18}" y="${surfY+175}" text-anchor="middle" fill="#7e716c" font-size="10.5" font-family="Inter,sans-serif">lost (G term)</text>`;
+
+  document.getElementById('tissue-diagram').innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="${surfY}" width="${W}" height="${H-surfY}" fill="rgba(180,130,100,.04)"/>
+    ${layerSVG}
+    <path d="${banana1}" fill="none" stroke="#f5b942" stroke-width="2"   stroke-dasharray="6,3"  opacity="0.75"/>
+    <path d="${banana2}" fill="none" stroke="#f5b942" stroke-width="1.2" stroke-dasharray="4,4"  opacity="0.45"/>
+    <path d="${lost}"    fill="none" stroke="#7e716c" stroke-width="1.2" stroke-dasharray="3,4"  opacity="0.40"/>
+    ${ledSVG}
+    ${pdSVG}
+    ${distLine}
+    ${dpfLabel}
+    ${lostLabel}
+  </svg>`;
+})();
+
+
+// ── Signal Chain ──────────────────────────────────────────────────────────────
+(function () {
+  const W = 600, H = 150;
+  const blocks = [
+    {x:18,  w:72,  label:'LED',        sub:['I₀ · drive','current'],  col:'#ff3b30'},
+    {x:128, w:82,  label:'Tissue',     sub:['ε·c·r·DPF','+ G loss'],  col:'#f5b942'},
+    {x:250, w:96,  label:'Photodiode', sub:['detects I','= I₀/10^A'], col:'#5b8cff'},
+    {x:386, w:68,  label:'TIA',        sub:['I→V','10k–1MΩ'],         col:'#5fd0a6'},
+    {x:494, w:88,  label:'ADC',        sub:['22-bit','110 dB DR'],     col:'#a07de0'},
+  ];
+
+  const bh = 54, bsy = 42;
+
+  const blocksSVG = blocks.map(b => {
+    const cx = b.x + b.w / 2;
+    const subSVG = b.sub.map((l,i) =>
+      `<text x="${cx}" y="${bsy+bh+14+i*13}" text-anchor="middle" fill="#7e716c" font-size="9.5" font-family="JetBrains Mono,monospace">${l}</text>`
+    ).join('');
+    return `<rect x="${b.x}" y="${bsy}" width="${b.w}" height="${bh}" rx="8" fill="rgba(255,255,255,.03)" stroke="${b.col}" stroke-width="1.5" stroke-opacity="0.75"/>
+            <text x="${cx}" y="${bsy+bh/2+5}" text-anchor="middle" fill="${b.col}" font-size="13" font-family="Space Grotesk,sans-serif" font-weight="600">${b.label}</text>
+            ${subSVG}`;
+  }).join('');
+
+  let arrowsSVG = '';
+  for (let i = 0; i < blocks.length - 1; i++) {
+    const fx = blocks[i].x + blocks[i].w;
+    const tx = blocks[i+1].x;
+    const my = bsy + bh / 2;
+    const ax = tx - 9;
+    arrowsSVG += `<line x1="${fx}" y1="${my}" x2="${ax}" y2="${my}" stroke="rgba(255,255,255,.2)" stroke-width="1.5"/>
+                  <polygon points="${ax},${my-4} ${ax+8},${my} ${ax},${my+4}" fill="rgba(255,255,255,.3)"/>`;
+  }
+
+  document.getElementById('signal-chain').innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    ${arrowsSVG}
+    ${blocksSVG}
+    <text x="${W/2}" y="${H-4}" text-anchor="middle" fill="rgba(255,255,255,.14)" font-size="10" font-family="JetBrains Mono,monospace">firmware: AC/DC → R = (AC₆₆₀/DC₆₆₀)/(AC₉₄₀/DC₉₄₀) → lookup → SpO₂</text>
+  </svg>`;
+})();
+</script>
+</body>
+</html>
