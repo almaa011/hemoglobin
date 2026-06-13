@@ -1,9 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\scave\\\\OneDrive\\\\Desktop\\\\hemoglobin\\\\src\\\\styles\")",
-      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\scave\\\\OneDrive\\\\Desktop\\\\hemoglobin\\\\src\\\\pages\")",
-      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\scave\\\\OneDrive\\\\Desktop\\\\hemoglobin\\\\scripts\")"
+      "WebFetch(*)"
     ]
   }
 }
