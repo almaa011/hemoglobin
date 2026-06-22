@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reinforced Thermoplastic Pipe (RTP) for Upstream Flowlines — Materials & Integrity</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0a0d;
+      --bg2: #121016;
+      --bg3: #1a1720;
+      --bg4: #211e2a;
+      --panel: #17141e;
+      --border: #2d2838;
+      --border2: #3d3650;
+      --accent: #a78bfa;
+      --accent2: #7c3aed;
+      --accent3: #c4b5fd;
+      --green: #4ade80;
+      --yellow: #facc15;
+      --orange: #fb923c;
+      --red: #f87171;
+      --cyan: #22d3ee;
+      --pink: #f472b6;
+      --text: #e2dff0;
+      --text2: #a89fc0;
+      --text3: #6b6482;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.72;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      background: radial-gradient(ellipse 80% 60% at 50% -10%, #2d1b6980 0%, transparent 70%),
+                  radial-gradient(ellipse 40% 40% at 80% 50%, #7c3aed20 0%, transparent 60%),
+                  var(--bg);
+      min-height: 44vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 5rem 2rem 4rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero-eyebrow {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 1.1rem;
+    }
+
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2;
+      max-width: 820px;
+      margin: 0 auto 1.2rem;
+    }
+
+    .hero-summary {
+      color: var(--text2);
+      max-width: 700px;
+      margin: 0 auto 1.6rem;
+      font-size: 0.97rem;
+      line-height: 1.75;
+    }
+
+    .hero-meta {
+      display: flex;
+      gap: 1.4rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .meta-chip {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      background: var(--bg4);
+      border: 1px solid var(--border2);
+      border-radius: 20px;
+      padding: 0.3rem 0.85rem;
+      color: var(--text2);
+    }
+
+    .back-link {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--accent);
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 1.8rem;
+    }
+
+    .back-link:hover { color: var(--accent3); }
+
+    /* ── LAYOUT ── */
+    .page-wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 2rem 6rem;
+    }
+
+    .back-row {
+      padding: 1.8rem 0 0;
+    }
+
+    /* ── SECTIONS ── */
+    .section {
+      margin-top: 4rem;
+      padding-top: 2.4rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.16em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 0.6rem;
+    }
+
+    h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.55rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 1.4rem;
+      line-height: 1.3;
+    }
+
+    h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent3);
+      margin: 2rem 0 0.8rem;
+    }
+
+    h4 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 1.6rem 0 0.6rem;
+    }
+
+    p { margin-bottom: 1rem; color: var(--text2); }
+
+    strong { color: var(--text); font-weight: 500; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    ul, ol {
+      padding-left: 1.4rem;
+      color: var(--text2);
+      margin-bottom: 1rem;
+    }
+
+    li { margin-bottom: 0.4rem; }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.82em;
+      background: var(--bg4);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.1em 0.4em;
+      color: var(--cyan);
+    }
+
+    /* ── PANELS ── */
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.6rem;
+      margin: 1.6rem 0;
+    }
+
+    .panel-title {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 1.2rem;
+    }
+
+    /* ── CALLOUT BOXES ── */
+    .callout {
+      border-left: 3px solid;
+      padding: 0.9rem 1.2rem;
+      border-radius: 0 6px 6px 0;
+      margin: 1.4rem 0;
+    }
+
+    .callout-warn {
+      border-color: var(--orange);
+      background: #fb923c10;
+    }
+
+    .callout-info {
+      border-color: var(--accent);
+      background: #a78bfa0d;
+    }
+
+    .callout-danger {
+      border-color: var(--red);
+      background: #f8717110;
+    }
+
+    .callout-good {
+      border-color: var(--green);
+      background: #4ade8010;
+    }
+
+    .callout p { margin-bottom: 0; }
+
+    .callout-label {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: inherit;
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+
+    .callout-warn .callout-label { color: var(--orange); }
+    .callout-info .callout-label { color: var(--accent); }
+    .callout-danger .callout-label { color: var(--red); }
+    .callout-good .callout-label { color: var(--green); }
+
+    /* ── COMPARISON TABLE ── */
+    .table-wrap {
+      overflow-x: auto;
+      margin: 1.6rem 0;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.83rem;
+      min-width: 660px;
+    }
+
+    thead th {
+      background: var(--bg4);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text);
+      padding: 0.75rem 0.9rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border2);
+    }
+
+    thead th:first-child { color: var(--text3); }
+
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:nth-child(even) { background: #ffffff05; }
+
+    td {
+      padding: 0.7rem 0.9rem;
+      vertical-align: top;
+      color: var(--text2);
+      line-height: 1.55;
+    }
+
+    td:first-child {
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      color: var(--text3);
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    .rating-good { color: var(--green); font-weight: 500; }
+    .rating-med { color: var(--yellow); font-weight: 500; }
+    .rating-bad { color: var(--red); font-weight: 500; }
+    .rating-na { color: var(--text3); font-style: italic; }
+
+    /* ── SPEC GRID ── */
+    .spec-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 1.4rem 0;
+    }
+
+    .spec-card {
+      background: var(--bg4);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+    }
+
+    .spec-label {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 0.35rem;
+    }
+
+    .spec-value {
+      font-family: var(--mono);
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: var(--accent3);
+    }
+
+    .spec-note {
+      font-size: 0.76rem;
+      color: var(--text3);
+      margin-top: 0.25rem;
+    }
+
+    /* ── CITATION REF ── */
+    .ref {
+      font-family: var(--mono);
+      font-size: 0.65em;
+      color: var(--text3);
+      vertical-align: super;
+      margin-left: 1px;
+      cursor: default;
+    }
+
+    .ref:hover { color: var(--accent); }
+
+    /* ── NEEDS RESEARCH PLACEHOLDER ── */
+    .gap {
+      display: inline-block;
+      background: #facc1520;
+      border: 1px solid #facc1550;
+      border-radius: 4px;
+      padding: 0.1em 0.5em;
+      font-family: var(--mono);
+      font-size: 0.78em;
+      color: var(--yellow);
+    }
+
+    /* ── CONFLICT FLAG ── */
+    .conflict {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3em;
+      background: #fb923c15;
+      border: 1px solid #fb923c50;
+      border-radius: 4px;
+      padding: 0.1em 0.5em;
+      font-family: var(--mono);
+      font-size: 0.75em;
+      color: var(--orange);
+    }
+
+    /* ── SVG DIAGRAMS ── */
+    .diagram-svg {
+      width: 100%;
+      height: auto;
+    }
+
+    /* ── REFERENCES ── */
+    details {
+      margin-top: 4rem;
+      border-top: 1px solid var(--border);
+      padding-top: 1.6rem;
+    }
+
+    summary {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text2);
+      cursor: pointer;
+      padding: 0.4rem 0;
+      user-select: none;
+    }
+
+    summary:hover { color: var(--text); }
+
+    .refs {
+      margin-top: 1.2rem;
+      padding-left: 1.4rem;
+      font-size: 0.79rem;
+      color: var(--text3);
+      line-height: 1.7;
+    }
+
+    .refs li { margin-bottom: 0.5rem; }
+    .refs a { color: var(--text3); font-family: var(--mono); font-size: 0.74em; }
+    .refs a:hover { color: var(--accent); }
+
+    /* ── DIVIDER ── */
+    .subsection-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 2.2rem 0;
+    }
+
+    /* ── TWO-COL LAYOUT ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+
+    @media (max-width: 620px) { .two-col { grid-template-columns: 1fr; } }
+
+    .col-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.1rem 1.2rem;
+    }
+
+    .col-card-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.7rem;
+    }
+
+    .unbonded-title { color: var(--cyan); }
+    .bonded-title { color: var(--pink); }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-eyebrow">Pipeline Integrity · Upstream O&amp;G · Non-metallic Systems</div>
+  <h1>Reinforced Thermoplastic Pipe (RTP) for Upstream Flowlines</h1>
+  <p class="hero-summary">
+    A senior-level technical reference covering structural mechanics, material degradation, failure modes, and field mitigations for both Unbonded RTP (Flexible Composite Pipe) and Bonded RTP (Thermoplastic Composite Pipe). Benchmarked against carbon steel for practical selection decisions.
+  </p>
+  <div class="hero-meta">
+    <span class="meta-chip">2026-06-22</span>
+    <span class="meta-chip">API SPEC 15S · ISO 23936 · DNV-ST-F119</span>
+    <span class="meta-chip">30 sources</span>
+  </div>
+</div>
+
+<div class="page-wrap">
+  <div class="back-row">
+    <a href="../index.html" class="back-link">← Index</a>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 1 — CLASSIFICATION & CORE MECHANICS
+  ══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Section 01</div>
+    <h2>Classification &amp; Core Mechanics: Bonded vs. Unbonded RTP</h2>
+
+    <p>The term "RTP" is frequently used loosely to cover two structurally distinct product families that behave very differently under combined loading. The split is: <strong>Unbonded RTP</strong> (also called Flexible Composite Pipe, FCP) and <strong>Bonded RTP</strong> (also called Thermoplastic Composite Pipe, TCP). The governing standards follow the same split — API 17J covers unbonded assemblies; API 17K covers bonded assemblies.<span class="ref" title="[8][9]">[8][9]</span></p>
+
+    <h3>1.1 Structural Architecture</h3>
+
+    <div class="two-col">
+      <div class="col-card">
+        <div class="col-card-title unbonded-title">Unbonded RTP (FCP)</div>
+        <ul>
+          <li>Three basic layers: thermoplastic liner → helically wrapped continuous-fiber reinforcement → outer thermoplastic jacket.<span class="ref" title="[2]">[2]</span></li>
+          <li>Defining characteristic: <strong>no mutual adhesive bonding between layers.</strong> API Spec 17J requires that at minimum two layers (inclusive of reinforcing and plastic layers) have no adhesive attachment.<span class="ref" title="[8]">[8]</span></li>
+          <li>Layers are free to slide relative to each other under load.</li>
+          <li>Reinforcement is typically aramid fiber tape, glass fiber tape, or steel wire helically wound at ±54.7° <em>(GEK — neutral angle from composite netting theory; hoop:axial stress ratio = 2:1)</em> for pure pressure resistance, with angle adjustments for combined pressure + axial tension service.</li>
+          <li>Typical spool lengths: 300–400 m per reel.<span class="ref" title="[10][6]">[10][6]</span> <span class="conflict">⚠ CONFLICT</span> Sources differ: one states 300 m max [10], another states up to 400 m [6]. Likely diameter-dependent.</li>
+        </ul>
+      </div>
+      <div class="col-card">
+        <div class="col-card-title bonded-title">Bonded RTP / TCP</div>
+        <ul>
+          <li>Three integrated layers: inner liner (HDPE, PA12, PVDF, or PEEK) → composite reinforcement with helically wound glass or carbon fiber tapes → outer protective jacket.<span class="ref" title="[3]">[3]</span></li>
+          <li>Layers are <strong>fully consolidated</strong>: automated tape winding + laser heating + continuous consolidation fuses all layers into a single laminate.<span class="ref" title="[3]">[3]</span></li>
+          <li>Governed by DNV-ST-F119, which classifies TCP as flexible bonded structures with fibre-reinforced thermoplastic matrix laminates produced by tape winding or filament winding.<span class="ref" title="[7]">[7]</span></li>
+          <li>No autoclave required; continuous production achieves spoolable lengths up to 6 km.<span class="ref" title="[3]">[3]</span></li>
+          <li>Reinforcement fiber volume: approximately 33–40% in glass fiber-reinforced PE matrix.<span class="ref" title="[4b]">[4b]</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Cross-section schematic — Unbonded RTP vs. Bonded TCP</div>
+      <svg viewBox="0 0 820 280" class="diagram-svg" xmlns="http://www.w3.org/2000/svg">
+        <!-- Unbonded RTP cross-section (left) -->
+        <text x="200" y="22" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="13" fill="#22d3ee" font-weight="600">Unbonded RTP (FCP)</text>
+
+        <!-- Outer jacket -->
+        <circle cx="200" cy="148" r="100" fill="#1e1030" stroke="#3d3650" stroke-width="1"/>
+        <!-- Reinforcement annulus (dashed = unbonded) -->
+        <circle cx="200" cy="148" r="82" fill="#14102a" stroke="#a78bfa" stroke-width="2" stroke-dasharray="6,4"/>
+        <!-- Liner -->
+        <circle cx="200" cy="148" r="58" fill="#0c1a2e" stroke="#22d3ee" stroke-width="2"/>
+        <!-- Bore -->
+        <circle cx="200" cy="148" r="38" fill="#060810" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,3"/>
+
+        <!-- Unbonded gap lines at 3 positions -->
+        <line x1="265" y1="120" x2="280" y2="108" stroke="#fb923c" stroke-width="1.5"/>
+        <line x1="270" y1="148" x2="287" y2="148" stroke="#fb923c" stroke-width="1.5"/>
+        <line x1="265" y1="176" x2="280" y2="190" stroke="#fb923c" stroke-width="1.5"/>
+
+        <!-- Labels -->
+        <text x="350" y="104" font-family="JetBrains Mono, monospace" font-size="10" fill="#a89fc0">Outer HDPE jacket</text>
+        <line x1="300" y1="104" x2="347" y2="104" stroke="#3d3650" stroke-width="0.8"/>
+
+        <text x="350" y="126" font-family="JetBrains Mono, monospace" font-size="10" fill="#a78bfa">Reinforcement (fiber/wire)</text>
+        <text x="350" y="138" font-family="JetBrains Mono, monospace" font-size="9" fill="#6b6482">— layers NOT bonded —</text>
+        <line x1="287" y1="130" x2="347" y2="127" stroke="#3d3650" stroke-width="0.8"/>
+
+        <text x="350" y="162" font-family="JetBrains Mono, monospace" font-size="10" fill="#22d3ee">Inner liner (HDPE/PA12)</text>
+        <line x1="258" y1="155" x2="347" y2="162" stroke="#3d3650" stroke-width="0.8"/>
+
+        <text x="350" y="182" font-family="JetBrains Mono, monospace" font-size="10" fill="#6b6482">Annulus (gas permeation path)</text>
+        <line x1="250" y1="170" x2="347" y2="180" stroke="#fb923c30" stroke-width="0.8"/>
+
+        <text x="350" y="202" font-family="JetBrains Mono, monospace" font-size="10" fill="#6b6482">Bore</text>
+        <line x1="220" y1="186" x2="347" y2="200" stroke="#3d3650" stroke-width="0.8"/>
+
+        <!-- Vertical divider -->
+        <line x1="420" y1="30" x2="420" y2="268" stroke="#2d2838" stroke-width="1"/>
+
+        <!-- Bonded TCP cross-section (right) -->
+        <text x="620" y="22" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="13" fill="#f472b6" font-weight="600">Bonded TCP (Thermoplastic Composite)</text>
+
+        <!-- Outer jacket -->
+        <circle cx="620" cy="148" r="100" fill="#1e1030" stroke="#3d3650" stroke-width="1"/>
+        <!-- Composite laminate (solid = bonded) -->
+        <circle cx="620" cy="148" r="82" fill="#2d1b3a" stroke="#f472b6" stroke-width="2.5"/>
+        <!-- Liner -->
+        <circle cx="620" cy="148" r="58" fill="#1a0e2a" stroke="#f472b6" stroke-width="1.5"/>
+        <!-- Bore -->
+        <circle cx="620" cy="148" r="38" fill="#060810" stroke="#f472b6" stroke-width="1" stroke-dasharray="3,3"/>
+
+        <!-- Tape wind lines (bonded) -->
+        <path d="M538,95 Q560,100 570,130" stroke="#f472b680" stroke-width="1.5" fill="none"/>
+        <path d="M542,115 Q558,118 562,145" stroke="#f472b660" stroke-width="1" fill="none"/>
+        <path d="M540,135 Q556,137 558,160" stroke="#f472b640" stroke-width="1" fill="none"/>
+
+        <!-- Labels right side -->
+        <text x="450" y="104" font-family="JetBrains Mono, monospace" font-size="10" fill="#a89fc0">Outer thermoplastic jacket</text>
+        <line x1="520" y1="104" x2="533" y2="104" stroke="#3d3650" stroke-width="0.8"/>
+
+        <text x="450" y="126" font-family="JetBrains Mono, monospace" font-size="10" fill="#f472b6">Consolidated composite laminate</text>
+        <text x="450" y="138" font-family="JetBrains Mono, monospace" font-size="9" fill="#6b6482">— fully bonded, 33–40% Vf —</text>
+        <line x1="538" y1="130" x2="535" y2="130" stroke="#3d3650" stroke-width="0.8"/>
+
+        <text x="450" y="162" font-family="JetBrains Mono, monospace" font-size="10" fill="#f472b6">Inner liner (HDPE/PA12/PVDF/PEEK)</text>
+        <line x1="562" y1="160" x2="555" y2="160" stroke="#3d3650" stroke-width="0.8"/>
+
+        <text x="450" y="196" font-family="JetBrains Mono, monospace" font-size="10" fill="#6b6482">No annulus gap</text>
+        <text x="450" y="208" font-family="JetBrains Mono, monospace" font-size="9" fill="#4ade80">→ no interstitial gas path</text>
+        <line x1="582" y1="165" x2="555" y2="200" stroke="#3d3650" stroke-width="0.8"/>
+      </svg>
+    </div>
+
+    <h4>Layer interaction under combined internal pressure + axial tension</h4>
+    <p>In <strong>unbonded RTP</strong>, the reinforcement layer bears hoop stress from internal pressure while the liner handles chemical isolation. Under axial tension (e.g., gravity load on a sloping line, drag during installation), the liner and jacket cannot transfer load efficiently through the reinforcement — each layer responds independently. This means the end-fittings carry disproportionate axial load, making end-fitting design the critical load path for tensile resistance.<span class="ref" title="[14]">[14]</span></p>
+    <p>In <strong>bonded TCP</strong>, consolidated layers form a single anisotropic composite cylinder. Under combined loading, the tape-wound reinforcement plies at helical angles carry both hoop and axial components simultaneously — analogous to a biaxially stressed composite pressure vessel. The bonded interface transfers interlaminar shear, which is a delamination initiation site under cyclic loading. <span class="gap">[NEEDS RESEARCH: interlayer delamination stress thresholds under cyclic P+T for bonded TCP]</span></p>
+
+    <hr class="subsection-divider">
+
+    <h3>1.2 Material Matrix Selection</h3>
+
+    <p>Polymer-reinforcement pairing directly sets the pipe's pressure/temperature envelope. Over 60% of RTP failures in service have been attributed to incorrect material selection in the reinforcement layer.<span class="ref" title="[5]">[5]</span></p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Liner Polymer</th>
+            <th>Typical T<sub>max</sub></th>
+            <th>Key strength</th>
+            <th>Key limitation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>HDPE</td>
+            <td>~60°C / 140°F<span class="ref" title="[11]">[11]</span></td>
+            <td>Low cost, excellent chemical resistance to produced water/CO₂</td>
+            <td>Creep above 60°C; permeation rate increases with temperature</td>
+          </tr>
+          <tr>
+            <td>PE-RT (raised temp)</td>
+            <td>~82°C / 180°F<span class="ref" title="[11]">[11]</span></td>
+            <td>Enables use in crude oil flowlines with ≥170°F requirement</td>
+            <td>Higher cost than standard HDPE; still susceptible to aromatic swelling</td>
+          </tr>
+          <tr>
+            <td>PA12 / PA11</td>
+            <td>~80–95°C</td>
+            <td>Good hydrocarbon and sour gas resistance; flexible</td>
+            <td>Moisture uptake; hydrolysis risk at elevated temperature</td>
+          </tr>
+          <tr>
+            <td>PVDF</td>
+            <td>~110–130°C</td>
+            <td>Superior chemical resistance; low permeation to H₂S/CO₂</td>
+            <td>Higher cost; stress cracking risk with certain amines</td>
+          </tr>
+          <tr>
+            <td>PEEK</td>
+            <td>~150°C+</td>
+            <td>Highest thermal envelope; low permeation; used in TCP only<span class="ref" title="[10]">[10]</span></td>
+            <td>High cost; processing complexity</td>
+          </tr>
+          <tr>
+            <td>PPS</td>
+            <td>~120°C</td>
+            <td>Very low CO₂ permeability: 8.6×10⁻⁹ cm³(STP)·cm⁻¹·s⁻¹·bar⁻¹ at 100°C<span class="ref" title="[25]">[25]</span></td>
+            <td>Brittle; machining/joining constraints</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Reinforcement Phase</th>
+            <th>Typical P<sub>max</sub></th>
+            <th>Key characteristic</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Glass fiber</td>
+            <td>Up to 24 MPa (240 bar)<span class="ref" title="[5]">[5]</span></td>
+            <td>Lower material cost; good compressive strength</td>
+            <td>Heavier; larger MBR than aramid</td>
+          </tr>
+          <tr>
+            <td>Aramid fiber (e.g., Kevlar)</td>
+            <td>Higher than glass at same OD</td>
+            <td>Lighter weight; smaller minimum bend radius; superior flexibility<span class="ref" title="[5]">[5]</span></td>
+            <td>More expensive; susceptible to UV and HF acid</td>
+          </tr>
+          <tr>
+            <td>Carbon fiber</td>
+            <td>Highest (used in TCP)</td>
+            <td>Highest stiffness-to-weight; enables 10,000 psi ratings in TCP<span class="ref" title="[3]">[3]</span></td>
+            <td>Galvanic risk if contacts steel fittings; premium cost</td>
+          </tr>
+          <tr>
+            <td>Steel wire tape</td>
+            <td>&gt;150 bar / ~3,000 psi in unbonded RTP<span class="ref" title="[16]">[16]</span></td>
+            <td>Highest pressure in spoolable unbonded format; proven 3,200 psig at 4-inch<span class="ref" title="[11]">[11]</span></td>
+            <td>Susceptible to corrosion from annulus permeation; adds weight</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-warn">
+      <span class="callout-label">Operating envelope warning</span>
+      <p>Field pressures in deepwater riser and high-pressure flowline service can reach <strong>600 barg and 200°C</strong> <em>(recognized upper bounds for offshore flexible pipe systems — general engineering knowledge; confirm against specific project operating envelope)</em> — far exceeding the current qualification envelope of commercially available RTP and TCP. RTP is not a direct steel replacement for high-pressure sour gas service; it occupies a specific operating window bounded by liner polymer properties, fiber thermal stability, and end-fitting qualification.</p>
+    </div>
+
+    <hr class="subsection-divider">
+
+    <h3>1.3 End-Fitting Design &amp; Field Termination</h3>
+
+    <p>End-fittings are the most mechanically critical element in any RTP system — the only structural interface between the proprietary composite pipe and field infrastructure. The fitting design differs fundamentally between unbonded and bonded systems.</p>
+
+    <h4>Unbonded RTP — Swaged / Crimped Mechanical Fittings</h4>
+    <ul>
+      <li><strong>Installation process (2-step):</strong> Step 1 — insert steel mandrel into the liner bore. Step 2 — crimp/swage outer sleeve onto the pipe OD using portable hydraulic tooling.<span class="ref" title="[12]">[12]</span> No heat required; tooling is field-portable.</li>
+      <li><strong>Single swaged system:</strong> non-metallic lining insert keeps fluid away from steel, creating a corrosion-free mechanical connection. Rated for high-pressure service (125–150 bar / 1,813–2,175 psi).<span class="ref" title="[22]">[22]</span></li>
+      <li><strong>Double swaged system:</strong> heavy-duty variant for pressures above 150 bar (2,175 psi), high axial loads, and dynamic (cyclic) service.<span class="ref" title="[29]">[29]</span></li>
+      <li><strong>Body material:</strong> typically carbon steel with corrosion-resistant plating or 316L/duplex stainless steel for aggressive chemical environments. <em>(General engineering knowledge — confirm with fitting vendor for specific project service.)</em></li>
+      <li><strong>Annulus vent port:</strong> every end-fitting includes a vent hole connecting to the annulus (space between liner, reinforcement, and outer jacket). This allows permeated gases to vent freely rather than accumulate.<span class="ref" title="[12]">[12]</span></li>
+    </ul>
+
+    <h4>Bonded TCP — Electrofusion / Melt-Fused Fittings</h4>
+    <ul>
+      <li><strong>Electrofusion process:</strong> Insert pipe end into fitting socket → apply prescribed voltage (typically 40 V) → embedded heater coils melt both the fitting interior and the pipe exterior → polymer flows together, producing a homogeneous fusion weld → cool for specified hold time.<span class="ref" title="[28]">[28]</span></li>
+      <li><strong>Qualified installation temperature range:</strong> typically 14°F minimum to 113°F maximum (-10°C to +45°C).<span class="ref" title="[30]">[30]</span> Cold-weather installations require pre-heating the joint zone.</li>
+      <li><strong>Result:</strong> a melt-fused joint with no mechanical grip — the joint strength depends on thermoplastic weld integrity, making quality control of the fusion cycle (time, voltage, cooling) critical.</li>
+      <li><strong>No annulus gap:</strong> bonded TCP has no interstitial annulus, so no vent port is needed and no permeated gas accumulation occurs.</li>
+    </ul>
+
+    <div class="spec-grid">
+      <div class="spec-card">
+        <div class="spec-label">Unbonded fitting safety factor</div>
+        <div class="spec-value">2.25×</div>
+        <div class="spec-note">Burst pressure vs operating pressure (API SPEC 15S)<span class="ref" title="[4]">[4]</span></div>
+      </div>
+      <div class="spec-card">
+        <div class="spec-label">Long-term qualification</div>
+        <div class="spec-value">10,000 hr</div>
+        <div class="spec-note">Pressure rupture regression per ASTM D2992 Proc. B<span class="ref" title="[4]">[4]</span></div>
+      </div>
+      <div class="spec-card">
+        <div class="spec-label">TCP burst margin (tested)</div>
+        <div class="spec-value">4.4×</div>
+        <div class="spec-note">DN 150 PN 2.5 MPa pipe: burst at 11.1 MPa<span class="ref" title="[14]">[14]</span></div>
+      </div>
+      <div class="spec-card">
+        <div class="spec-label">RTP P rating range</div>
+        <div class="spec-value">30 – 450 bar</div>
+        <div class="spec-note">Steel-wire unbonded RTP can exceed 150 bar<span class="ref" title="[10][16]">[10][16]</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 2 — OPERATIONAL CHALLENGES
+  ══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Section 02</div>
+    <h2>Industry-Specific Operational Challenges</h2>
+
+    <h3>2.1 Unbonded RTP — Failure Modes</h3>
+
+    <h4>Rapid Gas Decompression (RGD)</h4>
+    <p>RGD is the most structurally destructive failure mode unique to polymer-lined systems. The mechanism is directly analogous to cavitation in fluids — but happening inside a solid.</p>
+    <ul>
+      <li><strong>Physics:</strong> High-pressure gas (CO₂, H₂S, CH₄) dissolves into and saturates the liner polymer matrix under operating conditions. During an emergency shutdown or blowdown, system pressure drops faster than gas can diffuse back out. The dissolved gas becomes supersaturated, nucleates at microscopic defect sites, and expands violently as internal bubbles — physically rupturing the polymer from the inside out.<span class="ref" title="[20]">[20]</span></li>
+      <li><strong>Risk threshold:</strong> Substantial above 50 bar (725 psi). Decompression rates exceeding 10 bar/min significantly amplify damage probability.<span class="ref" title="[18]">[18]</span></li>
+      <li><strong>ISO 23936-2 test rate:</strong> 20–40 bar/min at 150 bar and 100°C; Shell MESC 85/301 tests at 40 bar/min at 150°C.<span class="ref" title="[19]">[19]</span> <span class="conflict">⚠ CONFLICT</span> One study finds that standard ISO 23936-2 acceptance criteria are "not suitable for actual seal pressure validation"<span class="ref" title="[20]">[20]</span> — indicating the qualification test may not capture all real-world failure conditions.</li>
+      <li><strong>Outer sheath blistering:</strong> Damage manifests as external blistering of the outer HDPE jacket caused by gas that has migrated through the reinforcement annulus reaching the outer sheath.<span class="ref" title="[21]">[21]</span></li>
+    </ul>
+
+    <div class="callout callout-danger">
+      <span class="callout-label">RGD standard gap</span>
+      <p>NACE TM0192 tests at 5.2 MPa room temperature for 24 hours with &gt;99% CO₂. NACE TM0297 uses 7–38 MPa at 50–230°C.<span class="ref" title="[21]">[21]</span> These produce different failure mechanisms from ISO 23936-2 at 20–40 bar/min, and no unified field guidance exists on which standard best predicts service life for a given operating profile. For sour gas service above 100 bar, specify which test regime applies in the purchase specification.</p>
+    </div>
+
+    <h4>Interstitial Gas Accumulation &amp; Annulus Permeation</h4>
+    <p>This is a chronic, slow-building failure mode — not an instantaneous event — driven by the thermodynamic reality that no polymer liner achieves zero permeability.</p>
+    <ul>
+      <li>CO₂, CH₄, H₂S, and H₂O permeate through the inner liner and travel axially along the annulus toward end-fitting connectors.<span class="ref" title="[10]">[10]</span></li>
+      <li><strong>Gas diffusivity order through typical liner polymers:</strong> CH₄ &gt; CO₂ &gt; H₂S. Both diffusion rates and permeability increase with temperature and pressure.<span class="ref" title="[23]">[23]</span></li>
+      <li>PPS liner (one of the better barrier materials): CO₂ permeability measured at 8.6×10⁻⁹ cm³(STP)·cm⁻¹·s⁻¹·bar⁻¹ at 100°C, 150 barg. H₂S permeation through PPS was below GC detection limit (2 ppm) at the same conditions.<span class="ref" title="[25]">[25]</span></li>
+      <li><strong>Consequence for steel-wire unbonded RTP:</strong> After CO₂ and H₂S permeate into the annulus and condense water forms, a corrosive solution attacks the steel reinforcement wires.<span class="ref" title="[23]">[23]</span> Hydrogen uptake in the carbon steel wires during CO₂-H₂S corrosion creates hydrogen embrittlement risk.<span class="ref" title="[24]">[24]</span></li>
+    </ul>
+
+    <div class="panel">
+      <div class="panel-title">Annulus gas permeation pathway — unbonded RTP</div>
+      <svg viewBox="0 0 760 160" class="diagram-svg" xmlns="http://www.w3.org/2000/svg">
+        <!-- Pipe body (side view, cross-section) -->
+        <!-- Outer sheath -->
+        <rect x="60" y="30" width="580" height="100" rx="6" fill="#1a172a" stroke="#3d3650" stroke-width="1"/>
+        <!-- Reinforcement annulus -->
+        <rect x="60" y="48" width="580" height="64" rx="3" fill="#211e2a" stroke="#a78bfa30" stroke-width="1" stroke-dasharray="4,3"/>
+        <!-- Liner bore -->
+        <rect x="60" y="62" width="580" height="36" rx="2" fill="#0c1a2e" stroke="#22d3ee" stroke-width="1.5"/>
+        <!-- Bore fill -->
+        <rect x="60" y="65" width="577" height="30" fill="#070f1e"/>
+
+        <!-- Gas molecules permeating (arrows from bore outward) -->
+        <g fill="#22d3ee" opacity="0.7">
+          <circle cx="200" cy="78" r="3"/>
+          <circle cx="240" cy="75" r="2.5"/>
+          <circle cx="280" cy="74" r="3"/>
+          <circle cx="320" cy="77" r="2"/>
+        </g>
+        <!-- Permeation arrows -->
+        <line x1="200" y1="62" x2="200" y2="52" stroke="#22d3ee" stroke-width="1" marker-end="url(#arrowC)"/>
+        <line x1="240" y1="62" x2="240" y2="52" stroke="#22d3ee" stroke-width="1" marker-end="url(#arrowC)"/>
+        <line x1="280" y1="62" x2="280" y2="52" stroke="#22d3ee" stroke-width="1" marker-end="url(#arrowC)"/>
+        <line x1="320" y1="62" x2="320" y2="52" stroke="#22d3ee" stroke-width="1" marker-end="url(#arrowC)"/>
+
+        <!-- Axial migration in annulus -->
+        <path d="M200,52 Q400,42 600,50" stroke="#a78bfa" stroke-width="1.5" fill="none" stroke-dasharray="5,3" marker-end="url(#arrowA)"/>
+        <text x="390" y="40" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#a78bfa">axial migration along annulus →</text>
+
+        <!-- End fitting (right side) -->
+        <rect x="640" y="25" width="40" height="110" rx="3" fill="#2d1b3a" stroke="#f472b6" stroke-width="1.5"/>
+        <text x="660" y="88" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#f472b6" writing-mode="tb">END FITTING</text>
+
+        <!-- Vent port -->
+        <line x1="680" y1="70" x2="720" y2="55" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arrowG)"/>
+        <text x="722" y="52" font-family="JetBrains Mono, monospace" font-size="9" fill="#4ade80">vent port</text>
+        <text x="722" y="62" font-family="JetBrains Mono, monospace" font-size="8" fill="#6b6482">(API 15S req'd)</text>
+
+        <!-- Permeation label -->
+        <text x="200" y="150" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#22d3ee">CO₂/H₂S/CH₄ permeate liner</text>
+        <!-- Steel wire corrosion label -->
+        <text x="400" y="150" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#f87171">steel wire corrosion risk in annulus</text>
+
+        <!-- Arrow markers -->
+        <defs>
+          <marker id="arrowC" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 Z" fill="#22d3ee"/>
+          </marker>
+          <marker id="arrowA" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 Z" fill="#a78bfa"/>
+          </marker>
+          <marker id="arrowG" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 Z" fill="#4ade80"/>
+          </marker>
+        </defs>
+      </svg>
+    </div>
+
+    <h4>End-Fitting Pull-Out (Thermal Cycling)</h4>
+    <p>Thermal cycling is a documented failure initiation mechanism for swaged end-fittings, driven by differential thermal expansion and polymer aging:</p>
+    <ul>
+      <li>During heating cycles: plasticizer loss in the barrier polymer causes permanent shrinkage.</li>
+      <li>During cooling cycles: axial thermal contraction of the liner further reduces liner OD inside the fitting.</li>
+      <li>Combined effect: inner seal ring pressure drops below the threshold needed to retain the liner and carcass inside the fitting body — allowing progressive slip-out and eventual leakage.<span class="ref" title="[26]">[26]</span></li>
+      <li>This failure mode is insidious because it develops incrementally and may not trigger a leak until cumulative damage passes a threshold. <span class="gap">[NEEDS RESEARCH: minimum cycle count to end-fitting pull-out failure for steel-wire unbonded RTP in alternating production service]</span></li>
+    </ul>
+
+    <h4>Lateral Thermal Buckling ("Snaking")</h4>
+    <p>Surface-laid and near-surface-buried RTP lines in high-ambient-temperature environments are susceptible to lateral buckling (also called "snaking") — the pipe displaces laterally from its as-laid position under compressive axial force generated by thermal expansion.</p>
+    <ul>
+      <li>Unlike steel pipe where yielding initiates a localized buckle, RTP snaking manifests as a distributed sinusoidal lateral displacement constrained only by soil friction and any berm material placed above the pipe.</li>
+      <li><strong>Governing physics:</strong> the compressive end force exceeds the effective axial resistance (pipe weight × soil friction coefficient × embedment). RTP's low weight-per-meter (compared to steel) reduces the restoring force, making snaking more likely at equivalent pressures and temperature differentials.</li>
+      <li>Specific snake-lay geometry design parameters (sinusoidal amplitude, wavelength, soil friction inputs for RTP-specific MBR) are <span class="gap">[NEEDS RESEARCH — no published geometry specifications for RTP snake-laying found in available sources; snake-laying geometry for carbon steel pipelines is well-documented but RTP-specific parameters are not]</span></li>
+    </ul>
+
+    <hr class="subsection-divider">
+
+    <h3>2.2 Bonded TCP — Failure Modes</h3>
+
+    <h4>Interlayer Delamination under Cyclic Loading</h4>
+    <p>The bonded laminate structure of TCP creates interlaminar shear stress at the fiber-matrix interface under cyclic pressure fluctuations and bending reversals (e.g., pig passes, production ramp-up/down cycles, slug flow).</p>
+    <ul>
+      <li>Delamination initiates at manufacturing defects (voids, dry fiber zones, mis-consolidated tape overlaps) and propagates under fatigue loading.</li>
+      <li>Unlike unbonded RTP where layer slip dissipates energy, bonded TCP accumulates interlaminar damage — the laminate stores elastic energy that drives crack growth.</li>
+      <li>Quantified delamination stress thresholds and cycle counts for TCP under realistic combined pressure+bending profiles are <span class="gap">[NEEDS RESEARCH — not found in publicly accessible sources during this research round]</span></li>
+    </ul>
+
+    <h4>Bending Stiffness during Spooling / Tight-Radius Installation</h4>
+    <ul>
+      <li>The consolidated TCP laminate is inherently stiffer in bending than an equivalent-diameter unbonded RTP because the bonded layers act in composite bending rather than sliding independently.</li>
+      <li>Minimum bend radius for spooling is more restrictive for TCP than for unbonded RTP at equal OD and pressure rating. This constrains reel diameter and limits the maximum continuous pipe length that can be spooled at a given drum size.</li>
+      <li>TCP minimum bend radius vs. unbonded RTP comparison at matched OD/PN: <span class="gap">[NEEDS RESEARCH — specific comparative data not found]</span></li>
+    </ul>
+
+    <h4>Field Repair Complexity</h4>
+    <p>Electrofusion joints in TCP require controlled voltage-time profiles and depend on surface preparation quality. A failed joint cannot be cut back and re-fused indefinitely — each repair shortens the pipe spool. Field repairs in hostile ambient temperatures (below 14°F or above 113°F) fall outside the qualified electrofusion installation window<span class="ref" title="[22]">[22]</span> and require tenting, heating, or abandonment of the joint, all of which add cost and schedule risk.</p>
+
+    <h4>Mechanical Limitations Summary</h4>
+
+    <div class="callout callout-info">
+      <span class="callout-label">Key mechanical limits — reference values from testing (DN 150, PN 2.5 MPa pipe)</span>
+      <p>Critical axial tensile strain: <strong>3%</strong>. Minimum respooling bend radius: <strong>1,100 mm</strong> (buckling failure with irreversible inner liner yield below this). Maximum safe torsion angle: <strong>58.77°</strong> before fiber fracture initiates.<span class="ref" title="[14]">[14]</span> These values are test-specific and must be re-verified for other OD/PN combinations — do not extrapolate directly to other pipe classes without vendor confirmation.</p>
+    </div>
+
+    <div class="callout callout-warn">
+      <span class="callout-label">Regulatory constraint — US market</span>
+      <p>RTP is not automatically permitted under ASME B31.4 or B31.8. PHMSA requires an individual Special Use Permit with 6–12 months processing time.<span class="ref" title="[1]">[1]</span> Additionally, classical piping stress codes (B31.3, B31.4, B31.8) are inapplicable to RTP — the nonlinear stress-strain behavior with significant hysteresis makes standard FEA pipe libraries produce meaningless results.<span class="ref" title="[1]">[1]</span> Vendor-supplied analysis tools are required.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 3 — COMPARISON MATRIX
+  ══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Section 03</div>
+    <h2>Material Comparison Matrix</h2>
+
+    <p style="margin-bottom:1.2rem;">The table below compares four pipe systems across key selection criteria. RTP and TCP data are from verified research sources (cited). Carbon steel (CS) and CS+FBE data marked <em>GEK</em> are general engineering knowledge common to the upstream pipeline discipline — no specific citation from this research round.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Criterion</th>
+            <th>Unbonded RTP (FCP)</th>
+            <th>Bonded RTP (TCP)</th>
+            <th>Bare Carbon Steel</th>
+            <th>CS + FBE</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>CO₂ corrosion resistance (internal)</td>
+            <td><span class="rating-good">Excellent</span> — polymer liner immune if intact. Steel wire in annulus susceptible to CO₂ corrosion if permeation occurs.<span class="ref" title="[23]">[23]</span></td>
+            <td><span class="rating-good">Excellent</span> — fully composite, no metallic internal surfaces. No annulus corrosion pathway.<span class="ref" title="[10]">[10]</span></td>
+            <td><span class="rating-bad">Poor</span> — requires chemical injection (corrosion inhibitor) or internal coating. Corrosion rates highly fluid-composition dependent. <em>(GEK)</em></td>
+            <td><span class="rating-med">Moderate-Good</span> — FBE eliminates CO₂ attack on internal surface. Coating holiday or disbondment reinstates corrosion risk. <em>(GEK)</em></td>
+          </tr>
+          <tr>
+            <td>H₂S / sour service (SSC, HIC)</td>
+            <td><span class="rating-med">Conditional</span> — liner immune; H₂S permeates into annulus; steel wire embrittlement (HIC/SSC) risk.<span class="ref" title="[24]">[24]</span> Fiber-only reinforced variants avoid this. RTP accommodates sour service with burial + venting.<span class="ref" title="[11]">[11]</span></td>
+            <td><span class="rating-good">Good</span> — composite reinforcement has no H₂S susceptibility. Liner selection (PVDF/PPS) governs permeation rate.<span class="ref" title="[25]">[25]</span></td>
+            <td><span class="rating-bad">Poor</span> — requires NACE MR0175/ISO 15156 material grade selection; SSC and HIC risk require chemical treatment and inspection regimes. <em>(GEK)</em></td>
+            <td><span class="rating-med">Moderate</span> — FBE prevents direct H₂S contact with steel if intact. Substrate must still meet NACE MR0175 for HISC cases. <em>(GEK)</em></td>
+          </tr>
+          <tr>
+            <td>MIC (microbiologically induced corrosion)</td>
+            <td><span class="gap">[NEEDS RESEARCH]</span></td>
+            <td><span class="gap">[NEEDS RESEARCH]</span></td>
+            <td><span class="gap">[NEEDS RESEARCH]</span></td>
+            <td><span class="gap">[NEEDS RESEARCH]</span></td>
+          </tr>
+          <tr>
+            <td>Hydraulic efficiency (surface roughness)</td>
+            <td><span class="rating-good">Excellent</span> — HDPE liner classified as hydraulically smooth; roughness coefficient k = 0.01 mm.<span class="ref" title="[17]">[17]</span> Smooth surface inhibits scale and wax adhesion.<span class="ref" title="[16]">[16]</span></td>
+            <td><span class="rating-good">Excellent</span> — same polymer inner surface; k = 0.01 mm or better for PVDF/PEEK liners.<span class="ref" title="[17]">[17]</span></td>
+            <td><span class="rating-med">Moderate (new) → Poor (aged)</span> — new steel: k ≈ 0.046 mm; corroded or scaled: k can exceed 0.5–1 mm. Increasing ΔP over service life. <em>(GEK)</em></td>
+            <td><span class="rating-good">Good</span> — FBE inner surface: k ≈ 0.025–0.05 mm (smooth epoxy surface) but can increase at holidays and over service life. <em>(GEK)</em></td>
+          </tr>
+          <tr>
+            <td>Installation velocity</td>
+            <td><span class="rating-good">Fast</span> — ~10 km/day.<span class="ref" title="[6]">[6]</span> 1 km transportable by single truck.<span class="ref" title="[11]">[11]</span> No welding. Saudi Aramco: 1 km in &lt;2 days vs. 70 days for CS.<span class="ref" title="[11]">[11]</span></td>
+            <td><span class="rating-good">Fast</span> — continuous spool up to 6 km; no hot work; electrofusion joints vs. welding.<span class="ref" title="[3]">[3]</span></td>
+            <td><span class="rating-bad">Slow</span> — &lt;2 km/day.<span class="ref" title="[6]">[6]</span> Stick-by-stick SMAW/GMAW welding; radiography; holiday detection; cathodic protection installation.</td>
+            <td><span class="rating-bad">Slower than bare CS</span> — all CS pipeline activities plus FBE application, curing time, holiday testing, and field joint coating at each weld. <em>(GEK)</em></td>
+          </tr>
+          <tr>
+            <td>CAPEX + OPEX (20-yr lifecycle)</td>
+            <td><span class="rating-good">Favorable vs. CS</span> — Saudi Aramco documented 3× better NPV vs. CS.<span class="ref" title="[11]">[11]</span> Baker Hughes: 80% maintenance reduction, 1/5 installation cost.<span class="ref" title="[12]">[12]</span> No CI injection, no ILI pigging (non-magnetic), no cathodic protection.</td>
+            <td><span class="rating-good">Favorable</span> — similar OPEX reduction to unbonded RTP from eliminated corrosion management; higher CAPEX than unbonded RTP.</td>
+            <td><span class="rating-bad">High OPEX</span> — corrosion inhibitor injection, periodic in-line inspection (ILI), CP system monitoring, potential pig-gable interventions, periodic hydrotest. <em>(GEK)</em></td>
+            <td><span class="rating-med">Moderate</span> — FBE reduces corrosion-driven OPEX vs. bare CS; CAPEX premium for FBE application. Still requires CP system and ILI over 20 years. <em>(GEK)</em></td>
+          </tr>
+          <tr>
+            <td>Temperature design limit</td>
+            <td>HDPE: ~60°C / 140°F. PE-RT: ~82°C / 180°F.<span class="ref" title="[11]">[11]</span> FlexStrongHT specialty: ~85°C / 185°F.<span class="ref" title="[16]">[16]</span></td>
+            <td>Up to 121°C depending on liner (PVDF/PEEK enable higher end).<span class="ref" title="[3]">[3]</span> TCP thermal degradation onset at 200°C, complete at 500°C.<span class="ref" title="[4b]">[4b]</span></td>
+            <td>Governed by pipe grade, not material T-limit; typically serviceable to 250–400°C (far exceeds RTP). <em>(GEK)</em></td>
+            <td>FBE service limit typically 90–110°C for standard grades; specialty high-temp FBE to 120°C. Steel substrate limit unchanged. <em>(GEK)</em></td>
+          </tr>
+          <tr>
+            <td>Pressure design limit</td>
+            <td>30–450 bar commercially; up to 3,200 psig (221 bar) for 4-inch steel-wire variant qualified by Aramco.<span class="ref" title="[11]">[11]</span></td>
+            <td>Up to 10,000 psi (690 bar) with carbon fiber TCP depending on OD and wall.<span class="ref" title="[3]">[3]</span></td>
+            <td>Essentially unlimited within standard pipe schedules; wall thickness design by ASME/API codes. <em>(GEK)</em></td>
+            <td>Same as bare CS — FBE does not reduce pressure capacity. <em>(GEK)</em></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="font-size:0.8rem; color: var(--text3); margin-top:0.6rem;"><em>GEK = General Engineering Knowledge. Not sourced from this research round. Values are standard industry reference values commonly found in textbooks and pipeline codes. Verify against applicable project standards.</em></p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 4 — MITIGATIONS
+  ══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Section 04</div>
+    <h2>Current &amp; Next-Generation Field Mitigations</h2>
+
+    <h3>4.1 Geometrical &amp; Civil Mitigations for Lateral Buckling</h3>
+
+    <p>For surface-laid or shallowly buried RTP flowlines exposed to temperature differentials, two civil mitigation strategies are employed to prevent uncontrolled lateral buckling:</p>
+
+    <h4>Snake-Laying (Pre-Engineered Sinusoidal Curves)</h4>
+    <ul>
+      <li><strong>Principle:</strong> Rather than laying the pipe in a straight line, the pipe is intentionally laid in pre-engineered sinusoidal curves along the route corridor. The lateral displacement provides a controlled geometric "slack" that absorbs thermal expansion before the compressive force reaches the buckling trigger load.</li>
+      <li><strong>Advantage:</strong> No additional soil material required; effective immediately post-installation; the pipe's natural flexibility helps distribute curvature over a long arc length rather than concentrating it at a single buckle.</li>
+      <li><strong>Constraint:</strong> Route corridor must be wide enough to accommodate the sinusoidal layout; survey, design, and GPS guidance required to hit the planned curve geometry during installation. RTP minimum bend radius during lay (20–40× OD<span class="ref" title="[15]">[15]</span>) must not be exceeded at any sinusoidal inflection point.</li>
+      <li>Specific design parameters (sinusoidal wavelength, amplitude, required soil friction coefficient) for RTP snake-laying: <span class="gap">[NEEDS RESEARCH — these parameters are documented for carbon steel pipelines in published buckling literature but RTP-specific design guidance was not found in accessible sources]</span></li>
+    </ul>
+
+    <h4>Windrowing / Soil Berming</h4>
+    <ul>
+      <li><strong>Principle:</strong> After laying the pipe, gravel, crushed rock, or native soil is mounded over and alongside the pipe ("windrowing") to increase the lateral soil resistance force. A higher lateral restraint force means a higher trigger load is required before global buckling initiates.</li>
+      <li><strong>Advantage:</strong> Effective in straight-lay configurations where route corridor geometry prevents snake-laying. The berm can be sized to fully suppress buckling if enough lateral soil resistance is generated.</li>
+      <li><strong>Limitation:</strong> Adds material and labor cost; must be designed with correct berm geometry to mobilize resistance before pipe displaces; berm compaction and long-term erosion resistance must be maintained over the design life.</li>
+      <li><strong>RTP-specific consideration:</strong> Because unbonded RTP weighs significantly less per meter than equivalent-diameter CS, the self-weight contribution to vertical stability is lower. This means a taller or wider berm may be required for RTP at the same temperature differential and pressure compared to CS.</li>
+    </ul>
+
+    <div class="callout callout-info">
+      <span class="callout-label">Snake-lay vs. windrow — engineering decision</span>
+      <p>Snake-laying is preferred where the route corridor permits, because it converts the thermal force into a manageable geometric displacement rather than trying to restrain it with soil mass. Windrowing is a secondary tool or where route width constraints preclude sinusoidal geometry. The two are often used together: intentional slack via snake-lay plus light berming to prevent inadvertent over-displacement between inflection points.</p>
+    </div>
+
+    <hr class="subsection-divider">
+
+    <h3>4.2 Permeation Management — Annulus Venting Systems</h3>
+
+    <p>For unbonded RTP in gas-bearing service, the annulus venting system is the primary mitigation for both RGD risk and steel wire corrosion:</p>
+
+    <ul>
+      <li><strong>Vent ports at every end-fitting:</strong> API SPEC 15S-qualified fittings include a vent hole connecting the annulus to atmosphere (or to a collection header). Permeated gas is released continuously rather than accumulating to a pressure that could trigger RGD or corrode steel reinforcement.<span class="ref" title="[12]">[12]</span></li>
+      <li><strong>Vent routing options:</strong> (a) open vent to atmosphere where H₂S content is negligible; (b) piped to a vapor recovery unit (VRU) for sour gas service; (c) piped back to low-pressure suction for re-injection. For H₂S-bearing service, open venting is not permissible — the vent gas must be treated or routed to a closed system.</li>
+      <li><strong>Controlled decompression during shutdown:</strong> The gas pressure in the system should be reduced below the RGD threshold (50 bar<span class="ref" title="[18]">[18]</span>) at a decompression rate below the damage threshold (below 10 bar/min<span class="ref" title="[18]">[18]</span>) before emergency shutdown valves are fully closed. This requires ESD logic review and HIPPS (High-Integrity Pressure Protection System) valve timing to ensure slow initial blowdown rather than instantaneous closure.</li>
+      <li><strong>Annulus vent sizing and pressure relief valve setpoints:</strong> <span class="gap">[NEEDS RESEARCH — specific vent sizing methodology and relief valve opening pressure specifications for RTP annulus are not published in accessible sources; vendor engineering guidance required]</span></li>
+    </ul>
+
+    <hr class="subsection-divider">
+
+    <h3>4.3 Advanced &amp; Next-Generation Mitigations</h3>
+
+    <h4>Fiber-Optic Distributed Sensing (DTS / DSS) in the Reinforcement Layer</h4>
+    <p>The helical reinforcement layer of both unbonded RTP and bonded TCP is geometrically suited to accommodate a thin fiber-optic sensing element co-wound with the structural fiber tapes. This enables:</p>
+    <ul>
+      <li><strong>Distributed Temperature Sensing (DTS):</strong> Detects anomalous temperature profiles along the full pipe length in real-time — early warning of flow assurance events (wax deposition, hydrate formation, blockages), leaks (temperature drop at a leak point from Joule-Thomson expansion), and potential hot-spot degradation zones.</li>
+      <li><strong>Distributed Strain Sensing (DSS):</strong> Detects global deformation events — lateral buckling onset, unexpected ground movement (subsidence over weakened zones), and unusual bending strain concentrations at end-fittings or pipe crossings.</li>
+      <li><strong>Integration benefit:</strong> Unlike ILI-based tools (which require internal access and periodic runs), a co-wound fiber-optic system provides continuous monitoring without any pigging infrastructure — directly addressing one of RTP's inherent ILI limitations.</li>
+      <li>This approach is an emerging/proposed integration. No specific field deployment data was found in available sources for co-wound fiber in RTP. <span class="gap">[NEEDS RESEARCH: commercial implementations of embedded DTS/DSS in RTP or TCP]</span></li>
+    </ul>
+
+    <h4>Advanced NDT for Field-Joint Validation (Phased Array + TFM)</h4>
+    <p>Field-joint integrity in unbonded RTP (crimped/swaged fittings) is currently validated primarily by visual inspection and witness-point hydraulic test. For high-pressure sour service applications, more rigorous NDE methods are emerging:</p>
+    <ul>
+      <li><strong>Phased Array Ultrasonic Testing (PAUT) adapted for polymer:</strong> Standard PAUT is calibrated for steel; adapted low-frequency array probes can image disbondment at the liner-reinforcement interface and detect incomplete swage engagement in end-fittings.</li>
+      <li><strong>Total Focusing Method (TFM):</strong> Post-processing of full-matrix capture (FMC) data to generate high-resolution images of the fitting-pipe interface — capable of detecting sub-millimeter gaps between mandrel and liner in swaged fittings without disassembly.</li>
+      <li><strong>X-ray CT for laboratory QA:</strong> Destructive or CT-scan based verification of fiber architecture quality (voids, delamination, fiber misalignment) in bonded TCP production sections — already used by TCP manufacturers but not yet standard for field-joint inspection.</li>
+    </ul>
+
+    <h4>Thermoplastic Matrix Nanocomposite Liners</h4>
+    <p>Incorporation of nano-clay platelets or graphene oxide sheets into the HDPE or PA12 liner matrix offers a potential path to dramatically reduced gas permeability without changing pipe OD or wall thickness:</p>
+    <ul>
+      <li>Nano-clay platelets orient parallel to the pipe wall, creating a tortuous diffusion path for small gas molecules (CO₂, H₂S, CH₄) — extending diffusion path length by a factor proportional to platelet aspect ratio.</li>
+      <li>Potential to reduce CO₂ permeability by 1–2 orders of magnitude compared to unfilled HDPE, potentially eliminating the need for active annulus venting in many moderate-sour applications.</li>
+      <li>Current status: laboratory demonstration stage; not yet commercially deployed in RTP/TCP liner at production scale. <span class="gap">[NEEDS RESEARCH: commercial availability and qualification status of nanocomposite RTP liners]</span></li>
+    </ul>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       STANDARDS REFERENCE
+  ══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Standards Reference</div>
+    <h2>Applicable Industry Standards</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Standard</th>
+            <th>Scope</th>
+            <th>Key requirements relevant to RTP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>API SPEC 15S</td>
+            <td>Spoolable RTP qualification, design, manufacture, testing<span class="ref" title="[4]">[4]</span></td>
+            <td>Burst safety factor 2.25×; 10,000-hr pressure rupture regression (ASTM D2992 Proc. B); does not cover system components beyond pipe + couplings</td>
+          </tr>
+          <tr>
+            <td>DNV-ST-F119</td>
+            <td>Thermoplastic Composite Pipe (bonded TCP)<span class="ref" title="[7]">[7]</span></td>
+            <td>All thermoplastic matrix materials; tape winding and filament winding; does not cover thermoset or ceramic matrix. <span class="conflict">⚠ CONFLICT</span> Long-term qualification requirements differ from API SPEC 15S.<span class="ref" title="[27]">[27]</span></td>
+          </tr>
+          <tr>
+            <td>API 17J</td>
+            <td>Unbonded flexible pipe assemblies<span class="ref" title="[8]">[8]</span></td>
+            <td>Design life, materials, testing, marking for flexible risers and flowlines</td>
+          </tr>
+          <tr>
+            <td>API 17K</td>
+            <td>Bonded flexible pipe assemblies<span class="ref" title="[9]">[9]</span></td>
+            <td>Equivalent scope to API 17J for bonded systems</td>
+          </tr>
+          <tr>
+            <td>ISO 23936-2</td>
+            <td>RGD testing for polymers in oil and gas equipment</td>
+            <td>Test rate 20–40 bar/min at 150 bar / 100°C; acceptance criteria documented as not suitable for all seal validation scenarios.<span class="ref" title="[20]">[20]</span></td>
+          </tr>
+          <tr>
+            <td>NACE TM0192 / TM0297</td>
+            <td>RGD resistance testing of elastomers</td>
+            <td>TM0192: room temp, 5.2 MPa CO₂, 24 hr. TM0297: 50–230°C, 7–38 MPa CO₂.<span class="ref" title="[21]">[21]</span> Produces different failure modes from ISO 23936-2 — specify applicable standard in purchase spec.</td>
+          </tr>
+          <tr>
+            <td>ASME B31.4 / B31.8</td>
+            <td>Liquid / gas pipeline systems (USA)</td>
+            <td><strong>Not applicable to RTP.</strong> PHMSA Special Use Permit required; 6–12 month processing time.<span class="ref" title="[1]">[1]</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       REFERENCES
+  ══════════════════════════════════════════════ -->
+  <details>
+    <summary>References (30 sources)</summary>
+    <ol class="refs">
+      <li id="r1">[1] Industrial Monitor Direct. "Reinforced Thermoplastic Pipe (RTP) Pipe Stress Analysis Standards." <a href="https://industrialmonitordirect.com/blogs/knowledgebase/reinforced-thermoplastic-pipe-rtp-stress-analysis-standards">URL</a></li>
+      <li id="r2">[2] Wikipedia. "Reinforced thermoplastic pipe." <a href="https://en.wikipedia.org/wiki/Reinforced_thermoplastic_pipe">URL</a></li>
+      <li id="r3">[3] Jota International. "What is Thermoplastic Composite Pipe?" <a href="https://jotaintl.com/what-is-thermoplastic-composite-pipe/">URL</a></li>
+      <li id="r4">[4] SciTeq. "API SPEC 15S — Spoolable Reinforced Plastic Line Pipe." <a href="https://sciteq.com/standard/api-spec-15s/">URL</a></li>
+      <li id="r4b">[4b] PMC/NCBI. "Thermal degradation study of TCP liner materials." <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12030115/">URL</a></li>
+      <li id="r5">[5] United RTP. "Glass Fiber vs Aramid Fiber Reinforced RTP — Which One to Choose?" <a href="https://www.unitedrtp.com/Glass-Fiber-vs-Aramid-Fiber-Reinforced-RTP-Which-One-to-Choose-id47157665.html">URL</a></li>
+      <li id="r6">[6] Jota International. "What is a Reinforced Thermoplastic Pipe?" <a href="https://jotaintl.com/what-is-a-reinforced-thermoplastic-pipe/">URL</a></li>
+      <li id="r7">[7] DNV. "DNV-ST-F119 Thermoplastic Composite Pipes." <a href="https://www.dnv.com/energy/standards-guidelines/dnv-st-f119-thermoplastic-composite-pipes/">URL</a></li>
+      <li id="r8">[8] GlobalSpec. "API Spec 17J — Unbonded Flexible Pipe." <a href="https://standards.globalspec.com/std/14373684/api-spec-17j">URL</a></li>
+      <li id="r9">[9] GlobalSpec. "API Spec 17K — Bonded Flexible Pipe." <a href="https://standards.globalspec.com/std/10179090/api-spec-17k">URL</a></li>
+      <li id="r10">[10] LinkedIn / Yuntao Owen Chen. "Difference Between RTP Pipe and TCP." <a href="https://www.linkedin.com/pulse/difference-between-rtp-pipe-tcp-yuntao-owen-chen">URL</a></li>
+      <li id="r11">[11] Oil &amp; Gas Journal. "Saudi Aramco details nonmetallic products deployment in oil and gas." <a href="https://www.ogj.com/refining-processing/refining/article/17232888/saudi-aramco-details-nonmetallic-products-deployment-in-oil-gas">URL</a></li>
+      <li id="r12">[12] Baker Hughes. "Baker Hughes launches new reinforced thermoplastic pipe technology (PythonPipe)." <a href="https://www.bakerhughes.com/company/news/baker-hughes-launches-new-reinforced-thermoplastic-pipe-technology">URL</a></li>
+      <li id="r13">[13] World Pipelines. "Baker Hughes launches new RTP technology." <a href="https://www.worldpipelines.com/product-news/14112023/baker-hughes-launches-new-rtp-technology/">URL</a></li>
+      <li id="r14">[14] PMC/NCBI. "Simulation Analysis of Limit Operating Specifications for Onshore Spoolable Reinforced Thermoplastic Pipes." <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8537700/">URL</a></li>
+      <li id="r15">[15] Industrial Monitor Direct. "RTP installation constraints — minimum bend radius." <a href="https://industrialmonitordirect.com/blogs/knowledgebase/reinforced-thermoplastic-pipe-rtp-stress-analysis-standards">URL</a></li>
+      <li id="r16">[16] Lined Pipe Systems. "Reinforced Thermoplastic Pipe." <a href="https://www.linedpipesystems.com/reinforced-thermoplastic-pipe/">URL</a></li>
+      <li id="r17">[17] KRAH Pipes. "Hydraulic calculation of PE pressure pipes." <a href="https://www.krah.net/en/news/latest-news/276-hydraulic-calculation-of-pe-pressure-pipes">URL</a></li>
+      <li id="r18">[18] James Walker. "Introduction to Rapid Gas Decompression." <a href="https://www.jameswalker.biz/knowledge/insights/introduction-to-rgd">URL</a></li>
+      <li id="r19">[19] James Walker. "RGD Testing — ISO 23936-2, Shell MESC 85/301." <a href="https://www.jameswalker.biz/knowledge/insights/rgd-testing">URL</a></li>
+      <li id="r20">[20] Infinita Lab. "Rapid Gas Decompression Testing." <a href="https://infinitalab.com/blog/rapid-gas-decompression-testing/">URL</a></li>
+      <li id="r21">[21] Alpine Polytech. "Gas Testing — Rapid Gas Decompression." <a href="https://alpinepolytech.com/gas-testing/rgd/">URL</a></li>
+      <li id="r22">[22] SoluForce. "Single Swage Fittings." <a href="https://www.soluforce.com/product-overview/fittings/single-swage-fittings.html">URL</a></li>
+      <li id="r23">[23] ResearchGate. "Corrosion in Confined Environments — the Importance of High Supersaturation of Dissolved Corrosion Products." <a href="https://www.researchgate.net/publication/390840979_Corrosion_in_Confined_Environments_-_the_Importance_of_High_Supersaturation_of_Dissolved_Corrosion_Products">URL</a></li>
+      <li id="r24">[24] ScienceDirect. "Hydrogen uptake during active CO₂-H₂S corrosion of carbon steel wires in simulated annulus fluid." <a href="https://www.sciencedirect.com/science/article/pii/S0010938X22000907">URL</a></li>
+      <li id="r25">[25] PMC/NCBI. "Permeation of a Range of Species through Polymer Layers under Varying Conditions of Temperature and Pressure." <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6630516/">URL</a></li>
+      <li id="r26">[26] USPTO. "Method of and apparatus for securing a multi-layered flexible flowline to an end fitting." US Patent 5,639,128. <a href="https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/5639128">URL</a></li>
+      <li id="r27">[27] OnePetro / OTC Asia 2020. "Long Term Internal Pressure Strength of Spoolable Reinforced Plastic Pipe and Comparison of Qualification Requirement Based on API Specification 15S and DNVGL ST F119." <a href="https://onepetro.org/OTCASIA/proceedings-abstract/20OTCA/1-20OTCA/450913">URL</a></li>
+      <li id="r28">[28] Heap-Wah Industrial. "Electrofusion Fitting — Installation Process." <a href="https://www.heap-wah.com/electrofusion-fitting/">URL</a> — Describes electrofusion process: 40V applied for fixed time; heater coils melt fitting interior and pipe exterior; assembly cooled for specified time.</li>
+      <li id="r29">[29] SoluForce. "Double Swaged Fittings." <a href="https://www.soluforce.com/product-overview/fittings/double-swaged-fittings.html">URL</a> — Heavy-duty variant optimised for extremely high pressures (from 150 bar/2175 psi and up), high axial loads and dynamic operation.</li>
+      <li id="r30">[30] WaterWorld / Wastewater Digest. "How to Make Proper HDPE Electrofusion Joints." <a href="https://www.wwdmag.com/collection-systems/article/10937744/how-to-make-proper-hdpe-electrofusion-joints">URL</a> — Typical qualified installation temperature range: 14°F minimum to 113°F maximum (−10°C to +45°C).</li>
+    </ol>
+  </details>
+
+</div>
+
+</body>
+</html>
