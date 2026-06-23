@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EEG Electrode Wire Requirements — A Hardware Engineer's Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c0a0d; --bg2:#100d11; --panel:#181219; --panel2:#1f1721;
+    --ink:#f2ebe6; --mut:#a8978f; --mut2:#7e716c;
+    --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.05);
+    --sig:#5b8cff;       /* signal / differential pair */
+    --shield:#5fd0a6;    /* shield / guard */
+    --noise:#ff5a52;     /* noise / interference */
+    --warn:#f0a24b;      /* warning / caution */
+    --good:#5fd0a6;
+    --bad:#ff6b6b;
+    --anchor:#f5b942;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif; line-height:1.7;
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  @media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *{animation:none!important;transition:none!important} }
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  section{padding:64px 0;border-top:1px solid var(--line2)}
+  h1,h2,h3,.eyebrow{font-family:'Space Grotesk',sans-serif;letter-spacing:-.01em}
+  h2{font-size:clamp(26px,4.4vw,38px);font-weight:700;line-height:1.1;margin:0 0 6px}
+  h3{font-size:20px;font-weight:600;margin:36px 0 10px;color:var(--ink)}
+  p{margin:14px 0;color:#e2d8d1}
+  a{color:var(--anchor)}
+  .lead{font-size:18px;color:#ede3dc}
+  .mut{color:var(--mut)}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--anchor);margin:0 0 14px}
+  .secnum{font-family:'JetBrains Mono',monospace;color:var(--mut2);font-size:13px}
+  .ref{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mut2);vertical-align:super;line-height:0;margin:0 1px;text-decoration:none;border-bottom:none;cursor:default}
+
+  /* hero */
+  .hero{position:relative;padding:0;border-top:none;min-height:100vh;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+  .hero-bg{position:absolute;inset:0;background:
+     radial-gradient(800px 500px at 70% 30%, rgba(91,140,255,.10), transparent 60%),
+     radial-gradient(600px 400px at 15% 75%, rgba(95,208,166,.07), transparent 60%);
+     pointer-events:none}
+  .hero .wrap{position:relative;z-index:2;padding-top:80px;padding-bottom:60px}
+  .kicker{display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:12px;
+     color:var(--mut);border:1px solid var(--line);border-radius:100px;padding:6px 13px;margin-bottom:26px}
+  .kicker .dot{width:7px;height:7px;border-radius:50%;background:var(--sig);box-shadow:0 0 10px var(--sig);animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+  h1{font-size:clamp(34px,7vw,60px);font-weight:700;line-height:1.02;margin:0 0 20px}
+  h1 .hl{color:var(--anchor)}
+  .hero-sub{font-size:clamp(17px,2.4vw,20px);color:var(--mut);max-width:620px;margin:0 0 30px}
+  .scrolltip{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut2);margin-top:28px;display:flex;align-items:center;gap:10px}
+  .scrolltip .arr{animation:bob 1.8s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
+
+  /* panels */
+  .panel{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);border-radius:16px;padding:20px;margin:26px 0}
+  .panel-h{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .panel-t{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px}
+  .panel-s{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mut2)}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .cap{font-size:13px;color:var(--mut);margin-top:12px;line-height:1.55}
+  .cap b{color:var(--ink);font-weight:600}
+
+  /* decoder / callout */
+  .decoder{background:rgba(245,185,66,.06);border:1px solid rgba(245,185,66,.22);border-left:3px solid var(--anchor);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .decoder .lbl{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--anchor);margin-bottom:6px}
+  .decoder p{margin:6px 0;font-size:15px}
+  .keynote{background:linear-gradient(180deg,rgba(91,140,255,.07),rgba(91,140,255,.02));border:1px solid rgba(91,140,255,.22);border-radius:12px;padding:18px 20px;margin:24px 0}
+  .keynote .lbl{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--sig);margin-bottom:6px}
+  .warn-note{background:linear-gradient(180deg,rgba(255,90,82,.07),rgba(255,90,82,.02));border:1px solid rgba(255,90,82,.22);border-radius:12px;padding:18px 20px;margin:24px 0}
+  .warn-note .lbl{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--noise);margin-bottom:6px}
+  .conflict{background:rgba(240,162,75,.06);border:1px solid rgba(240,162,75,.25);border-left:3px solid var(--warn);border-radius:10px;padding:14px 18px;margin:20px 0}
+  .conflict .lbl{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--warn);margin-bottom:5px}
+
+  /* tables */
+  .tbl{width:100%;border-collapse:collapse;margin:22px 0;font-size:14px}
+  .tbl th,.tbl td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line)}
+  .tbl th{font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+  .tbl tr:last-child td{border-bottom:none}
+  .tbl td:first-child{color:var(--mut);font-size:13px;font-family:'JetBrains Mono',monospace}
+  .tbl .good{color:var(--good)}
+  .tbl .bad{color:var(--bad)}
+  .tbl .warn{color:var(--warn)}
+
+  /* spec grid */
+  .spec-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:22px 0}
+  .spec-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .spec-card .sv{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--ink);line-height:1.1;margin-bottom:4px}
+  .spec-card .sl{font-size:12px;color:var(--mut);line-height:1.4}
+  .spec-card .sc{display:block;width:28px;height:3px;border-radius:2px;margin-bottom:10px}
+
+  /* aside */
+  .aside{border-left:3px solid var(--line);padding:4px 0 4px 18px;margin:22px 0;color:var(--mut);font-size:15px}
+
+  /* sources */
+  details.src{border:1px solid var(--line);border-radius:12px;background:var(--panel);margin-top:28px}
+  details.src summary{cursor:pointer;padding:16px 20px;font-family:'Space Grotesk',sans-serif;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center}
+  details.src summary::-webkit-details-marker{display:none}
+  details.src summary .chev{transition:.2s;color:var(--mut)}
+  details.src[open] summary .chev{transform:rotate(180deg)}
+  .srcbody{padding:0 20px 20px;font-size:13px;color:var(--mut);line-height:1.75}
+  .srcbody ol{padding-left:20px;margin:0}
+  .srcbody li{margin-bottom:6px}
+  .srcbody a{word-break:break-word;color:var(--mut2)}
+  .srcbody a:hover{color:var(--anchor)}
+  .unverified{color:#7e716c;font-style:italic}
+
+  #prog{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--sig),var(--shield));z-index:99;transition:width .1s}
+  footer{padding:50px 0 70px;text-align:center;color:var(--mut2);font-size:13px;border-top:1px solid var(--line2)}
+  .back-link{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--mut);text-decoration:none;margin-bottom:20px}
+  .back-link:hover{color:var(--ink)}
+  @media (max-width:560px){ section{padding:48px 0} .hero .wrap{padding-top:60px} }
+</style>
+</head>
+<body>
+<div id="prog"></div>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+    <div class="kicker"><span class="dot"></span> EEG · ANALOG FRONT-END · SIGNAL INTEGRITY</div>
+    <h1>1.5 metres of wire,<br><span class="hl">one microvolt</span> of signal.</h1>
+    <p class="hero-sub">Everything you need to know about the wire between your EEG electrode and the ADS1299 input pin — construction, shielding, CMRR, triboelectric noise, and how to terminate it without destroying the 1 µV p-p noise floor you paid for.</p>
+
+    <div class="panel" style="margin-top:8px">
+      <div class="panel-h">
+        <div class="panel-t">The EEG signal chain — end to end</div>
+        <div class="panel-s">1.5 m lead · differential pair · ADS1299 AFE</div>
+      </div>
+      <div id="chain-diagram"></div>
+      <div class="cap"><b>The wire is the hardest part.</b> The ADS1299 achieves <b>1.0 µV p-p</b> input-referred noise at 70 Hz<span class="ref" title="[1]">[1]</span>. A mains hum field of 1 V/m injected as common-mode at the electrodes contains <em>millions</em> of times more energy than your signal. Whether any of that hum leaks into the differential channel depends almost entirely on the cable and how you treat it.</div>
+    </div>
+
+    <div class="scrolltip"><span class="arr">↓</span> 6 sections · wire, shielding, CMRR math, noise, termination, standards</div>
+  </div>
+</header>
+
+<!-- ============ SECTION 1 — Wire Type ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">01</span> &nbsp;Wire type &amp; construction</p>
+    <h2>What goes inside the cable</h2>
+
+    <p class="lead">For 1.5 m EEG leads, the standard answer is <b>shielded twisted pair (STP)</b> — but "shielded" is doing a lot of work in that phrase and needs unpacking. Start with the conductor, then the geometry, then the shield.</p>
+
+    <h3>Conductor material</h3>
+    <p>EEG frequencies (0.1–100 Hz) are so low that skin effect and surface resistivity are completely irrelevant — a copper wire at 100 Hz has negligible AC resistance. The reason commercial EEG leadwires use <b>silver-plated copper (AWG 30–32 stranded)</b> has nothing to do with frequency response.<span class="ref" title="[4]">[4]</span> The real reasons are:</p>
+    <ul>
+      <li><b>Corrosion resistance.</b> Silver-plated conductors resist chloride attack from sweat and conductive gel. Bare silver corrodes via Ag + Cl⁻ → AgCl, causing partial electrical disconnect in humid environments within hours.<span class="ref" title="[5]">[5]</span> Gold plating extends this by ~70×.<span class="ref" title="[5]">[5]</span></li>
+      <li><b>Low half-cell potential.</b> Electrode–electrolyte potential stability matters at the electrode end, not the wire end. The wire conductor is not in contact with the patient — silver plating on the wire is a shield against oxidation of the conductor strands inside the jacket, not a biopotential concern.</li>
+      <li><b>Plain copper, nickel, and steel are avoided for galvanic stability and corrosion reasons, not for signal fidelity at EEG frequencies.</b><span class="ref" title="[4]">[4]</span></li>
+    </ul>
+
+    <p class="aside">Practical takeaway: at 0.1–100 Hz, a plain copper conductor is electrically identical to silver for signal transmission. If cost-constrained, spend the money on better shielding, not on silver plating the wire.</p>
+
+    <h3>Twisted pair vs coaxial vs flat</h3>
+    <p>The differential signal in an EEG lead is the voltage between two electrode sites — say, Fp1 and its reference. The pair of wires carrying those signals must be routed together so that external interference couples equally to both and is subtracted by the instrumentation amplifier. Twisting enforces this:</p>
+
+    <div class="panel">
+      <div class="panel-h">
+        <div class="panel-t">Geometry comparison for EEG differential pairs</div>
+      </div>
+      <table class="tbl" style="margin:0">
+        <thead><tr><th>Geometry</th><th>CM rejection</th><th>Triboelectric</th><th>Driven shield possible?</th><th>Verdict for EEG</th></tr></thead>
+        <tbody>
+          <tr><td>Parallel flat pair</td><td class="bad">Poor — asymmetric capacitive coupling to local fields</td><td class="warn">High</td><td>No</td><td class="bad">Do not use</td></tr>
+          <tr><td>Twisted pair, unshielded (UTP)</td><td class="warn">Good if pair is symmetric — cancels magnetic pickup</td><td class="warn">Moderate</td><td>No</td><td class="warn">Marginal for lab; not for clinical</td></tr>
+          <tr><td>Shielded twisted pair (STP)</td><td class="good">Good (passive) or excellent (driven)</td><td class="good">Low with correct jacket</td><td>Yes</td><td class="good">Preferred</td></tr>
+          <tr><td>Coaxial (single conductor)</td><td>N/A — single-ended only</td><td class="good">Low</td><td>Yes</td><td class="warn">Use with driven shield for high-Z, single-ended active electrode</td></tr>
+        </tbody>
+      </table>
+      <div class="cap"><b>STP is the standard</b> for passive EEG electrodes routed as differential pairs. Coaxial works when a unity-gain buffer (active electrode) is built directly into the electrode housing, converting the high-impedance node to low-impedance before the run.</div>
+    </div>
+
+    <p>Twisting cancels inductive pickup because every half-twist swaps which wire is closer to the interference source — the induced voltages in alternating loops cancel.<span class="ref" title="[2]">[2]</span> The twist pitch (turns per metre) matters: tighter twists cancel higher spatial frequencies of interference. For 1.5 m EEG leads, a minimum of 2–4 twists per centimetre is typical.</p>
+
+    <h3>Key wire specifications</h3>
+    <div class="spec-grid">
+      <div class="spec-card"><span class="sc" style="background:var(--sig)"></span><div class="sv">AWG 30–32</div><div class="sl">Conductor gauge — stranded; smaller than audio cable but larger than wire-wrap</div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--shield)"></span><div class="sv">6–9 pF/ft</div><div class="sl">Target capacitance for low-capacitance medical cable (AWG 32–40)<span class="ref" title="[3]">[3]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--anchor)"></span><div class="sv">&lt;50 µV</div><div class="sl">Max triboelectric noise p-v per AAMI ANSI EC53<span class="ref" title="[16]">[16]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--warn)"></span><div class="sv">&lt;5 kΩ</div><div class="sl">Target electrode–skin impedance to preserve CMRR<span class="ref" title="[2]">[2]</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 2 — Shielding ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">02</span> &nbsp;Shielding</p>
+    <h2>Passive shield, driven shield — and why it matters which you use</h2>
+
+    <p class="lead">This section contains the most counterintuitive result in EEG cable design: <b>a passively-grounded shield can make 50/60 Hz interference worse, not better</b>, when your source impedance is high.<span class="ref" title="[9]">[9]</span> Understanding why leads directly to the right solution.</p>
+
+    <h3>What a passive shield does — and where it fails</h3>
+    <p>A foil or braid shield around the twisted pair intercepts electric-field interference before it reaches the signal conductors. For power-line frequencies (50/60 Hz), it is an electrostatic screen. Grounding it at one end (typically at the amplifier/PCB end) creates the return path for induced charge without forming a ground loop.<span class="ref" title="[24]">[24]</span></p>
+
+    <p>Here is where the problem enters: the shield and the signal conductor inside it form a <b>capacitor</b>. For 1.5 m of cable at ~7 pF/ft, that is approximately <b>350 pF</b> of capacitance from signal wire to shield. At EEG electrode impedances of 1–10 kΩ, this capacitor forms a potential divider with the electrode impedance.</p>
+
+    <div class="panel">
+      <div class="panel-h">
+        <div class="panel-t">Why a passively grounded shield backfires at high electrode impedance</div>
+        <div class="panel-s">Thevenin equivalent · 50 Hz</div>
+      </div>
+      <div id="shield-problem-diagram"></div>
+      <div class="cap"><b>The 350 pF problem.</b> An external noise source couples 10 nA of leakage current into the signal line. With a passive grounded shield, the cable capacitance (350 pF for 1.5 m) to the shield shunts that current to ground — but the impedance of 350 pF at 50 Hz is <b>9 MΩ</b>. At 5 kΩ electrode impedance, the current instead drops most of its voltage <em>across the electrode</em>, not the shield. BioSemi measured <b>200 µV p-p</b> interference in this scenario.<span class="ref" title="[9]">[9]</span> That is 200× the signal.</div>
+    </div>
+
+    <div class="conflict">
+      <div class="lbl">Conflict surfaced — Passive shield grounding</div>
+      <p style="margin:0;font-size:14px;color:#e2d8d1">IEC 60601-1-2 guidance recommends grounding the shield at one end for 50/60 Hz applications.<span class="ref" title="[24]">[24]</span> The BioSemi analysis<span class="ref" title="[9]">[9]</span> shows this is insufficient for high-impedance electrode sources: the cable capacitance creates a voltage-divider problem that can produce 200 µV p-p artifact. <b>Both statements are correct in their context.</b> The IEC guidance is a general EMC rule; the BioSemi result is specific to high-Z biopotential measurement. For EEG, driven shielding solves the conflict.</p>
+    </div>
+
+    <h3>The driven (bootstrap) shield</h3>
+    <p>A driven shield — also called a <b>guard drive</b> or bootstrap shield — holds the shield conductor at exactly the same voltage as the signal wire inside it, tracked in real time. Because the voltage difference between signal and shield is (ideally) zero, the capacitance between them is effectively neutralized: no current flows across a capacitor at zero voltage differential, so the cable capacitance disappears from the circuit.<span class="ref" title="[7]">[7]</span></p>
+
+    <div class="panel">
+      <div class="panel-h">
+        <div class="panel-t">Driven shield — concept and implementation</div>
+        <div class="panel-s">bootstrap guard · ADS1299 BIAS_SHD</div>
+      </div>
+      <div id="driven-shield-diagram"></div>
+      <div class="cap"><b>The guard follower circuit.</b> A unity-gain buffer (or the BIAS_SHD output of the ADS1299EEG-FE<span class="ref" title="[6]">[6]</span>) drives the shield to the common-mode voltage of the differential pair. External noise that would have coupled through the cable capacitance instead sees the same voltage on both sides of the capacitor and cannot cause current to flow. Measured result using an INA116-based implementation: SNR improved from 1.05 (commercial system) to 16.09; 50 Hz interference eliminated without any post-acquisition filtering.<span class="ref" title="[8]">[8]</span></div>
+    </div>
+
+    <h3>Shielding construction types</h3>
+    <table class="tbl">
+      <thead><tr><th>Type</th><th>Coverage</th><th>Flex life</th><th>Triboelectric</th><th>For EEG</th></tr></thead>
+      <tbody>
+        <tr><td>Braided copper</td><td>85–95%</td><td>Good</td><td>Moderate</td><td>Works; heavier and stiffer</td></tr>
+        <tr><td>Foil (aluminium)</td><td>100%</td><td>Poor — cracks with flexing</td><td>Higher</td><td>Not recommended for patient leads</td></tr>
+        <tr><td>Conductive polymer (carbon-loaded)</td><td>Near 100%</td><td>Excellent</td><td>Low<span class="ref" title="[15]">[15]</span></td><td>Preferred for flex patient leads</td></tr>
+        <tr><td>Spiral (serve) shield</td><td>98%</td><td>Excellent</td><td>Moderate</td><td>Common in commercial EEG cables</td></tr>
+      </tbody>
+    </table>
+
+    <p>Conductive polymer (carbon-loaded polyethylene) jacket material reduces triboelectric noise specifically because it has similar charge affinity to adjacent materials — the triboelectric series separation is minimized, reducing charge generation under cable flexion.<span class="ref" title="[15]">[15]</span></p>
+
+    <p>For the driven shield to work, only one end of the shield should make contact with the drive signal (at the PCB connector). The other end (at the electrode) is left floating or connected through a high-impedance node. Never tie both ends of the shield to the drive output — this creates an unintended current return path.</p>
+  </div>
+</section>
+
+<!-- ============ SECTION 3 — Electrical Characteristics ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">03</span> &nbsp;Electrical characteristics</p>
+    <h2>Capacitance, resistance, and the CMRR math</h2>
+
+    <h3>Cable capacitance and electrode impedance interaction</h3>
+    <p>For 1.5 m of low-capacitance medical-grade twisted pair (target: 6.1–8.7 pF/ft<span class="ref" title="[3]">[3]</span>), the total conductor-to-conductor capacitance is approximately <span class="mono">7 pF/ft × 5 ft ≈ 35 pF</span>. The total conductor-to-shield capacitance will be roughly 2–3× that for a well-built STP. These numbers matter because they interact with electrode impedance to set the −3 dB frequency of an RC low-pass filter formed by electrode–skin resistance and cable capacitance.</p>
+
+    <div class="decoder">
+      <div class="lbl">The electrode–cable RC filter</div>
+      <p><b>f<sub>-3dB</sub> = 1 / (2π × Z<sub>elec</sub> × C<sub>cable</sub>)</b></p>
+      <p>At Z<sub>elec</sub> = 5 kΩ, C<sub>cable</sub> = 100 pF (conductor-to-shield, 1.5 m): <b>f<sub>-3dB</sub> = 318 kHz</b> — well above the 100 Hz EEG band. No rolloff problem.</p>
+      <p>The risk is not signal rolloff but <b>CMRR degradation from capacitance imbalance</b> between the two legs of the differential pair. If one wire picks up 50 pF to shield and the other picks up 60 pF, the common-mode current divides unequally — 10 pF of imbalance appears as a differential signal at the input.</p>
+    </div>
+
+    <h3>CMRR degradation — the dominant mechanism</h3>
+    <p>The instrumentation amplifier (IA) at the heart of the ADS1299 input stage rejects common-mode signals by subtraction. For subtraction to work perfectly, both inputs must see identical source impedances. In practice, two sources of asymmetry destroy CMRR:</p>
+
+    <p><b>1. Electrode impedance mismatch (ΔZ<sub>E</sub>).</b> The CMRR degradation caused by mismatched electrode impedances follows:<span class="ref" title="[11]">[11]</span></p>
+
+    <div class="panel">
+      <div class="panel-h"><div class="panel-t">CMRR degradation vs electrode impedance mismatch</div><div class="panel-s">50 Hz · ADS1299 intrinsic CMRR = 90 dB</div></div>
+      <div id="cmrr-chart"></div>
+      <div class="cap"><b>CMRR<sub>effective</sub> ≈ CMRR<sub>amp</sub> − 20 log(ΔZ<sub>E</sub> / Z<sub>in</sub>).</b><span class="ref" title="[11]">[11]</span> A 5 Ω impedance imbalance at the source degrades a nominally 80 dB amplifier CMRR to 40 dB.<span class="ref" title="[12]">[12]</span> If one electrode sits at 5 kΩ and a neighbor at 50 kΩ — a 10:1 mismatch — the 60 Hz pickup at both sites is amplified differently and appears as a differential artifact that no shielding can cure.<span class="ref" title="[13]">[13]</span></div>
+    </div>
+
+    <p><b>2. Cable capacitance imbalance between the two legs.</b> Any asymmetry in the capacitive coupling from each signal wire to the shield (or to adjacent wires) presents as a different source impedance on each leg. The RLD (right-leg drive) wire routed inside the same cable bundle also contributes: parasitic capacitance from the RLD wire to channel wires allows the common-mode drive signal to bypass the patient and couple unequally into channels.<span class="ref" title="[10]">[10]</span></p>
+
+    <div class="warn-note">
+      <div class="lbl">The hard truth about CMRR</div>
+      <p style="margin:0">Good amplifier specs do not guarantee clean recordings. The whole signal path — cable, electrode impedance, shield, RLD topology — must be analyzed together. A well-specified amplifier with poorly matched electrode impedances or an asymmetric cable bundle will produce worse 50/60 Hz rejection than a mediocre amplifier with well-prepared electrodes.<span class="ref" title="[14]">[14]</span> This is the most important practical takeaway from the BioSemi analysis.</p>
+    </div>
+
+    <h3>Wire resistance</h3>
+    <p>AWG 32 copper wire resistance is approximately 164 Ω/km, or 0.246 Ω for a 1.5 m run. At EEG frequencies and electrode impedances of 1–10 kΩ, this is negligible — the wire resistance is &lt;0.025% of the electrode impedance and introduces no measurable signal attenuation or additional noise. Wire DC resistance is simply not a design constraint for 1.5 m EEG leads.</p>
+  </div>
+</section>
+
+<!-- ============ SECTION 4 — EMI & Noise ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">04</span> &nbsp;EMI &amp; noise</p>
+    <h2>Three noise sources — and how the wire amplifies or rejects each</h2>
+
+    <h3>1. Mains interference (50/60 Hz)</h3>
+    <p>A 1.5 m electrode lead in a typical lab environment acts as an antenna with effective area determined by the loop formed between the two differential wires. Tighter twisting reduces this loop area, reducing magnetic coupling. The driven shield addresses electric-field coupling (capacitive). The two mechanisms are independent:</p>
+    <ul>
+      <li><b>Magnetic pickup (inductive)</b> → minimized by tight twist pitch and symmetric routing. The loop area of a twisted pair decreases with turns/metre.</li>
+      <li><b>Electric-field pickup (capacitive)</b> → minimized by the driven shield, which makes the shield appear to have zero voltage difference from the wire — external electric fields can no longer drive current through the cable capacitance into the signal path.</li>
+    </ul>
+    <p>Routing both wires of the differential pair together and minimizing separation between them is the most effective passive technique. Any asymmetry in the routing (one wire loops closer to a power supply) breaks the common-mode assumption and converts mains pickup to differential artifact.</p>
+
+    <h3>2. Triboelectric noise</h3>
+    <p>When the cable flexes, the inner insulation slides against the braid or shield, generating a charge at the insulator-conductor interface by contact electrification (the triboelectric effect). This charge appears as a voltage step or spike superimposed on the signal — it is mechanically-induced, not electrostatically-induced, and shielding does nothing to prevent it.<span class="ref" title="[19]">[19]</span></p>
+
+    <p>The AAMI ANSI EC53 standard requires triboelectric noise below <b>50 µV peak-to-valley</b> for ECG/EEG trunk cables and patient leadwires.<span class="ref" title="[16]">[16]</span> Cables meeting this spec use:</p>
+
+    <ul>
+      <li><b>Carbon-loaded polyethylene (CLPE) inner jacket.</b> A semiconductive layer between the conductor and the outer shield creates a path that slowly dissipates charge before it accumulates. The carbon doping keeps the layer at ~10<sup>6</sup>–10<sup>8</sup> Ω/sq — resistive enough not to short the signal but conductive enough to drain triboelectric charge.</li>
+      <li><b>Matching triboelectric series materials.</b> Materials with similar charge affinity (≤10 nC/J apart in the triboelectric series) generate less charge on contact.<span class="ref" title="[15]">[15]</span></li>
+      <li><b>Lubricated inter-layer contact.</b> Some medical cable constructions include an interstitial lubricant or textile binder to reduce friction between jacket and shield.</li>
+    </ul>
+
+    <div class="aside">Triboelectric noise amplitude depends on cable material properties, contact area, type of contact, and speed of relative motion — not purely on shielding.<span class="ref" title="[19]">[19]</span> A well-shielded cable with a standard PVC jacket can have worse triboelectric noise than an unshielded cable with CLPE.</div>
+
+    <h3>3. Motion artifact</h3>
+    <p>Cable motion artifact has two independent contributions: (a) triboelectric charge at the cable jacket, and (b) mechanical movement of the electrode–skin interface, which modulates the double-layer capacitance and half-cell potential at the electrode.</p>
+
+    <div class="conflict">
+      <div class="lbl">Finding conflict — Active electrodes and motion artifact</div>
+      <p style="margin:0;font-size:14px;color:#e2d8d1">Conventional wisdom holds that active electrodes (unity-gain followers built into the electrode housing) reduce motion artifact by converting the high-impedance node to low-impedance before the cable run. A 2024 study (MDPI Sensors)<span class="ref" title="[18]">[18]</span> found active and passive electrodes produce <em>comparable</em> motion artifact. The most discriminating factor was cable length: short cables produced 7.64 µV artifact vs 46.03 µV with longer cables during jogging, regardless of electrode type. This challenges the conventional justification for active electrodes in motion-sensitive applications.</p>
+    </div>
+
+    <p>Cable sway during head movement produces a measurable 10% decrease in signal-to-noise ratio even with active electrode systems that include pre-amplification at the electrode.<span class="ref" title="[17]">[17]</span> For static (seated, clinical) EEG recordings this is a minor concern; for ambulatory or mobile EEG it is a design-driving constraint.</p>
+
+    <div class="panel">
+      <div class="panel-h"><div class="panel-t">Noise sources — relative magnitude for 1.5 m EEG lead in lab environment</div></div>
+      <div id="noise-chart"></div>
+      <div class="cap">Approximate relative magnitudes for a lab with moderate EMI, passive wet electrodes at 5 kΩ, STP cable without driven shield (left bar cluster) vs. STP with driven shield and CLPE jacket (right cluster). Driven shield eliminates capacitively-coupled 50/60 Hz; CMRR improvement from good electrode prep dominates differential-mode rejection. Triboelectric is floor-limited by cable construction, not by shielding.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 5 — Termination ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">05</span> &nbsp;Connector &amp; termination</p>
+    <h2>From cable end to ADS1299 input pin</h2>
+
+    <h3>Connector standard: DIN 42802 / touch-proof safety connector</h3>
+    <p>The de facto connector standard for EEG electrode leads is the <b>DIN 42802 touch-proof safety connector</b> (also referenced as IEC 60601-1 compliant). The specification requires:<span class="ref" title="[23]">[23]</span></p>
+    <ul>
+      <li>1.5 mm diameter recessed metal pin — too small for a mains connector to mate with</li>
+      <li>Plastic housing such that a standard 30 N force probe cannot make electrical contact with the pin</li>
+      <li>All metal components recessed within the plastic housing</li>
+    </ul>
+    <p>This connector is sometimes called a "safety connector," "touch-proof connector," or simply "1.5 mm EEG connector." It is used universally in clinical EEG and most research-grade systems.</p>
+
+    <h3>ADS1299 input termination</h3>
+    <p>The ADS1299EEG-FE evaluation board explicitly states it is <em>not</em> a reference design for EEG applications — it is for evaluation only.<span class="ref" title="[22]">[22]</span> Compliance with IEC 60601-2-26 is the manufacturer's responsibility. That said, the termination approach demonstrated on the evaluation board provides a verified starting point:</p>
+
+    <div class="panel">
+      <div class="panel-h"><div class="panel-t">ADS1299 input termination — recommended topology</div></div>
+      <div id="termination-diagram"></div>
+      <div class="cap">Schematic of recommended input protection and termination for the ADS1299. Each element has a specific function described below.</div>
+    </div>
+
+    <table class="tbl">
+      <thead><tr><th>Component</th><th>Value / Type</th><th>Function</th></tr></thead>
+      <tbody>
+        <tr><td>R_electrode_series</td><td>4.7–10 kΩ</td><td>ESD current limiting; limits maximum input current during defibrillation or patient contact with mains</td></tr>
+        <tr><td>C_filter</td><td>10–47 nF, X2Y or differential cap</td><td>RF decoupling — prevents mobile phone / GSM artifacts at 900 MHz/1.8 GHz from entering the analog input</td></tr>
+        <tr><td>TVS / ESD diode</td><td>Bidirectional, V<sub>cl</sub> &lt; ADS1299 ABS MAX</td><td>Clamps defibrillator discharge pulses; choose device with low capacitance (&lt;5 pF)</td></tr>
+        <tr><td>R_BIASOUT</td><td>1 MΩ mandatory<span class="ref" title="[21]">[21]</span></td><td>Limits patient leakage current on BIASOUT (right-leg drive) to IEC 60601 limits</td></tr>
+        <tr><td>Shield drive output</td><td>BIAS_SHD pin (ADS1299EEG-FE)<span class="ref" title="[6]">[6]</span></td><td>Drives cable shield to input common-mode voltage; eliminates cable capacitance effect</td></tr>
+        <tr><td>Ground connection</td><td>Single-point at PCB connector shell</td><td>Shield drain wire connects here; never connect shield at both ends</td></tr>
+      </tbody>
+    </table>
+
+    <h3>PCB layout considerations</h3>
+    <ul>
+      <li><b>Keep analog input traces short.</b> After the ESD protection components, route to the ADS1299 INP/INN pins with minimum trace length. Each millimetre of PCB trace adds pF of parasitic capacitance to the input node.</li>
+      <li><b>Symmetric differential pair routing.</b> After the connector, route both wires of each differential pair with identical trace length, layer, and via count. Asymmetric routing causes the same CMRR degradation as asymmetric cable.</li>
+      <li><b>Keep digital lines away from analog inputs.</b> SPI clock and data lines switching at 4–8 MHz can couple into the µV-level analog inputs through substrate or magnetic coupling. A guard ring around the analog input area connected to analog ground helps.</li>
+      <li><b>Known failure mode: single-sample transient artifacts.</b> ADS1299-based systems have exhibited single-sample, large-amplitude transients (~1 per 10,000 samples) linked to SPI communication and power domain interactions.<span class="ref" title="[25]">[25]</span> These are not cable-related but are worth monitoring in your validation testing.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ SECTION 6 — Standards ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow"><span class="secnum">06</span> &nbsp;Standards &amp; references</p>
+    <h2>The regulatory and reference landscape</h2>
+
+    <h3>Directly applicable standards</h3>
+    <table class="tbl">
+      <thead><tr><th>Standard</th><th>Scope</th><th>Relevance to cable design</th></tr></thead>
+      <tbody>
+        <tr><td>IEC 80601-2-26:2020</td><td>Safety and essential performance of electroencephalographs</td><td>The primary EEG equipment standard. Based on publicly accessible abstract only<span class="ref" title="[★]">[★]</span> — the full text (purchase required) must be consulted for prescriptive cable, shielding, and connector electrical requirements. These are the manufacturer's design responsibility.</td></tr>
+        <tr><td>IEC 60601-1-2 (4th Ed.)</td><td>EMC for medical electrical equipment</td><td>Specifies immunity tests including 50/60 Hz power-frequency magnetic field (Annex B); drives the shielding requirement indirectly by setting the immunity level the finished device must achieve.<span class="ref" title="[24]">[24]</span></td></tr>
+        <tr><td>IEC 60601-1</td><td>General safety requirements for medical electrical equipment</td><td>Governs patient leakage current limits — the 1 MΩ series resistor on BIASOUT is a consequence of these limits.<span class="ref" title="[21]">[21]</span> Also where DIN 42802 connector safety requirements are referenced.</td></tr>
+        <tr><td>AAMI ANSI EC53</td><td>ECG trunk cables and patient leadwires</td><td>Directly specifies triboelectric noise &lt;50 µV p-v. Applicable to EEG leadwires in practice even though it names ECG.<span class="ref" title="[16]">[16]</span></td></tr>
+        <tr><td>DIN 42802</td><td>Touch-proof safety connector</td><td>The connector standard for EEG/ECG electrode leads. Specifies 1.5 mm pin, 30 N force probe test.<span class="ref" title="[23]">[23]</span></td></tr>
+      </tbody>
+    </table>
+
+    <p class="aside">★ The full text of IEC 80601-2-26:2020 was not accessed (requires purchase). The claim that it lacks prescriptive cable electrical specs is based on the public abstract only — verify against the purchased standard before finalizing your design.</p>
+
+    <h3>Key application notes and papers</h3>
+    <ul>
+      <li><b>TI ADS1299 Datasheet (SBAS499)</b> — primary specification for noise, CMRR, and BIAS_SHD functionality. Start here.<span class="ref" title="[1]">[1]</span></li>
+      <li><b>Webster (PMC2817545)</b> — EEG amplifier design including contact impedance requirements, cable recommendations, and CMRR specifications for research systems.<span class="ref" title="[2]">[2]</span></li>
+      <li><b>Metting van Rijn et al. (Tandfonline 1995)</b> — The foundational paper on CMRR degradation from electrode impedance mismatch. Contains the ΔZ<sub>E</sub>/Z<sub>C</sub> formula.<span class="ref" title="[11]">[11]</span></li>
+      <li><b>BioSemi Application Note (biosemi.com)</b> — Essential reading on why passive shield grounding fails for high-impedance EEG sources. Contains worked numerical examples.<span class="ref" title="[9]">[9]</span></li>
+      <li><b>Molex Triboelectric Noise Guide</b> — Practical guide to cable construction choices for minimizing triboelectric noise, with reference to AAMI EC53.<span class="ref" title="[15]">[15]</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="wrap">
+    <p style="margin:0">2026-06-23 · EEG electrode wire requirements · <a href="../index.html">← Back to Index</a></p>
+
+    <details class="src" style="text-align:left;margin-top:20px">
+      <summary>References <span class="chev">▾</span></summary>
+      <div class="srcbody">
+        <ol class="refs">
+          <li id="r1">[1] Texas Instruments. "ADS1299 Low-Noise, 8-Channel, 24-Bit Analog-to-Digital Converter for Biopotential Measurements." Datasheet SBAS499. <a href="https://www.ti.com/lit/ds/symlink/ads1299.pdf">https://www.ti.com/lit/ds/symlink/ads1299.pdf</a></li>
+          <li id="r2">[2] Webster, J.G. et al. "EEG amplifier design and electrode contact impedance." PMC2817545. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2817545/">https://pmc.ncbi.nlm.nih.gov/articles/PMC2817545/</a></li>
+          <li id="r3">[3] Quabbin Wire & Cable. "Why Cable Capacitance Is Important in Electronic Applications." <a href="https://www.quabbin.com/tech-briefs/why-cable-capacitance-important-electronic-applications">https://www.quabbin.com/tech-briefs/why-cable-capacitance-important-electronic-applications</a></li>
+          <li id="r4">[4] JYC Medical. "ECG Lead Wires — Conductor Specifications." <a href="https://jycmed.com/ecg-cables-leadwires/ecg-lead-wires/">https://jycmed.com/ecg-cables-leadwires/ecg-lead-wires/</a></li>
+          <li id="r5">[5] Zheng et al. "Silver electrode corrosion via chloride attack." PMC10073693. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10073693/">https://pmc.ncbi.nlm.nih.gov/articles/PMC10073693/</a></li>
+          <li id="r6">[6] Texas Instruments. "ADS1299EEG-FE Product Page — BIAS_SHD Shield Drive." <a href="https://www.ti.com/product/ADS1299">https://www.ti.com/product/ADS1299</a></li>
+          <li id="r7">[7] ANT Neuro. "Comparison of Active Shielding and Active Electrode Technologies in EEG Systems." <a href="https://academy.ant-neuro.com/blog/application-notes-2/comparison-of-active-shielding-and-active-electrode-technologies-in-eeg-systems-83">https://academy.ant-neuro.com/</a></li>
+          <li id="r8">[8] Krachunov &amp; Casson. "EEG amplifier with driven shield." PMC3598091. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3598091/">https://pmc.ncbi.nlm.nih.gov/articles/PMC3598091/</a></li>
+          <li id="r9">[9] BioSemi. "A new amplifier design eliminates the need for gel electrodes." <a href="https://www.biosemi.com/publications/artikel3.htm">https://www.biosemi.com/publications/artikel3.htm</a></li>
+          <li id="r10">[10] Scheer et al. "Parasitic capacitance and CMRR in biopotential amplifiers." PMC7763498. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7763498/">https://pmc.ncbi.nlm.nih.gov/articles/PMC7763498/</a></li>
+          <li id="r11">[11] Metting van Rijn, A.C. et al. "Low cost active electrode." Journal of Medical Engineering &amp; Technology, 1994. <a href="https://www.tandfonline.com/doi/abs/10.1080/00029238.1995.11080527">https://www.tandfonline.com/doi/abs/10.1080/00029238.1995.11080527</a></li>
+          <li id="r12">[12] Chew, W.C. "ECE 255 Lecture Notes — CMRR and source impedance." Purdue University, 2017. <a href="https://engineering.purdue.edu/wcchew/ece255f17/ECE%20255%20f17%20latex%20pdf%20files/ece255LectureNov9.pdf">https://engineering.purdue.edu/wcchew/</a></li>
+          <li id="r13">[13] Neurosity. "Electrode Impedance in EEG — Why It Matters." <a href="https://neurosity.co/guides/electrode-impedance-eeg-why-matters">https://neurosity.co/guides/electrode-impedance-eeg-why-matters</a></li>
+          <li id="r14">[14] BioSemi (same as [9]) — system-level interference analysis.</li>
+          <li id="r15">[15] Molex. "Triboelectric Noise in Medical Cables and Wires." <a href="https://www.molex.com/en-us/blog/triboelectric-noise-in-medical-cables-and-wires">https://www.molex.com/en-us/blog/triboelectric-noise-in-medical-cables-and-wires</a></li>
+          <li id="r16">[16] AAMI ANSI EC53 — ECG Trunk Cable and Patient Leadwires Standard. (Cited via Molex<span class="ref" title="[15]">[15]</span>; obtain from AAMI for direct reference.)</li>
+          <li id="r17">[17] Nathan &amp; Contreras-Vidal. "Cable sway and SNR in ambulatory EEG." PMC5948545. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5948545/">https://pmc.ncbi.nlm.nih.gov/articles/PMC5948545/</a></li>
+          <li id="r18">[18] Bonfiglio et al. "Active vs passive electrodes for motion artifact." MDPI Sensors, 2024. <a href="https://www.mdpi.com/1424-8220/24/19/6363">https://www.mdpi.com/1424-8220/24/19/6363</a></li>
+          <li id="r19">[19] Bonfiglio et al. (same as [18]) — triboelectric mechanism analysis.</li>
+          <li id="r20">[20] Texas Instruments E2E Forum. "ADS1299 — Drive shield discussion." <a href="https://e2e.ti.com/support/data-converters/f/data-converters-forum/783057/ads1299-drive-shield-with-ads1299">https://e2e.ti.com/support/data-converters/f/data-converters-forum/783057/ads1299-drive-shield-with-ads1299</a></li>
+          <li id="r21">[21] Lozano-García et al. "ADS1299 BIASOUT resistor requirement." PMC6263632. <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6263632/">https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6263632/</a></li>
+          <li id="r22">[22] Texas Instruments E2E Forum. "ADS1299EEG-FE not a reference design." <a href="https://e2e.ti.com/support/data-converters-group/data-converters/f/data-converters-forum/1093452/ads1299-some-questions-about-pcb-design">https://e2e.ti.com/support/data-converters-group/data-converters/f/data-converters-forum/1093452/</a></li>
+          <li id="r23">[23] ElectrodeStore.com. "Touch-Proof Electrode Connectors — DIN 42802 specification." <a href="https://electrodestore.com/blogs/news/touch-proof-electrode-connectors">https://electrodestore.com/blogs/news/touch-proof-electrode-connectors</a></li>
+          <li id="r24">[24] MedDeviceGuide. "IEC 60601-1-2 EMC Guide." <a href="https://meddeviceguide.com/blog/iec-60601-1-2-emc-electromagnetic-compatibility-guide">https://meddeviceguide.com/blog/iec-60601-1-2-emc-electromagnetic-compatibility-guide</a></li>
+          <li id="r25">[25] Guerrero et al. "ADS1299-based EEG system validation." MDPI Sensors, 2018. <a href="https://www.mdpi.com/1424-8220/18/11/3721">https://www.mdpi.com/1424-8220/18/11/3721</a></li>
+          <li class="unverified">[★] IEC 80601-2-26:2020 — Full text not accessed (purchase required). Abstract only reviewed at standards.iteh.ai. Cable electrical specifications within this standard are UNVERIFIED.</li>
+        </ol>
+      </div>
+    </details>
+  </div>
+</footer>
+
+<script>
+/* ---- progress bar ---- */
+window.addEventListener('scroll', () => {
+  const d = document.documentElement;
+  const pct = d.scrollTop / (d.scrollHeight - d.clientHeight) * 100;
+  document.getElementById('prog').style.width = pct + '%';
+});
+
+/* ===== DIAGRAM 1: Signal chain overview ===== */
+(function() {
+  const el = document.getElementById('chain-diagram');
+  const W = el.clientWidth || 800, H = 140;
+  const blocks = [
+    {x:30, label:'Electrode', sub:'Ag/AgCl\n1–10 kΩ skin', col:'#5b8cff'},
+    {x:200, label:'1.5 m STP lead', sub:'AWG 30-32\n~350 pF total C', col:'#5fd0a6'},
+    {x:420, label:'Connector', sub:'DIN 42802\n1.5 mm touch-proof', col:'#f5b942'},
+    {x:590, label:'ESD + Filter', sub:'TVS diode\n10 kΩ + 10 nF', col:'#f0a24b'},
+    {x:740, label:'ADS1299', sub:'INA · 24-bit ADC\n1 µV p-p noise', col:'#5b8cff'},
+  ];
+  const bw = 110, bh = 70;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  blocks.forEach((b, i) => {
+    const cx = b.x + bw/2, cy = H/2;
+    svg += `<rect x="${b.x}" y="${cy-bh/2}" width="${bw}" height="${bh}" rx="8" fill="rgba(0,0,0,.4)" stroke="${b.col}" stroke-width="1.2"/>`;
+    svg += `<text x="${cx}" y="${cy-10}" text-anchor="middle" font-family="'Space Grotesk',sans-serif" font-size="11" font-weight="600" fill="${b.col}">${b.label}</text>`;
+    const subs = b.sub.split('\n');
+    subs.forEach((s, si) => {
+      svg += `<text x="${cx}" y="${cy+6+si*14}" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9" fill="#7e716c">${s}</text>`;
+    });
+    if (i < blocks.length - 1) {
+      const x1 = b.x + bw, x2 = blocks[i+1].x;
+      svg += `<line x1="${x1}" y1="${cy}" x2="${x2}" y2="${cy}" stroke="rgba(255,255,255,.2)" stroke-width="1.5"/>`;
+      svg += `<polygon points="${x2},${cy} ${x2-6},${cy-4} ${x2-6},${cy+4}" fill="rgba(255,255,255,.2)"/>`;
+    }
+  });
+  svg += `<rect x="0" y="${H-18}" width="100%" height="14" rx="4" fill="rgba(95,208,166,.08)" stroke="rgba(95,208,166,.2)" stroke-width="1"/>`;
+  svg += `<text x="50%" y="${H-8}" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9" fill="#5fd0a6">DRIVEN SHIELD (BIAS_SHD) runs alongside signal pair back to electrode connector</text>`;
+  svg += '</svg>';
+  el.innerHTML = svg;
+})();
+
+/* ===== DIAGRAM 2: Why passive shield fails ===== */
+(function() {
+  const el = document.getElementById('shield-problem-diagram');
+  if (!el) return;
+  const W = el.clientWidth || 800, H = 200;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono',monospace" font-size="10">`;
+  const MID = H / 2;
+  /* left side label */
+  svg += `<text x="10" y="${MID-50}" fill="#a8978f" font-size="9">External</text>`;
+  svg += `<text x="10" y="${MID-38}" fill="#a8978f" font-size="9">noise source</text>`;
+  svg += `<text x="10" y="${MID-20}" fill="#ff5a52" font-size="11">~V_n</text>`;
+  /* noise source symbol */
+  svg += `<circle cx="55" cy="${MID}" r="18" fill="none" stroke="#ff5a52" stroke-width="1.5"/>`;
+  svg += `<text x="55" y="${MID+4}" text-anchor="middle" fill="#ff5a52" font-size="14">~</text>`;
+  /* wire from noise to top of divider */
+  svg += `<line x1="73" y1="${MID}" x2="200" y2="${MID}" stroke="#ff5a52" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+  svg += `<text x="135" y="${MID-8}" text-anchor="middle" fill="#a8978f" font-size="9">I_n ≈ 10 nA @ 50 Hz</text>`;
+  /* electrode impedance box */
+  svg += `<rect x="200" y="${MID-22}" width="60" height="44" rx="5" fill="rgba(91,140,255,.1)" stroke="#5b8cff" stroke-width="1.2"/>`;
+  svg += `<text x="230" y="${MID-6}" text-anchor="middle" fill="#5b8cff" font-size="9">Z_elec</text>`;
+  svg += `<text x="230" y="${MID+6}" text-anchor="middle" fill="#5b8cff" font-size="11">5 kΩ</text>`;
+  /* voltage annotation across electrode */
+  svg += `<text x="200" y="${MID+32}" text-anchor="middle" fill="#ff5a52" font-size="9">V_noise across electrode</text>`;
+  svg += `<text x="200" y="${MID+44}" text-anchor="middle" fill="#ff5a52" font-weight="600" font-size="11">≈ 200 µV p-p</text>`;
+  /* cable capacitance box */
+  svg += `<line x1="260" y1="${MID}" x2="360" y2="${MID}" stroke="rgba(255,255,255,.2)" stroke-width="1.5"/>`;
+  svg += `<text x="310" y="${MID-8}" text-anchor="middle" fill="#a8978f" font-size="9">C_cable</text>`;
+  svg += `<text x="310" y="${MID+4}" text-anchor="middle" fill="#a8978f" font-size="9">350 pF</text>`;
+  svg += `<text x="310" y="${MID+16}" text-anchor="middle" fill="#a8978f" font-size="9">→ 9 MΩ @ 50 Hz</text>`;
+  /* cap symbol */
+  svg += `<line x1="360" y1="${MID-10}" x2="360" y2="${MID+10}" stroke="#5fd0a6" stroke-width="2"/>`;
+  svg += `<line x1="370" y1="${MID-10}" x2="370" y2="${MID+10}" stroke="#5fd0a6" stroke-width="2"/>`;
+  svg += `<line x1="370" y1="${MID}" x2="420" y2="${MID}" stroke="#5fd0a6" stroke-width="1.5"/>`;
+  svg += `<line x1="420" y1="${MID}" x2="420" y2="${MID+30}" stroke="#5fd0a6" stroke-width="1.5"/>`;
+  svg += `<line x1="400" y1="${MID+30}" x2="440" y2="${MID+30}" stroke="#5fd0a6" stroke-width="1.5"/>`;
+  svg += `<text x="425" y="${MID-8}" text-anchor="start" fill="#5fd0a6" font-size="9">shield → GND</text>`;
+  /* ADS1299 block */
+  svg += `<rect x="470" y="${MID-35}" width="80" height="70" rx="8" fill="rgba(0,0,0,.4)" stroke="#5b8cff" stroke-width="1.2"/>`;
+  svg += `<text x="510" y="${MID-10}" text-anchor="middle" fill="#5b8cff" font-size="11" font-weight="600">ADS1299</text>`;
+  svg += `<text x="510" y="${MID+6}" text-anchor="middle" fill="#7e716c" font-size="9">Z_in &gt; 1 GΩ</text>`;
+  svg += `<text x="510" y="${MID+18}" text-anchor="middle" fill="#7e716c" font-size="9">CMRR = 90 dB</text>`;
+  svg += `<line x1="260" y1="${MID}" x2="470" y2="${MID}" stroke="rgba(255,255,255,.15)" stroke-width="1"/>`;
+  svg += '</svg>';
+  el.innerHTML = svg;
+})();
+
+/* ===== DIAGRAM 3: Driven shield ===== */
+(function() {
+  const el = document.getElementById('driven-shield-diagram');
+  if (!el) return;
+  const W = el.clientWidth || 800, H = 180;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono',monospace" font-size="10">`;
+  const MID = H/2;
+  /* electrode */
+  svg += `<rect x="20" y="${MID-30}" width="70" height="60" rx="6" fill="rgba(91,140,255,.1)" stroke="#5b8cff" stroke-width="1.2"/>`;
+  svg += `<text x="55" y="${MID-8}" text-anchor="middle" fill="#5b8cff" font-size="10">Electrode</text>`;
+  svg += `<text x="55" y="${MID+6}" text-anchor="middle" fill="#7e716c" font-size="9">Z_skin</text>`;
+  /* signal wire */
+  svg += `<line x1="90" y1="${MID}" x2="340" y2="${MID}" stroke="#5b8cff" stroke-width="2"/>`;
+  svg += `<text x="215" y="${MID-12}" text-anchor="middle" fill="#5b8cff" font-size="9">signal conductor</text>`;
+  /* shield (dashed line above and below) */
+  svg += `<line x1="90" y1="${MID-28}" x2="340" y2="${MID-28}" stroke="#5fd0a6" stroke-width="1.5" stroke-dasharray="5,3"/>`;
+  svg += `<line x1="90" y1="${MID+28}" x2="340" y2="${MID+28}" stroke="#5fd0a6" stroke-width="1.5" stroke-dasharray="5,3"/>`;
+  svg += `<text x="215" y="${MID-35}" text-anchor="middle" fill="#5fd0a6" font-size="9">shield (driven)</text>`;
+  /* C_cable label */
+  svg += `<text x="215" y="${MID+42}" text-anchor="middle" fill="#a8978f" font-size="9">C_cable: ΔV = 0 → no current → no noise</text>`;
+  /* AFE block */
+  svg += `<rect x="340" y="${MID-50}" width="90" height="100" rx="8" fill="rgba(0,0,0,.4)" stroke="#5b8cff" stroke-width="1.2"/>`;
+  svg += `<text x="385" y="${MID-20}" text-anchor="middle" fill="#5b8cff" font-size="10" font-weight="600">ADS1299</text>`;
+  svg += `<text x="385" y="${MID-6}" text-anchor="middle" fill="#7e716c" font-size="9">INP pin</text>`;
+  svg += `<text x="385" y="${MID+10}" text-anchor="middle" fill="#5fd0a6" font-size="9">BIAS_SHD</text>`;
+  svg += `<text x="385" y="${MID+24}" text-anchor="middle" fill="#7e716c" font-size="9">= CM follower</text>`;
+  /* feedback path from BIAS_SHD back to shield */
+  svg += `<path d="M 385 ${MID+34} Q 385 ${MID+65} 215 ${MID+65} Q 90 ${MID+65} 90 ${MID+28}" stroke="#5fd0a6" stroke-width="1.2" fill="none" stroke-dasharray="4,2"/>`;
+  svg += `<text x="215" y="${MID+76}" text-anchor="middle" fill="#5fd0a6" font-size="9">driven shield feedback path</text>`;
+  svg += '</svg>';
+  el.innerHTML = svg;
+})();
+
+/* ===== CHART: CMRR vs impedance mismatch ===== */
+(function() {
+  const el = document.getElementById('cmrr-chart');
+  if (!el) return;
+  const W = el.clientWidth || 800, H = 220, pad = {t:20, r:30, b:50, l:55};
+  const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+  const intrinsic_cmrr_db = 90;
+  const Zin = 1e9;
+  const mismatches = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+  const cmrr = mismatches.map(dz => {
+    const deg = 20 * Math.log10(dz / Zin);
+    return Math.max(0, intrinsic_cmrr_db + deg);
+  });
+  const xMin = Math.log10(1), xMax = Math.log10(10000);
+  const yMin = 0, yMax = 100;
+  const toX = v => pad.l + (Math.log10(v) - xMin) / (xMax - xMin) * cw;
+  const toY = v => pad.t + (1 - (v - yMin) / (yMax - yMin)) * ch;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono',monospace" font-size="10">`;
+  /* grid */
+  [0,20,40,60,80,100].forEach(y => {
+    svg += `<line x1="${pad.l}" y1="${toY(y)}" x2="${pad.l+cw}" y2="${toY(y)}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`;
+    svg += `<text x="${pad.l-6}" y="${toY(y)+4}" text-anchor="end" fill="#7e716c">${y}</text>`;
+  });
+  [1,10,100,1000,10000].forEach(x => {
+    svg += `<line x1="${toX(x)}" y1="${pad.t}" x2="${toX(x)}" y2="${pad.t+ch}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`;
+    svg += `<text x="${toX(x)}" y="${pad.t+ch+16}" text-anchor="middle" fill="#7e716c">${x >= 1000 ? (x/1000)+'k' : x}Ω</text>`;
+  });
+  /* axes labels */
+  svg += `<text x="${pad.l + cw/2}" y="${H-4}" text-anchor="middle" fill="#a8978f">Electrode impedance mismatch (ΔZ_E)</text>`;
+  svg += `<text x="14" y="${pad.t + ch/2}" text-anchor="middle" fill="#a8978f" transform="rotate(-90,14,${pad.t+ch/2})">Effective CMRR (dB)</text>`;
+  /* fill area below 40 dB — danger zone */
+  const dangerY = toY(40);
+  svg += `<rect x="${pad.l}" y="${dangerY}" width="${cw}" height="${pad.t+ch-dangerY}" fill="rgba(255,90,82,.06)"/>`;
+  svg += `<line x1="${pad.l}" y1="${dangerY}" x2="${pad.l+cw}" y2="${dangerY}" stroke="rgba(255,90,82,.3)" stroke-width="1" stroke-dasharray="5,3"/>`;
+  svg += `<text x="${pad.l+cw-4}" y="${dangerY-4}" text-anchor="end" fill="rgba(255,90,82,.7)" font-size="9">40 dB — 50/60 Hz visible in signal</text>`;
+  /* CMRR line */
+  let path = `M ${toX(mismatches[0])} ${toY(cmrr[0])}`;
+  mismatches.slice(1).forEach((m,i) => { path += ` L ${toX(m)} ${toY(cmrr[i+1])}`; });
+  svg += `<path d="${path}" stroke="#5b8cff" stroke-width="2" fill="none"/>`;
+  /* highlight: 5 Ω mismatch → 40 dB */
+  const x5 = toX(5), y5 = toY(cmrr[mismatches.indexOf(5)]);
+  svg += `<line x1="${x5}" y1="${pad.t}" x2="${x5}" y2="${y5}" stroke="rgba(245,185,66,.3)" stroke-width="1" stroke-dasharray="3,3"/>`;
+  svg += `<line x1="${pad.l}" y1="${y5}" x2="${x5}" y2="${y5}" stroke="rgba(245,185,66,.3)" stroke-width="1" stroke-dasharray="3,3"/>`;
+  svg += `<circle cx="${x5}" cy="${y5}" r="5" fill="#f5b942"/>`;
+  svg += `<text x="${x5+8}" y="${y5-6}" fill="#f5b942" font-size="9">5 Ω mismatch → 40 dB</text>`;
+  svg += '</svg>';
+  el.innerHTML = svg;
+})();
+
+/* ===== DIAGRAM 4: ADS1299 termination ===== */
+(function() {
+  const el = document.getElementById('termination-diagram');
+  if (!el) return;
+  const W = el.clientWidth || 800, H = 200;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono',monospace" font-size="10">`;
+  const y1 = 70, y2 = 130;
+  /* connector */
+  svg += `<rect x="10" y="${y1-20}" width="50" height="80" rx="6" fill="rgba(245,185,66,.08)" stroke="${'#f5b942'}" stroke-width="1.2"/>`;
+  svg += `<text x="35" y="${y1+2}" text-anchor="middle" fill="#f5b942" font-size="9">DIN</text>`;
+  svg += `<text x="35" y="${y1+14}" text-anchor="middle" fill="#f5b942" font-size="9">42802</text>`;
+  /* IN+ line */
+  svg += `<line x1="60" y1="${y1}" x2="160" y2="${y1}" stroke="#5b8cff" stroke-width="1.5"/>`;
+  svg += `<text x="65" y="${y1-6}" fill="#5b8cff" font-size="9">IN+</text>`;
+  /* IN- line */
+  svg += `<line x1="60" y1="${y2}" x2="160" y2="${y2}" stroke="#5b8cff" stroke-width="1.5"/>`;
+  svg += `<text x="65" y="${y2+14}" fill="#5b8cff" font-size="9">IN−</text>`;
+  /* R_series blocks */
+  [[160,y1],[160,y2]].forEach(([x,y]) => {
+    svg += `<rect x="${x}" y="${y-9}" width="44" height="18" rx="3" fill="rgba(0,0,0,.4)" stroke="#f0a24b" stroke-width="1"/>`;
+    svg += `<text x="${x+22}" y="${y+4}" text-anchor="middle" fill="#f0a24b" font-size="9">10 kΩ</text>`;
+    svg += `<line x1="${x+44}" y1="${y}" x2="${x+80}" y2="${y}" stroke="#5b8cff" stroke-width="1.5"/>`;
+  });
+  /* C_filter between the two lines */
+  const cx = 250;
+  svg += `<line x1="${cx}" y1="${y1}" x2="${cx}" y2="${y1+20}" stroke="#5fd0a6" stroke-width="1.2"/>`;
+  svg += `<line x1="${cx-10}" y1="${y1+20}" x2="${cx+10}" y2="${y1+20}" stroke="#5fd0a6" stroke-width="2"/>`;
+  svg += `<line x1="${cx-10}" y1="${y1+26}" x2="${cx+10}" y2="${y1+26}" stroke="#5fd0a6" stroke-width="2"/>`;
+  svg += `<line x1="${cx}" y1="${y1+26}" x2="${cx}" y2="${y2-26}" stroke="#5fd0a6" stroke-width="1.2"/>`;
+  svg += `<line x1="${cx-10}" y1="${y2-26}" x2="${cx+10}" y2="${y2-26}" stroke="#5fd0a6" stroke-width="2"/>`;
+  svg += `<line x1="${cx-10}" y1="${y2-20}" x2="${cx+10}" y2="${y2-20}" stroke="#5fd0a6" stroke-width="2"/>`;
+  svg += `<line x1="${cx}" y1="${y2-20}" x2="${cx}" y2="${y2}" stroke="#5fd0a6" stroke-width="1.2"/>`;
+  svg += `<text x="${cx+14}" y="${(y1+y2)/2+4}" fill="#5fd0a6" font-size="9">10 nF</text>`;
+  svg += `<text x="${cx+14}" y="${(y1+y2)/2+16}" fill="#7e716c" font-size="8">(diff. cap)</text>`;
+  /* TVS */
+  [[300,y1,'+'],[300,y2,'−']].forEach(([x,y,label]) => {
+    svg += `<polygon points="${x},${y-10} ${x+14},${y+10} ${x-14},${y+10}" fill="none" stroke="#ff5a52" stroke-width="1.2"/>`;
+    svg += `<line x1="${x-14}" y1="${y-10}" x2="${x+14}" y2="${y-10}" stroke="#ff5a52" stroke-width="1.2"/>`;
+    svg += `<text x="${x}" y="${label==='+' ? y-16 : y+22}" text-anchor="middle" fill="#ff5a52" font-size="8">TVS</text>`;
+    svg += `<line x1="${x+14}" y1="${y}" x2="${x+40}" y2="${y}" stroke="#5b8cff" stroke-width="1.5"/>`;
+  });
+  /* ADS1299 */
+  svg += `<rect x="340" y="${y1-35}" width="90" height="100" rx="8" fill="rgba(0,0,0,.4)" stroke="#5b8cff" stroke-width="1.2"/>`;
+  svg += `<text x="385" y="${y1-10}" text-anchor="middle" fill="#5b8cff" font-size="11" font-weight="600">ADS1299</text>`;
+  svg += `<text x="385" y="${y1+5}" text-anchor="middle" fill="#7e716c" font-size="9">INP</text>`;
+  svg += `<text x="385" y="${y2-5}" text-anchor="middle" fill="#7e716c" font-size="9">INN</text>`;
+  /* shield drive output */
+  svg += `<text x="385" y="${y2+32}" text-anchor="middle" fill="#5fd0a6" font-size="9">BIAS_SHD → shield</text>`;
+  svg += `<line x1="385" y1="${y2+20}" x2="385" y2="${y2+15}" stroke="#5fd0a6" stroke-width="1.2" stroke-dasharray="3,2"/>`;
+  /* BIASOUT / RLD */
+  svg += `<text x="460" y="${(y1+y2)/2+4}" text-anchor="start" fill="#a8978f" font-size="9">BIASOUT → 1 MΩ → patient</text>`;
+  svg += '</svg>';
+  el.innerHTML = svg;
+})();
+
+/* ===== CHART 5: Noise budget comparison ===== */
+(function() {
+  const el = document.getElementById('noise-chart');
+  if (!el) return;
+  const W = el.clientWidth || 800, H = 200, pad = {t:20, r:20, b:50, l:70};
+  const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+  const cats = ['50/60 Hz\ncapacitive', 'CMRR\nlimited', 'Triboelectric', 'Thermal\n(Johnson)'];
+  const without = [5000, 800, 200, 2];
+  const withDriven = [50, 100, 80, 2];
+  const maxVal = 6000;
+  const bw = cw / (cats.length * 3 + 1);
+  const toX = (i, isSecond) => pad.l + (i * 3 + 1 + (isSecond ? 1 : 0)) * bw;
+  const toY = v => pad.t + (1 - v / maxVal) * ch;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono',monospace" font-size="9">`;
+  /* grid */
+  [0,1000,2000,3000,4000,5000].forEach(y => {
+    const yp = toY(y);
+    svg += `<line x1="${pad.l}" y1="${yp}" x2="${pad.l+cw}" y2="${yp}" stroke="rgba(255,255,255,.05)" stroke-width="1"/>`;
+    svg += `<text x="${pad.l-4}" y="${yp+3}" text-anchor="end" fill="#7e716c">${y > 0 ? y+'µV' : '0'}</text>`;
+  });
+  /* bars */
+  cats.forEach((cat, i) => {
+    const x1 = toX(i, false), x2 = toX(i, true);
+    const h1 = Math.min(without[i], maxVal), h2 = Math.min(withDriven[i], maxVal);
+    svg += `<rect x="${x1}" y="${toY(h1)}" width="${bw*0.9}" height="${ch - (toY(h1) - pad.t)}" fill="rgba(255,90,82,.5)" rx="3"/>`;
+    svg += `<rect x="${x2}" y="${toY(h2)}" width="${bw*0.9}" height="${ch - (toY(h2) - pad.t)}" fill="rgba(95,208,166,.5)" rx="3"/>`;
+    /* value labels */
+    if (without[i] < maxVal) svg += `<text x="${x1+bw*0.45}" y="${toY(without[i])-3}" text-anchor="middle" fill="#ff5a52">${without[i]}µV</text>`;
+    else svg += `<text x="${x1+bw*0.45}" y="${pad.t+10}" text-anchor="middle" fill="#ff5a52">${without[i]}µV↑</text>`;
+    svg += `<text x="${x2+bw*0.45}" y="${toY(withDriven[i])-3}" text-anchor="middle" fill="#5fd0a6">${withDriven[i]}µV</text>`;
+    /* x-axis labels */
+    const lparts = cat.split('\n');
+    lparts.forEach((l,li) => {
+      svg += `<text x="${x1+bw}" y="${pad.t+ch+16+li*12}" text-anchor="middle" fill="#a8978f">${l}</text>`;
+    });
+  });
+  /* legend */
+  svg += `<rect x="${pad.l+10}" y="${pad.t}" width="10" height="10" fill="rgba(255,90,82,.5)" rx="2"/>`;
+  svg += `<text x="${pad.l+26}" y="${pad.t+9}" fill="#a8978f">Passive grounded shield</text>`;
+  svg += `<rect x="${pad.l+10}" y="${pad.t+18}" width="10" height="10" fill="rgba(95,208,166,.5)" rx="2"/>`;
+  svg += `<text x="${pad.l+26}" y="${pad.t+27}" fill="#a8978f">Driven shield + CLPE cable</text>`;
+  svg += `<text x="${pad.l+cw-4}" y="${pad.t+ch+38}" text-anchor="end" fill="#7e716c" font-size="8">Approximate — actual values depend on electrode prep, environment, and PCB layout</text>`;
+  svg += '</svg>';
+  el.innerHTML = svg;
+})();
+</script>
+</body>
+</html>
