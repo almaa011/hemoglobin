@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design Test — Component Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+.demo-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--dim);
+  border: 1px dashed rgba(255,255,255,.12); border-radius: 6px;
+  padding: 4px 10px; display: inline-block; margin-bottom: 8px;
+}
+</style>
+</head>
+<body>
+<div id="prog"></div>
+
+<!-- ═══════════ HERO ═══════════ -->
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+    <div class="kicker"><span class="dot"></span> PPG · OPTICAL SENSOR · AFE</div>
+    <h1>Reflectance PPG <span style="color:var(--accent)">Signal Chain</span></h1>
+    <p class="lead">How a green LED and a photodiode become a heart-rate number — from photon to register value, with the noise sources that matter most to a hardware designer.</p>
+    <p class="mut">2026-06-25</p>
+    <div class="scrolltip"><span class="arr">↓</span> start reading</div>
+  </div>
+</header>
+
+<!-- ═══════════ S1 — SPEC GRID ═══════════ -->
+<section id="s1">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">01</span> Key numbers</p>
+    <h2>What you're working with</h2>
+    <p>A reflectance PPG signal sits on top of a DC pedestal 100–1000× larger than the AC component you care about. The numbers below define the dynamic range problem.<span class="ref" title="[1]">[1]</span></p>
+
+    <div class="spec-grid">
+      <div class="spec-card">
+        <span class="sc" style="background:var(--accent)"></span>
+        <div class="sv">1–2%</div>
+        <div class="sl">AC/DC ratio — pulsatile vs. static perfusion</div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:var(--good)"></span>
+        <div class="sv">530 nm</div>
+        <div class="sl">Peak green wavelength — highest AC amplitude, most motion noise</div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:var(--warn)"></span>
+        <div class="sv">660 / 940 nm</div>
+        <div class="sl">Red / IR pair for SpO₂ — smaller AC, less motion sensitivity</div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:var(--bad)"></span>
+        <div class="sv">18–20 bit</div>
+        <div class="sl">Effective ADC resolution needed to resolve the AC component</div>
+      </div>
+    </div>
+
+    <div class="aside">The DC pedestal comes from venous blood, tissue, and bone — it does not pulse. You're trying to resolve the ~1% that does.</div>
+  </div>
+</section>
+
+<!-- ═══════════ S2 — PANEL + SVG DIAGRAM ═══════════ -->
+<section id="s2">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">02</span> Signal chain</p>
+    <h2>LED → photodiode → TIA → ADC</h2>
+    <p>The signal chain has four stages. Each introduces a constraint. Understanding the constraint at each stage tells you where your noise budget is going.<span class="ref" title="[2]">[2]</span></p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <div class="panel-title">End-to-end signal chain</div>
+        <div class="panel-sub">reflectance PPG · wrist</div>
+      </div>
+      <div id="chain-diagram"></div>
+      <p class="panel-cap"><strong>Every stage trades something.</strong> The TIA sets noise floor. The ADC sets resolution. The LED driver sets power and ambient rejection margin.</p>
+    </div>
+
+    <h3>Stage 1 — LED driver</h3>
+    <p>Drive current sets photon flux, which sets the DC photocurrent at the detector. More current → more signal → better SNR, at the cost of power and self-heating. Typical range: 6–50 mA pulsed at 25–50% duty cycle.<span class="ref" title="[1]">[1]</span></p>
+
+    <h3>Stage 2 — Photodiode + TIA</h3>
+    <p>The photodiode outputs a current proportional to irradiance. A transimpedance amplifier converts that to voltage. The TIA feedback resistor R<sub>f</sub> sets gain and bandwidth: <code>V_out = I_pd × R_f</code>. Shot noise from the DC photocurrent is typically the dominant noise source, not op-amp input noise.<span class="ref" title="[2]">[2]</span></p>
+  </div>
+</section>
+
+<!-- ═══════════ S3 — CALLOUT BOXES ═══════════ -->
+<section id="s3">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">03</span> Callout types</p>
+    <h2>Four kinds of highlighted content</h2>
+    <p>Use these consistently. Each color carries a semantic meaning the reader learns to recognize after one page.</p>
+
+    <div class="callout">
+      <div class="lbl">Formula / definition</div>
+      <p><strong>Shot noise current:</strong> i<sub>n</sub> = √(2 · q · I<sub>DC</sub> · BW) — where q = 1.6×10⁻¹⁹ C, I<sub>DC</sub> is the DC photocurrent in amps, and BW is the measurement bandwidth in Hz. At I<sub>DC</sub> = 10 µA and BW = 100 Hz, i<sub>n</sub> ≈ 18 pA<sub>rms</sub>.</p>
+    </div>
+
+    <div class="note">
+      <div class="lbl">Key finding</div>
+      <p>Shot noise from the DC photocurrent sets a hard floor that <strong>cannot be improved by better op-amp selection</strong>. The only lever is to reduce DC photocurrent while maintaining AC signal — which means reducing ambient light, not LED drive current.<span class="ref" title="[2]">[2]</span></p>
+    </div>
+
+    <div class="warn-note">
+      <div class="lbl">Warning</div>
+      <p>Ambient fluorescent lighting at 100–120 Hz aliases directly into the PPG band. Without synchronous detection (LED on/off subtraction), a window next to a fluorescent lamp will saturate your TIA before you pick up a heartbeat.<span class="ref" title="[3]">[3]</span></p>
+    </div>
+
+    <div class="conflict">
+      <div class="lbl">Conflict surfaced — green vs. red for motion noise</div>
+      <p>Researcher A (primary sources) states green has higher AC amplitude and better SNR at rest. Researcher C (adversarial) notes that green's higher melanin absorption makes it significantly more motion-sensitive on darker skin tones than red/IR. Both are correct in different conditions — choose wavelength based on use-case and target population.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ S4 — TABLE ═══════════ -->
+<section id="s4">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">04</span> Component comparison</p>
+    <h2>Integrated AFE options</h2>
+    <p>Dedicated PPG AFEs combine LED driver, TIA, ADC, and ambient cancellation in one IC. Key trade-offs across three common parts.<span class="ref" title="[4]">[4]</span></p>
+
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Part</th>
+          <th>ADC res.</th>
+          <th>LED channels</th>
+          <th>Ambient cancel</th>
+          <th>I²C / SPI</th>
+          <th>Fit</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>MAX30102</td>
+          <td>18-bit</td>
+          <td>Red + IR</td>
+          <td class="warn">Basic</td>
+          <td>I²C</td>
+          <td class="warn">SpO₂ only, no green</td>
+        </tr>
+        <tr>
+          <td>AFE4490</td>
+          <td>22-bit</td>
+          <td>Red + IR</td>
+          <td class="good">Synchronous subtraction</td>
+          <td>SPI</td>
+          <td class="good">Medical-grade SpO₂</td>
+        </tr>
+        <tr>
+          <td>MAX86916</td>
+          <td>19-bit</td>
+          <td>R + IR + G + B</td>
+          <td class="good">4-slot sequencing</td>
+          <td>I²C</td>
+          <td class="good">Wearable HR + SpO₂</td>
+        </tr>
+        <tr>
+          <td>SFH7060</td>
+          <td>N/A (analog out)</td>
+          <td>R + IR + G</td>
+          <td class="bad">None</td>
+          <td>—</td>
+          <td class="bad">Needs external AFE</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="aside">The AFE4490 datasheet specifies 107 dB of dynamic range — enough to resolve 1% AC on top of a full-scale DC current without external signal conditioning.<span class="ref" title="[4]">[4]</span></div>
+  </div>
+</section>
+
+<!-- ═══════════ S5 — INTERACTIVE SLIDER ═══════════ -->
+<section id="s5">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">05</span> Interactive</p>
+    <h2>Shot noise vs. bandwidth</h2>
+    <p>Drag the sliders to see how DC photocurrent and measurement bandwidth trade against shot noise floor.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <div class="panel-title">Shot noise calculator</div>
+        <div class="panel-sub">i_n = √(2 · q · I_DC · BW)</div>
+      </div>
+
+      <div style="display:grid;gap:18px;margin:4px 0 18px">
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--mut)">DC photocurrent I<sub>DC</sub></span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink)" id="val-idc">10 µA</span>
+          </div>
+          <input type="range" id="sl-idc" min="1" max="100" step="1" value="10" style="width:100%;accent-color:var(--accent)">
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--mut)">Bandwidth BW</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink)" id="val-bw">100 Hz</span>
+          </div>
+          <input type="range" id="sl-bw" min="10" max="1000" step="10" value="100" style="width:100%;accent-color:var(--accent)">
+        </div>
+      </div>
+
+      <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:16px 20px;display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--mut)">Shot noise i<sub>n</sub> =</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:600;color:var(--accent)" id="out-noise">18.0 pA<sub style="font-size:16px">rms</sub></span>
+      </div>
+      <p class="panel-cap">Lower bandwidth = lower shot noise. This is why PPG heart-rate algorithms low-pass filter to 5–10 Hz even though the ADC runs at 100 Hz.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ REFERENCES ═══════════ -->
+<section id="refs-section">
+  <div class="wrap">
+    <details class="src">
+      <summary>References <span class="chev">▾</span></summary>
+      <div class="srcbody">
+        <ol>
+          <li id="r1">[1] Tamura, T. et al. "Wearable Photoplethysmographic Sensors — Past and Present." <em>Electronics</em>, 2014. <a href="https://doi.org/10.3390/electronics3020282">doi:10.3390/electronics3020282</a></li>
+          <li id="r2">[2] Hobbs, P.C.D. <em>Building Electro-Optical Systems</em>, 2nd ed. Wiley, 2009. Ch. 18 — TIA noise analysis.</li>
+          <li id="r3">[3] Texas Instruments. "Optimizing PPG Performance in the Presence of Ambient Light." App note SLAA556. <a href="https://www.ti.com/lit/an/slaa556/slaa556.pdf">ti.com/lit/an/slaa556</a></li>
+          <li id="r4">[4] Texas Instruments. "AFE4490 Integrated Analog Front-End for Pulse Oximeters." Datasheet SBAS553. <a href="https://www.ti.com/product/AFE4490">ti.com/product/AFE4490</a></li>
+          <li class="unverified">[5] — UNVERIFIED — Claimed extinction coefficient table for melanin at 530 nm. Source URL returned 404 at time of review.</li>
+        </ol>
+      </div>
+    </details>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+  </div>
+</footer>
+
+<script>
+  /* read-progress bar */
+  window.addEventListener('scroll', () => {
+    const el = document.documentElement;
+    document.getElementById('prog').style.width =
+      (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+  });
+
+  /* shot noise calculator */
+  const q = 1.6e-19;
+  function updateNoise() {
+    const idc = parseFloat(document.getElementById('sl-idc').value) * 1e-6;
+    const bw  = parseFloat(document.getElementById('sl-bw').value);
+    document.getElementById('val-idc').textContent = document.getElementById('sl-idc').value + ' µA';
+    document.getElementById('val-bw').textContent  = document.getElementById('sl-bw').value + ' Hz';
+    const noise_A = Math.sqrt(2 * q * idc * bw);
+    const noise_pA = noise_A * 1e12;
+    document.getElementById('out-noise').innerHTML =
+      noise_pA.toFixed(1) + ' pA<sub style="font-size:16px">rms</sub>';
+  }
+  document.getElementById('sl-idc').addEventListener('input', updateNoise);
+  document.getElementById('sl-bw').addEventListener('input', updateNoise);
+  updateNoise();
+
+  /* signal chain SVG diagram */
+  (function() {
+    const el = document.getElementById('chain-diagram');
+    const W = el.clientWidth || 820, H = 90;
+    const blocks = [
+      { label: 'LED Driver', sub: '6–50 mA', x: 30 },
+      { label: 'Tissue', sub: 'optical path', x: 195 },
+      { label: 'Photodiode\n+ TIA', sub: 'I→V', x: 360 },
+      { label: 'ADC', sub: '18–22 bit', x: 525 },
+      { label: 'DSP / MCU', sub: 'filter + HR', x: 680 },
+    ];
+    const bw = 110, bh = 52, by = (H - bh) / 2;
+    const accent = '#5b8cff', mut = '#a8978f', line = 'rgba(255,255,255,.09)';
+    let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:Inter,sans-serif">`;
+    blocks.forEach((b, i) => {
+      const cx = b.x + bw / 2;
+      svg += `<rect x="${b.x}" y="${by}" width="${bw}" height="${bh}" rx="8"
+        fill="#181219" stroke="${i === 2 ? accent : line}" stroke-width="${i === 2 ? 1.5 : 1}"/>`;
+      const lines = b.label.split('\n');
+      const ty = by + bh / 2 - (lines.length - 1) * 8;
+      lines.forEach((ln, li) => {
+        svg += `<text x="${cx}" y="${ty + li * 16}" text-anchor="middle"
+          font-size="12" font-weight="600" fill="#f2ebe6">${ln}</text>`;
+      });
+      svg += `<text x="${cx}" y="${by + bh - 8}" text-anchor="middle"
+        font-size="10" fill="${mut}">${b.sub}</text>`;
+      if (i < blocks.length - 1) {
+        const ax = b.x + bw + 2, ay = H / 2;
+        svg += `<line x1="${ax}" y1="${ay}" x2="${ax + 22}" y2="${ay}" stroke="${mut}" stroke-width="1"/>
+          <polygon points="${ax+22},${ay-4} ${ax+22},${ay+4} ${ax+28},${ay}" fill="${mut}"/>`;
+      }
+    });
+    svg += '</svg>';
+    el.innerHTML = svg;
+  })();
+</script>
+</body>
+</html>
