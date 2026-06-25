@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>dB, Gain & EMC/EMI — The Hardware Engineer's Field Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+  <style>
+    :root {
+      --accent: #39d0c0;
+      --accent2: #f0a24b;
+    }
+    .hero-bg {
+      background:
+        radial-gradient(800px 500px at 70% 30%, rgba(57,208,192,.10), transparent 60%),
+        radial-gradient(600px 400px at 15% 75%, rgba(240,162,75,.07), transparent 60%);
+    }
+    .ratio-table { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin: 20px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+    .ratio-table .rh { background: var(--panel); padding: 9px 14px; color: var(--mut); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+    .ratio-table .rc { background: var(--bg2); padding: 9px 14px; }
+    .ratio-table .rc.pos { color: var(--good); }
+    .ratio-table .rc.neg { color: var(--bad); }
+    .ratio-table .rc.zero { color: var(--mut); }
+    .chain { display: flex; align-items: center; gap: 0; margin: 20px 0; flex-wrap: wrap; }
+    .chain-block { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: center; min-width: 90px; }
+    .chain-block .cb-label { color: var(--mut); font-size: 10px; margin-bottom: 3px; }
+    .chain-block .cb-val { font-size: 15px; font-weight: 600; }
+    .chain-block .cb-val.pos { color: var(--good); }
+    .chain-block .cb-val.neg { color: var(--bad); }
+    .chain-arrow { color: var(--dim); font-size: 18px; padding: 0 6px; flex-shrink: 0; }
+    .chain-total { background: rgba(57,208,192,.08); border: 1px solid rgba(57,208,192,.3); border-radius: 8px; padding: 10px 16px; font-family: 'JetBrains Mono', monospace; }
+    .chain-total .ct-val { font-size: 18px; font-weight: 700; color: var(--accent); }
+    .chain-total .ct-label { font-size: 11px; color: var(--mut); }
+    .limits-note { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--dim); margin-top: 8px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+    @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } .chain { flex-direction: column; align-items: flex-start; } .ratio-table { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+<div id="prog"></div>
+
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+    <div class="kicker"><span class="dot"></span> EMC · SIGNAL THEORY</div>
+    <h1>dB, Gain &amp; <span style="color:var(--accent)">EMC/EMI</span></h1>
+    <p class="lead">A ground-up explanation of decibels and gain — from the logarithm identity that makes the math tractable, through every reference unit you'll encounter on a spectrum analyzer, to how CISPR and FCC translate dBµV/m into pass/fail decisions at the test lab.</p>
+    <p class="mut">2026-06-26</p>
+    <div class="scrolltip"><span class="arr">↓</span> start reading</div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 1 -->
+<section id="s1">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">01</span> Why dB Exists</p>
+    <h2>The dynamic range problem</h2>
+    <p>An oscilloscope displays a few millivolts to tens of volts — a ratio of about 10,000:1. A spectrum analyzer measuring radiated emissions must span from the noise floor (~1 µV/m) to near-field spurs that can exceed 1 V/m — a ratio of 1,000,000:1. Plotting that on a linear Y-axis makes the smaller signals invisible.</p>
+    <p>The fix is a logarithm. <code>log₁₀(1,000,000) = 6</code>. Now your axis goes from 0 to 6 instead of 0 to 1,000,000. The decibel formalizes this: it is ten times the base-10 log of a power ratio. <span class="ref" title="[1]">[1]</span></p>
+    <p>There is a second reason engineers reach for dB: <strong>cascaded stages multiply in the linear domain but add in the log domain.</strong> A preamp (×100) followed by a cable (×0.5) followed by an amplifier (×10) is a multiplication you have to work out by hand. In dB it is +40 − 3 + 20 = +57 dB — five-second arithmetic. <span class="ref" title="[1]">[1]</span></p>
+
+    <div class="note">
+      <div class="lbl">Core Definition</div>
+      <p style="margin:0">dB is always a <strong>ratio</strong> between two quantities of the same type. It is never an absolute unit by itself. Add a reference letter (m, V, µV…) and it becomes absolute.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 2 -->
+<section id="s2">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">02</span> The Math</p>
+    <h2>Two formulas — know when to use each</h2>
+
+    <div class="callout">
+      <div class="lbl">Power Ratio</div>
+      <p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--ink)">dB = <strong>10</strong> × log₁₀(P<sub>out</sub> / P<sub>in</sub>) <span class="ref" title="[2]">[2]</span></p>
+    </div>
+    <div class="callout">
+      <div class="lbl">Voltage (or Current) Ratio — same impedance on both sides</div>
+      <p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--ink)">dB = <strong>20</strong> × log₁₀(V<sub>out</sub> / V<sub>in</sub>) <span class="ref" title="[2]">[2]</span></p>
+    </div>
+
+    <p>The factor changes from 10 to <strong>20</strong> because power is proportional to V². Squaring inside a log pulls the exponent out front: <code>10 × log₁₀(V²/V₀²) = 10 × 2 × log₁₀(V/V₀) = 20 × log₁₀(V/V₀)</code>. This is not a convention — it is an algebraic identity.</p>
+
+    <h3>Key ratios to memorize</h3>
+    <div class="ratio-table">
+      <div class="rh">Ratio</div><div class="rh">Power dB</div><div class="rh">Voltage dB</div><div class="rh">Note</div>
+      <div class="rc zero">1:1</div><div class="rc zero">0 dB</div><div class="rc zero">0 dB</div><div class="rc zero">unity gain</div>
+      <div class="rc pos">2:1</div><div class="rc pos">+3 dB</div><div class="rc pos">+6 dB</div><div class="rc pos">double pwr / √2 volt</div>
+      <div class="rc pos">4:1</div><div class="rc pos">+6 dB</div><div class="rc pos">+12 dB</div><div class="rc pos">—</div>
+      <div class="rc pos">10:1</div><div class="rc pos">+10 dB</div><div class="rc pos">+20 dB</div><div class="rc pos">one decade</div>
+      <div class="rc pos">100:1</div><div class="rc pos">+20 dB</div><div class="rc pos">+40 dB</div><div class="rc pos">common amp gain</div>
+      <div class="rc pos">1000:1</div><div class="rc pos">+30 dB</div><div class="rc pos">+60 dB</div><div class="rc pos">—</div>
+      <div class="rc neg">0.5:1</div><div class="rc neg">−3 dB</div><div class="rc neg">−6 dB</div><div class="rc neg">half pwr / 0.707V</div>
+      <div class="rc neg">0.1:1</div><div class="rc neg">−10 dB</div><div class="rc neg">−20 dB</div><div class="rc neg">—</div>
+      <div class="rc neg">0.001:1</div><div class="rc neg">−30 dB</div><div class="rc neg">−60 dB</div><div class="rc neg">—</div>
+    </div>
+
+    <div class="warn-note">
+      <div class="lbl">Easy mistake — −3 dB means two different things</div>
+      <p style="margin:0">In the power domain: −3 dB = half the power. In the voltage domain: −3 dB = 70.7% of the amplitude (×1/√2). These are not the same. Confusing them is especially common when working across mixed domains (e.g. converting an antenna's voltage output to a received power figure). <span class="ref" title="[4]">[4]</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 3 -->
+<section id="s3">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">03</span> Absolute Reference Units</p>
+    <h2>When dB gets a letter suffix</h2>
+    <p>Plain dB is dimensionless — it's a ratio. Anchor the denominator to a fixed reference and you get an absolute level. Every suffix tells you the reference.</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Unit</th><th>Reference</th><th>Domain</th><th>Used in</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>dBm</td><td>1 mW</td><td>power</td><td>RF, spectrum analyzers, signal generators</td></tr>
+        <tr><td>dBW</td><td>1 W</td><td>power</td><td>transmitters, high-power systems; 0 dBW = +30 dBm <span class="ref" title="[2]">[2]</span></td></tr>
+        <tr><td>dBV</td><td>1 V RMS</td><td>voltage</td><td>audio, general signal levels</td></tr>
+        <tr><td>dBmV</td><td>1 mV RMS</td><td>voltage</td><td>cable TV (75 Ω systems)</td></tr>
+        <tr><td class="good">dBµV</td><td>1 µV RMS</td><td>voltage</td><td><strong>EMC conducted emissions</strong> — this is the unit of CISPR/FCC limits</td></tr>
+        <tr><td class="good">dBµV/m</td><td>1 µV/m</td><td>field</td><td><strong>EMC radiated emissions</strong> — field strength at measurement antenna</td></tr>
+      </tbody>
+    </table>
+
+    <h3>The 50 Ω conversion: dBm ↔ dBµV</h3>
+    <p>In any 50 Ω system, power and voltage levels are related by a fixed offset: <span class="ref" title="[6]">[6]</span></p>
+    <div class="callout">
+      <div class="lbl">50 Ω conversion (memorize this)</div>
+      <p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--ink)">dBµV = dBm + <strong>107</strong>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;dBm = dBµV − 107</p>
+    </div>
+    <p>Where does 107 come from? 1 mW into 50 Ω gives V = √(0.001 × 50) = 0.2236 V = 223,600 µV. Then 20·log₁₀(223,600) = 107.0 dB. <span class="ref" title="[6]">[6]</span></p>
+
+    <div class="warn-note">
+      <div class="lbl">75 Ω exception</div>
+      <p style="margin:0">The +107 offset is only valid in 50 Ω systems. In a 75 Ω system (cable TV, video), the same power produces 22.5% more voltage — the offset becomes +108.75. Never use +107 when your system impedance is not 50 Ω. <span class="ref" title="[7]">[7]</span></p>
+    </div>
+
+    <h3>Quick field-strength conversions</h3>
+    <div class="spec-grid">
+      <div class="spec-card"><span class="sc" style="background:var(--accent)"></span><div class="sv">40 dBµV/m</div><div class="sl">= 100 µV/m<br>FCC Class B limit at 30–88 MHz</div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--good)"></span><div class="sv">120 dBµV/m</div><div class="sl">= 1 V/m<br>IEC 61000-4-3 immunity Level 1</div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--warn)"></span><div class="sv">140 dBµV/m</div><div class="sl">= 10 V/m<br>IEC 61000-4-3 immunity Level 3 (industrial)</div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--bad)"></span><div class="sv">149.5 dBµV/m</div><div class="sl">= 30 V/m<br>IEC 61000-4-3 immunity Level 4</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 4 -->
+<section id="s4">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">04</span> Gain &amp; Cascading</p>
+    <h2>Why dB makes link budgets arithmetic</h2>
+    <p>Gain is just the ratio of output to input. <span class="ref" title="[3]">[3]</span> A stage that takes 10 mV in and delivers 1 V out has a voltage gain of 100 — or +40 dB. A stage that passes half the power has a gain of −3 dB.</p>
+    <p>When stages are cascaded, total dB gain is the arithmetic sum: <span class="ref" title="[39]">[39]</span></p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Cascaded gain example — radiated emissions measurement chain</span>
+        <span class="panel-sub">each block adds its dB value to the running total</span>
+      </div>
+      <div class="chain" id="chain-diagram">
+        <!-- injected by JS -->
+      </div>
+      <div class="panel-cap">Total path gain/loss = algebraic sum of all stage values in dB. Adding stages never requires multiplication. <strong>These are illustrative example values.</strong> In a real measurement: antenna AF varies by frequency and requires the manufacturer's calibration table; cable loss depends on cable type, length, and frequency; preamp gain of +33 dB is from the Com-Power PAM-103 datasheet. <span class="ref" title="[19]">[19]</span></div>
+    </div>
+
+    <div class="note">
+      <div class="lbl">Key finding</div>
+      <p style="margin:0">Impedance mismatch between cascaded stages can shift the actual gain by ±0.5 dB or more from the nominal. A stage nominally at 17 dB can range from 16.49 dB to 17.54 dB depending on the impedance presented by the preceding stage. In an EMC measurement chain, this error propagates directly into the field-strength reading. <span class="ref" title="[40]">[40]</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 5 -->
+<section id="s5">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">05</span> Common Mistakes</p>
+    <h2>Four errors that trip up experienced engineers</h2>
+
+    <h3>1 — Using 10× instead of 20× for voltage</h3>
+    <p>A 10:1 voltage ratio correctly gives 20·log₁₀(10) = <strong>20 dB</strong>. Applying the power formula gives 10·log₁₀(10) = 10 dB — exactly half the correct answer. In an EMC measurement chain with multiple stages, this error compounds: an antenna factor of 20 dB/m misread as 10 dB/m shifts your field-strength result by 10 dB — easily the difference between pass and fail. <span class="ref" title="[6]">[6]</span></p>
+
+    <h3>2 — Power vs voltage interpretation of −3 dB</h3>
+    <p>When an op-amp datasheet says "−3 dB bandwidth at 1 MHz," it means the power at 1 MHz is half the passband power. The voltage amplitude is 70.7% of mid-band — not 50%. Engineers mixing power and voltage domains in the same calculation without tracking the factor-of-2 difference in the exponent produce errors of up to 6 dB. <span class="ref" title="[4]">[4]</span></p>
+
+    <h3>3 — Applying +107 in non-50 Ω systems</h3>
+    <p>The dBm → dBµV offset of +107 is derived from 50 Ω only. Cable television systems operate at 75 Ω; bio-instrumentation front-ends present kiloohm source impedances. At 75 Ω the offset is ~+108.75. At 600 Ω (some audio systems) it is ~+117.8. Always derive the offset for your actual impedance: offset = 20·log₁₀(√(1000R)) where R is in ohms. <span class="ref" title="[7]">[7]</span></p>
+
+    <h3>4 — Forgetting cable loss in the measurement chain</h3>
+    <p>Cable loss is always positive dB of attenuation (a negative gain). It increases with frequency and with length. Representative values from an online reference (unverified — confirm from manufacturer datasheets): RG-58 at 144 MHz ≈ 6.2 dB per 100 ft; at 1.2 GHz ≈ 21.1 dB per 100 ft. LMR-400 is substantially lower: ≈ 1.5 dB/100 ft at 144 MHz, ≈ 4.8 dB/100 ft at 1.2 GHz. <span class="ref" title="[20]">[20]</span> If you omit cable loss from your measurement-chain calculation, your recovered field-strength reading is optimistic by that many dB — meaning you could declare a passing product that is actually failing. <span class="ref" title="[22]">[22]</span></p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 6 -->
+<section id="s6">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">06</span> EMC/EMI Overview</p>
+    <h2>Two tests, two noise paths</h2>
+    <p>EMC testing splits into <strong>emissions</strong> (your device radiating/injecting noise outward) and <strong>immunity</strong> (your device surviving external noise). The FCC Part 15 framework only mandates emissions testing — no FCC immunity requirements exist for most commercial products. <span class="ref" title="[38]">[38]</span> IEC/CISPR standards cover both.</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Test Type</th><th>Noise Path</th><th>Frequency Range</th><th>Unit</th><th>Key Standard</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Conducted emissions</td><td>power/signal cables → LISN → receiver</td><td>150 kHz – 30 MHz</td><td class="good">dBµV</td><td>CISPR 32, FCC Part 15</td></tr>
+        <tr><td>Radiated emissions</td><td>air → calibrated antenna → receiver</td><td>30 MHz – 1 GHz+</td><td class="good">dBµV/m</td><td>CISPR 32, FCC Part 15</td></tr>
+        <tr><td>Conducted immunity</td><td>CDN/injection network → DUT ports</td><td>150 kHz – 80 MHz</td><td class="warn">dBµV (injection)</td><td>IEC 61000-4-6</td></tr>
+        <tr><td>Radiated immunity</td><td>amplified antenna → DUT in chamber</td><td>80 MHz – 1 GHz+</td><td class="warn">V/m</td><td>IEC 61000-4-3</td></tr>
+      </tbody>
+    </table>
+
+    <div class="aside">CISPR 22 (IT equipment emissions) and CISPR 13 (multimedia) were both superseded by <strong>CISPR 32</strong> in 2012. The EU transition deadline was March 5, 2017. The numerical limits carried over from CISPR 22 largely unchanged. <span class="ref" title="[10]">[10]</span></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 7 -->
+<section id="s7">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">07</span> Conducted Emissions</p>
+    <h2>The LISN and what it measures</h2>
+    <p>Conducted emissions testing places a <strong>LISN (Line Impedance Stabilization Network)</strong> between the AC mains and your device. The LISN contains a 5 µH inductor that presents a known 50 Ω impedance to the device under test at RF frequencies, while blocking RF from the building's AC wiring. <span class="ref" title="[23]">[23]</span> You tap across the 50 Ω terminal and route it to an EMI receiver.</p>
+    <p>The LISN is not optional — without it, the impedance the device "sees" at its power port is undefined and measurement-to-measurement variation is enormous. The 5 µH inductance and 50 Ω termination together are the source impedance your device's noise is being measured into, so all limit values are calibrated to this exact setup.</p>
+    <p>Test range: <strong>150 kHz to 30 MHz</strong>. CISPR 16 specifies 9 kHz resolution bandwidth, maximum segment span 2.7 MHz, sweep time 100 ms/MHz. <span class="ref" title="[24]">[24]</span></p>
+
+    <h3>Conducted emission limits</h3>
+    <table class="tbl">
+      <thead>
+        <tr><th>Freq range</th><th>CISPR 32 / 22 Class A QP</th><th>CISPR 32 / 22 Class B QP</th><th>Class B avg</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0.15–0.50 MHz</td><td>79 dBµV</td><td>66→56 dBµV (decreasing)</td><td class="mut">56→46 dBµV</td></tr>
+        <tr><td>0.50–5 MHz</td><td>73 dBµV</td><td class="warn">56 dBµV</td><td class="mut">46 dBµV</td></tr>
+        <tr><td>5–30 MHz</td><td>73 dBµV</td><td class="warn">60 dBµV</td><td class="mut">50 dBµV</td></tr>
+      </tbody>
+    </table>
+    <p class="limits-note">QP = quasi-peak detector. Average limits are the binding limit for broadband noise; quasi-peak is binding for narrowband/impulsive sources. Data: CISPR 22 via electronics-notes.com. <span class="ref" title="[9]">[9]</span></p>
+
+    <p>56 dBµV converts to 10^(56/20) µV = <strong>631 µV</strong> at the LISN port. That is the absolute maximum noise voltage your device may produce on its power lead at 1 MHz, measured into 50 Ω.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 8 -->
+<section id="s8">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">08</span> Radiated Emissions</p>
+    <h2>The measurement chain and its dB budget</h2>
+    <p>What the receiver reads is <em>not</em> the field strength at the device — it is the voltage at the receiver input after the signal has traveled through an antenna, a cable, and possibly a preamplifier. You have to reconstruct the actual field strength using the measurement-chain formula: <span class="ref" title="[16]">[16]</span></p>
+
+    <div class="callout">
+      <div class="lbl">Field-strength recovery formula</div>
+      <p style="margin:4px 0 0;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ink)">E (dBµV/m) = V<sub>rx</sub> (dBµV) + AF (dB/m) + Cable<sub>loss</sub> (dB) − G<sub>preamp</sub> (dB)</p>
+      <p style="margin:8px 0 0;font-size:13px;color:var(--mut)">Each term accounts for one stage of the measurement path. Getting any term wrong shifts the field-strength result by that many dB.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Radiated emissions measurement chain</span>
+        <span class="panel-sub">example at 300 MHz — all values in dB</span>
+      </div>
+      <div id="radiated-chain"></div>
+      <div class="panel-cap">Recovered E-field = receiver reading + antenna factor + cable loss − preamp gain. Every ±1 dB error in any correction factor shifts the final E-field result by ±1 dB. Values shown are illustrative example values — not specifications. Real measurements require per-frequency antenna calibration tables <span class="ref" title="[15]">[15]</span> and measured cable loss at each frequency.</div>
+    </div>
+
+    <h3>Antenna Factor (AF)</h3>
+    <p>AF is the calibration constant that converts the voltage at the antenna connector into the E-field that was incident on the antenna. Units: dB/m (or equivalently dB re 1/m). <span class="ref" title="[15]">[15]</span> It is supplied as a frequency table by the antenna manufacturer and must be applied point-by-point across the sweep. A biconical antenna (30–300 MHz) and a log-periodic (300–1000 MHz) are the standard pair per CISPR 16-1-4. <span class="ref" title="[17]">[17]</span></p>
+    <p>AF error propagates 1:1 into E-field error. For a half-wavelength dipole reference antenna, AF uncertainty is ≥0.3 dB up to 1 GHz and ≥0.5 dB up to 2 GHz — a 5–15% error in the E-field value. <span class="ref" title="[31]">[31]</span></p>
+
+    <h3>Preamplifier</h3>
+    <p>A broadband RF preamplifier with 20–30 dB gain is inserted between the antenna and receiver to overcome the noise floor limitations of entry-level spectrum analyzers. <span class="ref" title="[18]">[18]</span> The Com-Power PAM-103, for example, covers 1 MHz–1 GHz with 33 dB gain and a noise figure below 3.3 dB. <span class="ref" title="[19]">[19]</span> In the recovery formula, preamp gain is <em>subtracted</em> because it artificially elevated what the receiver saw — you must remove that artificial boost to get the true field strength.</p>
+
+    <h3>Radiated emission limits</h3>
+    <div class="two-col">
+      <div>
+        <p style="font-family:'Space Grotesk',sans-serif;font-weight:600;margin-bottom:8px">CISPR 32 / 22 (Class B, 3 m) <span class="ref" title="[9]">[9]</span></p>
+        <table class="tbl">
+          <thead><tr><th>Freq</th><th>Limit</th><th>µV/m</th></tr></thead>
+          <tbody>
+            <tr><td>30–88 MHz</td><td class="warn">40 dBµV/m</td><td>100</td></tr>
+            <tr><td>88–216 MHz</td><td class="warn">43.5 dBµV/m</td><td>150</td></tr>
+            <tr><td>216–960 MHz</td><td class="warn">46.0 dBµV/m</td><td>200</td></tr>
+            <tr><td>&gt;960 MHz</td><td class="warn">54.0 dBµV/m</td><td>501</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <p style="font-family:'Space Grotesk',sans-serif;font-weight:600;margin-bottom:8px">FCC Part 15 (Class B, 3 m) <span class="ref" title="[11]">[11]</span></p>
+        <table class="tbl">
+          <thead><tr><th>Freq</th><th>Limit</th><th>µV/m</th></tr></thead>
+          <tbody>
+            <tr><td>30–88 MHz</td><td class="warn">40 dBµV/m</td><td>100</td></tr>
+            <tr><td>88–216 MHz</td><td class="warn">43.5 dBµV/m</td><td>150</td></tr>
+            <tr><td>216–960 MHz</td><td class="warn">46.4 dBµV/m</td><td>210</td></tr>
+            <tr><td>&gt;960 MHz</td><td class="warn">49.5 dBµV/m</td><td>300</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="conflict">
+      <div class="lbl">Conflict — researchers A vs C: above 960 MHz Class B radiated</div>
+      <p style="margin:0;font-size:14px">CISPR 22 Class B lists <strong>54.0 dBµV/m</strong> (≈501 µV/m) above 960 MHz at 3 m. FCC Part 15 Class B lists <strong>300 µV/m</strong> (≈49.5 dBµV/m) at the same distance and frequency. This ~4.5 dB difference is real — the two standards do diverge above 1 GHz. If you are targeting both markets, design to the FCC limit (more stringent above 960 MHz). Sources: CISPR 22 via electronics-notes.com <span class="ref" title="[9]">[9]</span>; FCC Part 15 via compliancetesting.com. <span class="ref" title="[11]">[11]</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 9 -->
+<section id="s9">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">09</span> EMI Receiver vs Spectrum Analyzer</p>
+    <h2>Detector types — why the reading changes with the detector</h2>
+    <p>A spectrum analyzer is a general RF instrument. An EMI receiver is a spectrum analyzer built to CISPR 16-1-1 specifications — with tighter requirements on detector accuracy, resolution bandwidth, and input protection. <span class="ref" title="[25]">[25]</span> The most important difference is the available detector modes.</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Detector</th><th>Measures</th><th>CISPR time constants (0.15–30 MHz)</th><th>Usage</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Peak</td><td>highest instantaneous level in RBW bucket</td><td>instantaneous</td><td>fast pre-scan; always ≥ QP ≥ avg</td></tr>
+        <tr><td>Quasi-peak</td><td>weighted peak — charges fast, decays slowly</td><td>1 ms charge, 160 ms decay <span class="ref" title="[27]">[27]</span></td><td>binding limit detector for most CISPR tests</td></tr>
+        <tr><td>Average</td><td>RMS-averaged power over dwell time</td><td>—</td><td>binding limit for broadband/continuous noise</td></tr>
+        <tr><td>RMS</td><td>true RMS power</td><td>—</td><td>CISPR 16-1-1 newer addition; not always required</td></tr>
+      </tbody>
+    </table>
+
+    <p>Quasi-peak was developed in 1939 to weight impulsive noise in a way that correlates with its subjective interference severity. <span class="ref" title="[28]">[28]</span> It charges fast (so it captures brief pulses) but discharges slowly (so isolated pulses read higher than continuous low-level noise). For a pulsed source at 10 kHz repetition rate, peak and quasi-peak read roughly equal (~100 dBµV) while the RMS-average reads ~89 dBµV — 11 dB lower. <span class="ref" title="[27]">[27]</span></p>
+
+    <p>Because quasi-peak scans require ~1 second per frequency point, <span class="ref" title="[26]">[26]</span> it is standard practice to run a fast peak scan first and only apply quasi-peak at frequencies that approach the limit. This is not an approximation — a product can pass peak and still fail quasi-peak if the noise is impulsive.</p>
+
+    <div class="note">
+      <div class="lbl">EMI receiver vs spectrum analyzer — key hardware difference</div>
+      <p style="margin:0">EMI receivers include a <em>preselector</em>: a bank of tunable bandpass filters before the first mixer that attenuates out-of-band signals by more than 60 dB. <span class="ref" title="[29]">[29]</span> Spectrum analyzers lack this, making them susceptible to intermodulation from strong out-of-band signals — which can produce false responses on an emissions scan. For pre-compliance, this is manageable; for certification, an accredited EMI receiver is required. CISPR filter bandwidths are also defined at −6 dB, not the −3 dB convention used for spectrum analyzer RBW. <span class="ref" title="[29]">[29]</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 10 -->
+<section id="s10">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">10</span> Immunity Testing</p>
+    <h2>Blasting the DUT — immunity levels in dB</h2>
+    <p>Immunity testing reverses the measurement chain: you generate a calibrated E-field or conducted RF signal and verify that the DUT keeps operating within spec. All levels are expressed in V/m or dBµV, making dB arithmetic directly applicable.</p>
+
+    <h3>IEC 61000-4-3 — Radiated immunity (80 MHz – 1 GHz+)</h3>
+    <table class="tbl">
+      <thead><tr><th>Level</th><th>Field strength</th><th>dBµV/m</th><th>Typical application</th></tr></thead>
+      <tbody>
+        <tr><td>Level 1</td><td>1 V/m</td><td class="warn">120 dBµV/m</td><td>low-exposure environments</td></tr>
+        <tr><td>Level 2</td><td>3 V/m</td><td class="warn">129.5 dBµV/m</td><td>commercial / office</td></tr>
+        <tr><td>Level 3</td><td class="warn">10 V/m</td><td class="warn">140 dBµV/m</td><td>industrial / factory floor</td></tr>
+        <tr><td>Level 4</td><td class="bad">30 V/m</td><td class="bad">149.5 dBµV/m</td><td>heavy industrial</td></tr>
+      </tbody>
+    </table>
+    <p class="limits-note">Source: IEC 61000-4-3 levels via ledphotometer.com. <span class="ref" title="[13]">[13]</span> Note: immunity test fields are 80 MHz to at least 1 GHz. Higher frequency extensions (1–2.7 GHz, 2.7–6 GHz) exist in product-family standards.</p>
+
+    <h3>IEC 61000-4-6 — Conducted immunity (150 kHz – 80 MHz)</h3>
+    <p>The RF injection signal is applied through a CDN (coupling/decoupling network) on each port. It must be 80% amplitude-modulated at 1 kHz per Clause 6.2. <span class="ref" title="[14]">[14]</span></p>
+    <table class="tbl">
+      <thead><tr><th>Level</th><th>Open-circuit voltage</th><th>dBµV</th></tr></thead>
+      <tbody>
+        <tr><td>Level 1</td><td>1 V</td><td>120 dBµV</td></tr>
+        <tr><td>Level 2</td><td>3 V</td><td>129.5 dBµV</td></tr>
+        <tr><td>Level 3</td><td class="warn">10 V</td><td class="warn">140 dBµV</td></tr>
+      </tbody>
+    </table>
+    <p class="limits-note">Maximum injection voltage is 10 V (140 dBµV) into a 50 Ω source impedance. <span class="ref" title="[14]">[14]</span></p>
+
+    <div class="aside">The 100 dB difference between a conducted emissions limit (56 dBµV max at the power port) and a conducted immunity injection (140 dBµV) is not a contradiction — they measure different things at different impedances with different modulation. Emissions: your device injecting into the mains. Immunity: the mains injecting into your device.</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 11 -->
+<section id="s11">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">11</span> Margin &amp; Uncertainty</p>
+    <h2>How close is too close to the limit line</h2>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">EMC scan plot — anatomy</span>
+        <span class="panel-sub">Y = dBµV or dBµV/m, X = frequency (log scale)</span>
+      </div>
+      <div id="scan-chart"></div>
+      <div class="panel-cap">The horizontal line is the regulatory limit. Your measured emission trace must stay below it. The vertical gap between your worst peak and the limit is the margin in dB.</div>
+    </div>
+
+    <p>Designers target a minimum of <strong>3 dB margin</strong> as an absolute floor; 4–6 dB is a realistic production buffer. <span class="ref" title="[34]">[34]</span> Why not just pass by 0.1 dB?</p>
+
+    <h3>Where the dB uncertainty comes from</h3>
+    <table class="tbl">
+      <thead><tr><th>Uncertainty source</th><th>Typical contribution</th></tr></thead>
+      <tbody>
+        <tr><td>Antenna Factor calibration tolerance</td><td class="warn">±2 dB</td></tr>
+        <tr><td>Test site imperfections (reflections, absorber uniformity)</td><td class="bad">±4 dB</td></tr>
+        <tr><td>Receiver pulse amplitude accuracy</td><td class="warn">±1.5 dB</td></tr>
+        <tr><td>Combined standard uncertainty (RSS)</td><td class="mut">~1.9 dB</td></tr>
+        <tr><td>Expanded uncertainty (k=2, 95% confidence)</td><td class="warn">~3.75 dB</td></tr>
+      </tbody>
+    </table>
+    <p class="limits-note">[UNVERIFIED] Source cited: ResearchGate — measurement uncertainty evaluation for RF/EMC chambers 30 MHz–1 GHz. <span class="ref" title="[31]">[31]</span> URL returned HTTP 403 at time of writing; individual contributor values (AF ±2 dB, site ±4 dB, receiver ±1.5 dB) are consistent with general EMC measurement uncertainty literature but could not be independently confirmed from this specific paper.</p>
+
+    <p>Military standards and CISPR's 80/80 rule specify <strong>6 dB safety margin</strong> as the design target to accommodate manufacturing variation. <span class="ref" title="[32]">[32]</span> However, that 6 dB does not cover measurement equipment errors or environmental interactions — some research suggests 12 dB may be needed for genuinely robust products. <span class="ref" title="[33]">[33]</span></p>
+
+    <p>Systematic errors as large as 1.95 dB from 30–200 MHz are reported as unaccounted for in the normalized site attenuation (NSA) method defined in CISPR 16-1-4:2019. <span class="ref" title="[31]">[31]</span> [UNVERIFIED — source inaccessible] This is presented as a known gap in the standard, not a measurement setup error — it is intrinsic to the NSA technique.</p>
+
+    <div class="warn-note">
+      <div class="lbl">Pre-compliance vs accredited lab</div>
+      <p style="margin:0">Pre-compliance testing uses the same measurement equipment and techniques but lacks the procedural rigor and formal documentation. When the equipment is properly calibrated and the setup matches the standard, pre-scan data closely predicts formal compliance results. Where pre-compliance differs from accredited results, it is most commonly traceable to a calibration gap (antenna factor, cable loss, or receiver reference level) — all dB-domain errors. No quantified case study data on typical delta was found in accessible sources. <span class="ref" title="[35]">[35]</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 12 -->
+<section id="s12">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">12</span> Fixing Emissions</p>
+    <h2>How many dB does a ferrite bead actually give you</h2>
+    <p>When you are 8 dB over the limit at 150 MHz, you need something that gives you ≥8 dB of attenuation at that frequency. Here is what to expect from common fixes — and the traps.</p>
+
+    <h3>Ferrite bead attenuation</h3>
+    <p>Ferrite beads achieve 20–40 dB of attenuation in the 100–500 MHz range — their optimal zone. <span class="ref" title="[36]">[36]</span> Below ~10 MHz they contribute almost nothing (impedance is too low). The catch:</p>
+    <ul>
+      <li><strong>DC current degrades them.</strong> At 50% of rated DC current, a ferrite bead's impedance at 100 MHz can drop from 100 Ω to 10 Ω — a 20 dB reduction in series impedance, and therefore ~10 dB less attenuation depending on the source/load impedance. <span class="ref" title="[36]">[36]</span></li>
+      <li><strong>Resonance can cause gain.</strong> If the ferrite bead resonates with a PCB capacitance below its crossover frequency, the resulting LC circuit can add +10 dB peaking instead of attenuation. <span class="ref" title="[36]">[36]</span></li>
+      <li><strong>The 100 MHz spec is not the whole story.</strong> Manufacturers specify impedance at only 100 MHz. Two ferrites with identical 100 MHz specs can have drastically different frequency responses. Verify attenuation at your actual problem frequency from the full impedance curve. <span class="ref" title="[36]">[36]</span></li>
+    </ul>
+
+    <div class="spec-grid">
+      <div class="spec-card"><span class="sc" style="background:var(--good)"></span><div class="sv">20–40 dB</div><div class="sl">ferrite bead attenuation at 100–500 MHz (unloaded, nominal DC current)</div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--warn)"></span><div class="sv">−20 dB</div><div class="sl">impedance reduction at 50% rated DC current — partially cancels bead effectiveness</div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--bad)"></span><div class="sv">+10 dB</div><div class="sl">resonant peaking if LC resonance falls below crossover — opposite of intended effect</div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--accent)"></span><div class="sv">3–6 dB</div><div class="sl">minimum margin to target in design before certification</div></div>
+    </div>
+
+    <div class="note">
+      <div class="lbl">Design rule</div>
+      <p style="margin:0">Every fix that gives you dB of attenuation in the emission path must be verified on the actual PCB under real DC loading conditions. A ferrite that simulates well at low current can fail to attenuate under full load because its impedance has collapsed. Always measure on the final board with nominal supply current flowing.</p>
+    </div>
+  </div>
+</section>
+
+<!-- References -->
+<div class="wrap" style="padding: 40px 22px 0">
+<details class="src">
+  <summary>References <span class="chev">▾</span></summary>
+  <div class="srcbody">
+    <ol>
+      <li id="r1">[1] "Decibels — Basics, Tutorial, Formula, Equation." Electronics-Notes. <a href="https://www.electronics-notes.com/articles/basic_concepts/decibel/basics-tutorial-formula-equation.php">URL</a></li>
+      <li id="r2">[2] "Decibel." Wikipedia. <a href="https://en.wikipedia.org/wiki/Decibel">URL</a></li>
+      <li id="r3">[3] "Gain (electronics)." Wikipedia. <a href="https://en.wikipedia.org/wiki/Gain_(electronics)">URL</a></li>
+      <li id="r4">[4] "Working with Decibels." LearnEMC. <a href="https://learnemc.com/working-with-decibels">URL</a></li>
+      <li id="r5" class="unverified">[5] — UNVERIFIED — "Converting dBm to dBuV in a 50-ohm System." Keysight Knowledge Base. URL returned HTTP 403 at time of writing. The derivation of the +107 constant was verified independently via [6]. <a href="https://docs.keysight.com/kkbopen/converting-dbm-to-dbuv-in-a-50-ohm-system-588262310.html">URL</a></li>
+      <li id="r6">[6] "Decibel Voltage/Power Calculator." Redcrab Software. <a href="https://www.redcrab-software.com/en/Calculator/Electrics/Decibel-Voltage-Power">URL</a></li>
+      <li id="r7">[7] "Impedance Mismatch and dBuV/dBm conversion." 3roam. <a href="https://3roam.com/impedance-mismatch-loss-calculator/">URL</a></li>
+      <li id="r8">[8] "dBm to Milliwatts Conversion." RapidTables. <a href="https://www.rapidtables.com/electric/dBm.html">URL</a></li>
+      <li id="r9">[9] "CISPR 22 / EN 55022 EMC Standard — Limits and Details." Electronics-Notes. <a href="https://www.electronics-notes.com/articles/analogue_circuits/emc-emi-electromagnetic-interference-compatibility/cispr22-en55022-standard.php">URL</a></li>
+      <li id="r10">[10] "CISPR 32 — Emissions Standard for Multimedia Equipment." Elite Electronic Engineering. <a href="https://www.elitetest.com/blog/emc-emi-testing/cispr-32-emissions-multimedia-equipment-end-of-cispr-22/">URL</a></li>
+      <li id="r11">[11] "FCC Part 15 Class A and Class B Limits." Compliance Testing. <a href="https://compliancetesting.com/fcc-part-15-class-a-class-b-limits/">URL</a></li>
+      <li id="r12">[12] "EMI Emissions Testing Guide." LED Test System. <a href="https://www.ledtestsystem.com/blogs/emi-emissions-testing-guide/">URL</a></li>
+      <li id="r13">[13] "IEC 61000-4-3 Radiated Immunity Test System for EMC Compliance." LED Photometer. <a href="https://www.ledphotometer.com/blogs/iec-61000-4-3-radiated-immunity-test-system-for-emc-compliance/">URL</a></li>
+      <li id="r14">[14] "IEC 61000-4-6 Conducted Immunity." Keystone Compliance. <a href="https://keystonecompliance.com/iec-61000-4-6/">URL</a></li>
+      <li id="r15">[15] "Antenna Factor." In Compliance Magazine. <a href="https://incompliancemag.com/antenna-factor/">URL</a></li>
+      <li id="r16">[16] "EMC Bench Notes: Pre-Compliance Testing for Radiated Emissions Part 2." In Compliance Magazine. <a href="https://incompliancemag.com/emc-bench-notes-pre-compliance-testing-for-radiated-emissions-part-2-making-the-measurement/">URL</a></li>
+      <li id="r17">[17] "Antenna Selection for Automotive EMC Emissions and Immunity Applications 100 kHz to 18 GHz." Interference Technology. <a href="https://interferencetechnology.com/antenna-selection-for-automotive-emc-emissions-and-immunity-applications-100-khz-to-18-ghz/">URL</a></li>
+      <li id="r18">[18] "Radiated Emission Pre-Compliance Testing." DB Absorber. <a href="https://dbabsorber.com/blogs/blog/radiated-emission-pre-compliance-testing">URL</a></li>
+      <li id="r19">[19] "PAM-103 Broadband EMI Preamplifier 1 MHz–1 GHz." Com-Power. <a href="https://www.com-power.com/products/preamplifiers/pam-103">URL</a></li>
+      <li id="r20" class="unverified">[20] — UNVERIFIED — "Coax Cable Loss Reference." 73QRZ. The specific numerical values (RG-58: 6.2 dB/100 ft at 144 MHz; LMR-400: 1.5 dB/100 ft at 144 MHz) were returned by a researcher agent but the interactive calculator page does not display these values in verifiable text form. Verify cable loss from manufacturer datasheets (Times Microwave LMR-400, Belden 8259/RG-58). <a href="https://www.73qrz.com/coax-loss">URL</a></li>
+      <li id="r21">[21] "Coax Cable Loss Calculator and Formula." Basic Free Tools. <a href="https://basicfreetools.com/coax-cable-loss-calculator/">URL</a></li>
+      <li id="r22">[22] "How to Measure Cable Loss." Rohde &amp; Schwarz. <a href="https://www.rohde-schwarz.com/us/products/test-and-measurement/essentials-test-equipment/spectrum-analyzers/how-to-measure-cable-loss_258130.html">URL</a></li>
+      <li id="r23">[23] "What is a LISN in EMC Testing?" TestUPS. <a href="https://www.testups.com/what-is-a-lisn-emc-testing/">URL</a></li>
+      <li id="r24">[24] "EMI Emissions Testing Guide — Conducted Band." LED Test System. <a href="https://www.ledtestsystem.com/blogs/emi-emissions-testing-guide/">URL</a></li>
+      <li id="r25">[25] "EMI Measurement Receiver Requirements — CISPR 16-1-1." In Compliance Magazine. <a href="https://incompliancemag.com/emi-measurement-receiver-requirements-cispr-16-1-1/">URL</a></li>
+      <li id="r26">[26] "Differences Between EMI Test Receivers and Spectrum Analyzers." The EMC Shop. <a href="https://theemcshop.com/differences-between-emi-test-receivers-and-spectrum-analyzers">URL</a></li>
+      <li id="r27">[27] "EMI Emissions Testing: Peak, Quasi-Peak, and Average Measurements." EDN. <a href="https://www.edn.com/emi-emissions-testing-peak-quasi-peak-and-average-measurements/">URL</a></li>
+      <li id="r28">[28] "Quasi-Peak Detector." Grokipedia. <a href="https://grokipedia.com/page/Quasi-peak_detector">URL</a></li>
+      <li id="r29">[29] "What Every Electronics Engineer Needs to Know About Measuring Receivers." In Compliance Magazine. <a href="https://incompliancemag.com/what-every-electronics-engineer-needs-to-know-about-measuring-receivers/">URL</a></li>
+      <li id="r30">[30] "The Difference Between a Spectrum Analyzer and a Receiver." LISUN Group. <a href="https://www.lisungroup.com/news/technology-news/the-difference-between-a-spectrum-analyzer-and-a-receiver.html">URL</a></li>
+      <li id="r31" class="unverified">[31] — UNVERIFIED — "Measurement Uncertainty Evaluation for Validating RF/EMC Chambers from 30 MHz to 1000 MHz." ResearchGate. URL returned HTTP 403 (authentication required) at time of writing. The specific uncertainty figures (±2 dB AF, ±4 dB site, ±1.5 dB receiver, combined ~1.9 dB, expanded ~3.75 dB) were provided by researcher agent but cannot be independently confirmed. <a href="https://www.researchgate.net/publication/360827976_Measurement_Uncertainty_Evaluation_for_Validating_RFEMC_Chambers_from_30_MHz_to_1000_MHz">URL</a></li>
+      <li id="r32">[32] "Evolution of Margin Demonstrations in the EMC Discipline." In Compliance Magazine. <a href="https://incompliancemag.com/evolution-of-margin-demonstrations-in-the-emc-discipline/">URL</a></li>
+      <li id="r33">[33] "Margins Matter: Leaving Room for Error in EMC Design." Analog Devices / EngineerZone. <a href="https://ez.analog.com/ez-blogs/b/engineerzone-spotlight/posts/margins-matter-leaving-room-for-error-in-emc-design">URL</a></li>
+      <li id="r34">[34] "2026 Guide to Radiated vs. Conducted Emissions Testing." Green Mountain Electromagnetics. <a href="https://gmelectro.com/blog/2026-guide-to-radiated-vs.-conducted-emissions-testing-for-engineers">URL</a></li>
+      <li id="r35">[35] "Pre-Compliance vs Full Compliance Testing." EMC Testing Services. <a href="https://emctestingservices.com/pre-compliance-vs-full-compliance/">URL</a></li>
+      <li id="r36">[36] "Ferrite Beads vs EMI Filters — Key Differences Explained." EMCDorexs. <a href="https://www.emcdorexs.com/ferrite-beads-vs-emi-filters-key-differences-explained.html">URL</a></li>
+      <li id="r37">[37] "Radiated Emission Measurements in the Semi-Anechoic Chamber." In Compliance Magazine. <a href="https://incompliancemag.com/radiated-emission-measurements-in-the-semi-anechoic-chamber-at-3-5-and-10-m-distance-results-and-empirical-estimates/">URL</a></li>
+      <li id="r38">[38] "EMC Regulations and Standards." LearnEMC. <a href="https://learnemc.com/emc-regulations-and-standards">URL</a></li>
+      <li id="r39">[39] "Insertion Loss Calculator — Cascaded Gain." Firgelli Auto. <a href="https://www.firgelliauto.com/blogs/engineering-calculators/insertion-loss-calculator">URL</a></li>
+      <li id="r40">[40] "Mismatch Loss Effect on RF Power Measurement and Gain of Cascaded Amplifiers." All About Circuits. <a href="https://www.allaboutcircuits.com/technical-articles/mismatch-loss-effect-on-radio-frequency-power-measurement-and-gain-of-cascaded-amplifiers/">URL</a></li>
+    </ol>
+  </div>
+</details>
+</div>
+
+<footer><div class="wrap"><a class="back-link" href="../index.html">← Index</a></div></footer>
+
+<script>
+// ── scroll progress ──
+window.addEventListener('scroll', () => {
+  const el = document.documentElement;
+  document.getElementById('prog').style.width =
+    (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+});
+
+// ── cascaded gain diagram ──
+(function() {
+  const container = document.getElementById('chain-diagram');
+  if (!container) return;
+
+  const stages = [
+    { label: 'Biconical\nAntenna AF', val: '+18 dB/m', cls: 'pos' },
+    { label: 'Cable\n(RG-58, 3m)', val: '−1.8 dB', cls: 'neg' },
+    { label: 'Preamp\n(PAM-103)', val: '+33 dB', cls: 'pos' },
+    { label: 'EMI Receiver', val: 'reads V_rx', cls: '' },
+  ];
+
+  let html = '';
+  stages.forEach((s, i) => {
+    html += `<div class="chain-block">
+      <div class="cb-label">${s.label.replace('\n', '<br>')}</div>
+      <div class="cb-val ${s.cls}">${s.val}</div>
+    </div>`;
+    if (i < stages.length - 1) html += '<span class="chain-arrow">→</span>';
+  });
+
+  html += `<span class="chain-arrow" style="margin-left:12px">→</span>
+  <div class="chain-total">
+    <div class="ct-label">E-field (dBµV/m) =</div>
+    <div class="ct-val">V_rx + 18 + 1.8 − 33</div>
+    <div class="ct-label">= V_rx − 13.2 dBµV/m offset</div>
+  </div>`;
+
+  container.innerHTML = html;
+})();
+
+// ── radiated chain SVG ──
+(function() {
+  const el = document.getElementById('radiated-chain');
+  if (!el) return;
+
+  const W = 700, H = 120;
+  const blocks = [
+    { x: 20, label: 'DUT', sub: '(radiating)', color: '#ff5a52' },
+    { x: 170, label: 'Biconical/LP', sub: 'AF: +15 dB/m', color: '#39d0c0' },
+    { x: 330, label: 'Cable', sub: '−2 dB @300MHz', color: '#f0a24b' },
+    { x: 470, label: 'Preamp', sub: '+25 dB', color: '#5b8cff' },
+    { x: 610, label: 'EMI Receiver', sub: 'reads dBµV', color: '#5fd0a6' },
+  ];
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+
+  // draw arrows between blocks
+  for (let i = 0; i < blocks.length - 1; i++) {
+    const x1 = blocks[i].x + 90, x2 = blocks[i+1].x;
+    svg += `<line x1="${x1}" y1="50" x2="${x2}" y2="50" stroke="rgba(255,255,255,.2)" stroke-width="1.5"/>
+            <polygon points="${x2},45 ${x2},55 ${x2+7},50" fill="rgba(255,255,255,.3)"/>`;
+  }
+
+  // draw blocks
+  blocks.forEach(b => {
+    svg += `<rect x="${b.x}" y="24" width="90" height="52" rx="7" fill="#181219" stroke="${b.color}" stroke-width="1.5" stroke-opacity=".6"/>
+            <text x="${b.x+45}" y="46" text-anchor="middle" fill="${b.color}" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="600">${b.label}</text>
+            <text x="${b.x+45}" y="63" text-anchor="middle" fill="#7e716c" font-family="JetBrains Mono,monospace" font-size="9.5">${b.sub}</text>`;
+  });
+
+  svg += '</svg>';
+  el.innerHTML = svg;
+})();
+
+// ── EMC scan chart ──
+(function() {
+  const el = document.getElementById('scan-chart');
+  if (!el) return;
+
+  const W = 700, H = 200, PL = 54, PR = 20, PT = 18, PB = 36;
+  const IW = W - PL - PR, IH = H - PT - PB;
+
+  // frequency range 30–1000 MHz, Y range 20–70 dBµV/m
+  const freqMin = Math.log10(30), freqMax = Math.log10(1000);
+  const yMin = 20, yMax = 70;
+
+  function xf(freq) { return PL + (Math.log10(freq) - freqMin) / (freqMax - freqMin) * IW; }
+  function yf(db)   { return PT + IH - (db - yMin) / (yMax - yMin) * IH; }
+
+  // limit line (CISPR 32 Class B, 3m, piecewise)
+  const limitSegs = [
+    [30, 40], [88, 40], [88, 43.5], [216, 43.5], [216, 46], [960, 46], [960, 54], [1000, 54]
+  ];
+
+  // simulated emission trace (noisy, with spurs, stays mostly below limit)
+  const emitPoints = [];
+  const freqs = [];
+  for (let f = 30; f <= 1000; f += 5) freqs.push(f);
+  freqs.forEach(f => {
+    let base = 30 + 6 * Math.sin(Math.log(f) * 2.3);
+    // add some spurs
+    if (f > 75 && f < 85) base += 5;
+    if (f > 140 && f < 155) base += 8;
+    if (f > 250 && f < 260) base += 6;
+    if (f > 480 && f < 495) base += 4;
+    base += (Math.random() - 0.5) * 3;
+    emitPoints.push([f, Math.max(22, Math.min(base, 52))]);
+  });
+
+  let limitPath = '';
+  limitSegs.forEach(([f, db], i) => {
+    limitPath += (i === 0 ? 'M' : 'L') + `${xf(f).toFixed(1)},${yf(db).toFixed(1)} `;
+  });
+
+  let emitPath = '';
+  emitPoints.forEach(([f, db], i) => {
+    emitPath += (i === 0 ? 'M' : 'L') + `${xf(f).toFixed(1)},${yf(db).toFixed(1)} `;
+  });
+
+  // margin arrow at ~145 MHz (peak spur)
+  const mx = xf(147), myPeak = yf(45.5), myLimit = yf(43.5);
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+
+  // grid lines — freq decades
+  [30,100,300,1000].forEach(f => {
+    const x = xf(f);
+    svg += `<line x1="${x}" y1="${PT}" x2="${x}" y2="${PT+IH}" stroke="rgba(255,255,255,.05)" stroke-width="1"/>
+            <text x="${x}" y="${PT+IH+14}" text-anchor="middle" fill="#7e716c" font-family="JetBrains Mono,monospace" font-size="10">${f} MHz</text>`;
+  });
+
+  // grid lines — dB levels
+  [30,40,50,60].forEach(db => {
+    const y = yf(db);
+    svg += `<line x1="${PL}" y1="${y}" x2="${PL+IW}" y2="${y}" stroke="rgba(255,255,255,.05)" stroke-width="1"/>
+            <text x="${PL-6}" y="${y+4}" text-anchor="end" fill="#7e716c" font-family="JetBrains Mono,monospace" font-size="10">${db}</text>`;
+  });
+
+  // axis labels
+  svg += `<text x="${PL-42}" y="${PT+IH/2}" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono,monospace" font-size="10" transform="rotate(-90,${PL-42},${PT+IH/2})">dBµV/m</text>`;
+  svg += `<text x="${PL+IW/2}" y="${H-2}" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono,monospace" font-size="10">Frequency</text>`;
+
+  // emission trace
+  svg += `<path d="${emitPath}" fill="none" stroke="#5b8cff" stroke-width="1.5" opacity="0.9"/>`;
+
+  // limit line
+  svg += `<path d="${limitPath}" fill="none" stroke="#ff5a52" stroke-width="1.5" stroke-dasharray="6,3"/>`;
+
+  // margin annotation
+  svg += `<line x1="${mx}" y1="${myPeak}" x2="${mx}" y2="${myLimit}" stroke="#f0a24b" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <polygon points="${mx-4},${myLimit+8} ${mx+4},${myLimit+8} ${mx},${myLimit}" fill="#f0a24b"/>
+          <polygon points="${mx-4},${myPeak-8} ${mx+4},${myPeak-8} ${mx},${myPeak}" fill="#f0a24b"/>
+          <rect x="${mx+4}" y="${(myPeak+myLimit)/2-9}" width="56" height="18" rx="4" fill="#181219"/>
+          <text x="${mx+7}" y="${(myPeak+myLimit)/2+4}" fill="#f0a24b" font-family="JetBrains Mono,monospace" font-size="10">~2 dB margin</text>`;
+
+  // legend
+  svg += `<line x1="${PL+10}" y1="${PT+10}" x2="${PL+30}" y2="${PT+10}" stroke="#5b8cff" stroke-width="1.5"/>
+          <text x="${PL+34}" y="${PT+14}" fill="#a8978f" font-family="JetBrains Mono,monospace" font-size="10">measured emissions</text>
+          <line x1="${PL+200}" y1="${PT+10}" x2="${PL+220}" y2="${PT+10}" stroke="#ff5a52" stroke-width="1.5" stroke-dasharray="5,3"/>
+          <text x="${PL+224}" y="${PT+14}" fill="#a8978f" font-family="JetBrains Mono,monospace" font-size="10">CISPR 32 Class B limit (3m)</text>`;
+
+  svg += '</svg>';
+  el.innerHTML = svg;
+})();
+</script>
+</body>
+</html>
