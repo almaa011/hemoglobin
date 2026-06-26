@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Claude Code HTML Report Guide</title>
+<style>
+/* ── Color tokens ── */
+:root {
+  --bg:       #f9f8f6;
+  --bg2:      #f0ede8;
+  --surface:  #ffffff;
+  --surface2: #f4f2ef;
+  --border:   #e2ddd8;
+  --border2:  #cdc8c2;
+  --text:     #1c1a18;
+  --text2:    #4a4540;
+  --text3:    #8a817a;
+  --accent:   #4f46e5;
+  --cyan:     #0891b2;
+  --green:    #059669;
+  --amber:    #d97706;
+  --red:      #dc2626;
+  --code-bg:  #1e1e2e;
+  --code-fg:  #cdd6f4;
+  --shadow:   rgba(0,0,0,0.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:       #0f1117;
+    --bg2:      #161b22;
+    --surface:  #1c2030;
+    --surface2: #242938;
+    --border:   #2d3748;
+    --border2:  #3d4a5c;
+    --text:     #e8e4dc;
+    --text2:    #b4aaa0;
+    --text3:    #6b6460;
+    --accent:   #818cf8;
+    --cyan:     #22d3ee;
+    --green:    #34d399;
+    --amber:    #fbbf24;
+    --red:      #f87171;
+    --shadow:   rgba(0,0,0,0.3);
+  }
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation: none !important; transition: none !important; }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ── Progress bar ── */
+#prog {
+  position: fixed; top: 0; left: 0;
+  height: 3px; width: 0;
+  background: linear-gradient(90deg, var(--accent), var(--cyan));
+  z-index: 200; transition: width .1s;
+}
+
+/* ── Layout ── */
+.w { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+
+/* ── Sticky nav ── */
+.topnav {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+}
+.topnav .w {
+  display: flex; align-items: center;
+  padding-top: 12px; padding-bottom: 12px;
+  gap: 20px;
+}
+.nav-brand {
+  font-size: 13px; font-weight: 700; color: var(--accent);
+  text-decoration: none; letter-spacing: -0.01em;
+}
+.nav-links { margin-left: auto; display: flex; gap: 20px; list-style: none; padding: 0; margin-top: 0; margin-bottom: 0; }
+.nav-links a { font-size: 12px; color: var(--text3); text-decoration: none; }
+.nav-links a:hover { color: var(--accent); }
+
+/* ── Hero ── */
+.hero { padding: 72px 0 56px; border-bottom: 1px solid var(--border); }
+.kicker {
+  font-size: 11px; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--accent);
+  margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+}
+.kicker::before { content:''; display:inline-block; width:20px; height:2px; background:var(--accent); border-radius:2px; }
+h1 {
+  font-size: clamp(1.9rem, 5vw, 2.9rem);
+  font-weight: 700; line-height: 1.08; letter-spacing: -.03em;
+  margin: 0 0 20px; color: var(--text);
+}
+h1 em { font-style: normal; color: var(--accent); }
+.lead { font-size: 1.1rem; color: var(--text2); max-width: 620px; line-height: 1.7; margin: 0 0 28px; }
+.meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--text3); align-items: center; }
+.badge {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 500; color: var(--text2);
+}
+
+/* ── TOC ── */
+.toc {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px 24px; margin: 36px 0;
+}
+.toc-hd {
+  font-size: 10px; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--text3); margin: 0 0 12px;
+}
+.toc ol { margin: 0; padding: 0 0 0 16px; columns: 2; column-gap: 24px; }
+@media (max-width: 560px) { .toc ol { columns: 1; } }
+.toc li { font-size: 13px; color: var(--text2); margin-bottom: 4px; break-inside: avoid; }
+.toc a { color: var(--accent); text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+
+/* ── Sections ── */
+section { padding: 64px 0; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+
+.eyebrow {
+  font-size: 10px; font-weight: 700; letter-spacing: .15em;
+  text-transform: uppercase; color: var(--accent);
+  margin: 0 0 14px; display: flex; align-items: center; gap: 8px;
+}
+.sn {
+  width: 20px; height: 20px; background: var(--accent); color: #fff;
+  border-radius: 50%; font-size: 9px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+h2 {
+  font-size: clamp(1.3rem, 3vw, 1.8rem);
+  font-weight: 700; letter-spacing: -.02em; line-height: 1.2;
+  margin: 0 0 14px; color: var(--text);
+}
+h3 { font-size: 1.05rem; font-weight: 600; margin: 36px 0 10px; color: var(--text); letter-spacing: -.01em; }
+p { margin: 0 0 14px; color: var(--text2); }
+p strong { color: var(--text); }
+a { color: var(--accent); }
+ul, ol { color: var(--text2); padding-left: 20px; }
+li { margin-bottom: 6px; }
+
+.intro {
+  font-size: 1.02rem; color: var(--text2); max-width: 700px;
+  border-left: 3px solid var(--accent); padding-left: 16px;
+  margin: 0 0 32px; line-height: 1.7;
+}
+
+/* ── Code ── */
+pre {
+  background: var(--code-bg); border-radius: 10px;
+  padding: 18px 22px; overflow-x: auto;
+  margin: 18px 0; font-size: .85rem; line-height: 1.65;
+  border: 1px solid rgba(255,255,255,.07);
+}
+code {
+  font-family: 'JetBrains Mono','Cascadia Code','Fira Code','SF Mono',Consolas,monospace;
+  font-size: .875em;
+}
+pre code { font-size: inherit; color: var(--code-fg); background: none; }
+:not(pre) > code {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 5px; color: var(--text); font-size: .82em;
+}
+.code-cap {
+  font-size: 11px; color: var(--text3); margin-top: -10px; margin-bottom: 18px;
+  font-family: 'JetBrains Mono',monospace;
+}
+
+/* Syntax tokens — all used inside dark code-bg, so colors are fixed */
+.kw  { color: #c792ea; }
+.str { color: #9ece6a; }
+.cm  { color: #545c7e; }
+.fn  { color: #7aa2f7; }
+.nm  { color: #ff9e64; }
+.tp  { color: #2ac3de; }
+.at  { color: #e0af68; }
+.op  { color: #89ddff; }
+.pu  { color: #89ddff; }
+
+/* Code file header (GitHub-style) */
+.code-file {
+  background: #161b22; border: 1px solid #30363d;
+  border-radius: 10px; overflow: hidden; margin: 18px 0;
+}
+.code-file-hd {
+  background: #161b22; border-bottom: 1px solid #30363d;
+  padding: 8px 16px; font-size: 12px; color: #8b949e;
+  font-family: 'JetBrains Mono',monospace;
+  display: flex; align-items: center; gap: 8px;
+}
+.code-file pre { margin: 0; border-radius: 0; border: none; }
+
+/* ── Tables ── */
+.tbl-wrap { overflow-x: auto; margin: 22px 0; border-radius: 10px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th {
+  text-align: left; padding: 10px 14px;
+  border-bottom: 1px solid var(--border2);
+  font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text3);
+  background: var(--surface2);
+}
+td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text2); }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 500; color: var(--text); }
+.g { color: var(--green); font-weight: 600; }
+.b { color: var(--red);   font-weight: 600; }
+.w { color: var(--amber); font-weight: 600; }
+
+/* ── Cards ── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 22px; margin: 18px 0;
+}
+.card-title { font-weight: 600; font-size: 14px; color: var(--text); margin: 0 0 10px; }
+.card-sub { font-size: 12px; color: var(--text3); font-family: 'JetBrains Mono',monospace; margin: -6px 0 14px; }
+
+/* ── Callout boxes ── */
+.note {
+  background: rgba(79,70,229,.07); border: 1px solid rgba(79,70,229,.25);
+  border-radius: 10px; padding: 14px 18px; margin: 18px 0;
+}
+.note-lbl { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+.note p { margin: 0; font-size: 14px; }
+.warn-box {
+  background: rgba(217,119,6,.07); border: 1px solid rgba(217,119,6,.3);
+  border-left: 3px solid var(--amber); border-radius: 10px; padding: 14px 18px; margin: 18px 0;
+}
+.warn-lbl { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--amber); margin-bottom: 4px; }
+.warn-box p { margin: 0; font-size: 14px; }
+
+/* ── Compare grid ── */
+.cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0; }
+@media (max-width: 600px) { .cmp { grid-template-columns: 1fr; } }
+.cmp-bad, .cmp-good { border-radius: 10px; overflow: hidden; }
+.cmp-bad  { border: 1px solid rgba(220,38,38,.35); }
+.cmp-good { border: 1px solid rgba(5,150,105,.35);  }
+.cmp-hd {
+  padding: 7px 14px; font-size: 10px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 6px;
+}
+.cmp-bad  .cmp-hd { background: rgba(220,38,38,.1);  color: var(--red);   }
+.cmp-good .cmp-hd { background: rgba(5,150,105,.1); color: var(--green); }
+.cmp-bad  pre,
+.cmp-good pre { margin: 0; border-radius: 0; border: none; border-top: 1px solid rgba(255,255,255,.06); }
+
+/* ── Spec row ── */
+.specs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 10px; margin: 22px 0; }
+.spec {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px;
+}
+.spec-dot { display: block; width: 22px; height: 3px; border-radius: 2px; margin-bottom: 10px; }
+.spec-v { font-family: 'JetBrains Mono',monospace; font-size: 1.3rem; font-weight: 700; color: var(--text); line-height: 1.1; margin-bottom: 4px; }
+.spec-l { font-size: 12px; color: var(--text3); }
+
+/* ── SVG chart panel ── */
+.chart-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 22px; margin: 22px 0;
+}
+.chart-title { font-weight: 600; font-size: 14px; margin: 0 0 2px; color: var(--text); }
+.chart-sub { font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono',monospace; margin: 0 0 18px; }
+
+/* ── Failure items ── */
+.failures { display: grid; gap: 12px; margin: 22px 0; }
+.fail {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px 18px;
+  display: grid; grid-template-columns: 28px 1fr; gap: 14px; align-items: start;
+}
+.fail-n {
+  width: 28px; height: 28px;
+  background: rgba(220,38,38,.1); border: 1px solid rgba(220,38,38,.3);
+  color: var(--red); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.fail-title { font-weight: 600; font-size: 14px; color: var(--text); margin-bottom: 4px; }
+.fail-desc { font-size: 13px; color: var(--text2); margin: 0; }
+.fail-fix { font-size: 12px; color: var(--green); margin-top: 6px; }
+
+/* ── Canvas demo area ── */
+.canvas-wrap {
+  background: var(--code-bg); border-radius: 10px;
+  padding: 20px; margin: 18px 0; text-align: center;
+}
+
+/* ── Footer ── */
+footer {
+  padding: 40px 0; text-align: center;
+  border-top: 1px solid var(--border);
+  font-size: 13px; color: var(--text3);
+}
+</style>
+</head>
+<body>
+<div id="prog"></div>
+
+<!-- ── NAV ── -->
+<nav class="topnav">
+  <div class="w">
+    <a class="nav-brand" href="#">HTML Report Guide</a>
+    <ul class="nav-links">
+      <li><a href="#stack">Stack</a></li>
+      <li><a href="#charting">Charts</a></li>
+      <li><a href="#containment">Self-Contained</a></li>
+      <li><a href="#failures">Failures</a></li>
+      <li><a href="#example">Example</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<header class="hero">
+  <div class="w">
+    <p class="kicker">Claude Code · HTML Reports · Best Practices</p>
+    <h1>Generate HTML reports<br>that are actually <em>good.</em></h1>
+    <p class="lead">A hardware-engineer-style guide to charting libraries, self-containment, CLAUDE.md rules, and the failure modes AI agents commit when generating HTML reports — based on verified documentation and real library specs.</p>
+    <div class="meta">
+      <span>2026-06-26</span>
+      <span class="badge">Self-contained</span>
+      <span class="badge">No CDN</span>
+      <span class="badge">Light + Dark Mode</span>
+    </div>
+  </div>
+</header>
+
+<!-- ── TOC ── -->
+<div class="w">
+  <div class="toc">
+    <p class="toc-hd">Contents</p>
+    <ol>
+      <li><a href="#what">What Claude Code is and how it works</a></li>
+      <li><a href="#stack">The right stack for HTML reports</a></li>
+      <li><a href="#charting">Charting: libraries and correct usage</a></li>
+      <li><a href="#containment">Self-contained HTML: how to do it right</a></li>
+      <li><a href="#claudemd">CLAUDE.md instructions for report quality</a></li>
+      <li><a href="#failures">Common failure modes (10 specific)</a></li>
+      <li><a href="#example">Complete minimal working example</a></li>
+    </ol>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 1 — WHAT CLAUDE CODE IS
+══════════════════════════════════════════════════ -->
+<section id="what">
+<div class="w">
+  <p class="eyebrow"><span class="sn">1</span> Overview</p>
+  <h2>What Claude Code is and how it works</h2>
+  <p class="intro">Understanding the architecture matters for report generation: Claude Code is not just a chat window — it has a persistent memory layer, isolated subagents, and a context-budget constraint that determines everything.</p>
+
+  <p>Claude Code is an AI coding assistant that reads entire codebases, edits files, and runs shell commands. It is available as a CLI, IDE extension (VS Code, JetBrains), desktop app, and web interface. The core loop is: read context → plan → execute → verify.</p>
+
+  <h3>CLAUDE.md — persistent project instructions</h3>
+  <p>A <code>CLAUDE.md</code> file at the project root gives Claude persistent instructions for coding standards, workflow rules, and architectural decisions. Claude reads it at the start of every session. Target under 200 lines per file — larger files consume context budget and reduce instruction adherence. Rules can be scoped to specific file patterns using YAML frontmatter in <code>.claude/rules/</code> subdirectories.</p>
+
+  <h3>Memory system</h3>
+  <p>Claude Code stores accumulated learnings in <code>~/.claude/projects/&lt;project&gt;/memory/</code>. The first 200 lines of <code>MEMORY.md</code> (or 25 KB) load at session start. Detailed topic files are lazy-loaded on demand. This keeps startup context cost low while making prior learnings available.</p>
+
+  <h3>Subagents and parallelism</h3>
+  <p>Subagents are isolated agent instances that handle focused subtasks. Each runs in a separate context window — intermediate tool calls stay inside; only the final message returns to the parent. Multiple subagents can run concurrently: independent tasks finish in the time of the <em>slowest</em> one, not the sum. Subagents can have restricted tool access (read-only, write-only, etc.) via the <code>tools</code> field.</p>
+
+  <div class="note">
+    <p class="note-lbl">Key insight for report generation</p>
+    <p>The context window is the primary constraint. Every file Claude reads, every command output, every conversation turn consumes context. Subagents offload exploratory work (reading dozens of source files) to separate context windows — the parent gets a summary, not the raw content. Design your workflows to exploit this: use subagents for research, the main agent for writing.</p>
+  </div>
+
+  <h3>Verification signals</h3>
+  <p>Claude stops when work "looks done." Without a runnable check (test suite, build command, linter), human review becomes the only error-detection loop. For report generation, this means: give Claude a validator that produces pass/fail — an HTML validator, a link checker, or a screenshot comparison — and the loop closes itself.</p>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 2 — RIGHT STACK
+══════════════════════════════════════════════════ -->
+<section id="stack">
+<div class="w">
+  <p class="eyebrow"><span class="sn">2</span> Stack selection</p>
+  <h2>The right stack for HTML reports</h2>
+  <p class="intro">Three viable approaches exist. Each has a different tradeoff between data integration ease, chart interactivity, and portability. Choose based on whether the report is generated once or reused.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Stack</th>
+          <th>Self-containment</th>
+          <th>Chart quality</th>
+          <th>Data integration</th>
+          <th>Build complexity</th>
+          <th>Best for</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Pure HTML + JS</td>
+          <td class="g">Excellent</td>
+          <td class="w">Good (manual)</td>
+          <td class="w">Manual / JSON inline</td>
+          <td class="g">None</td>
+          <td>Portability-first, one-file delivery</td>
+        </tr>
+        <tr>
+          <td>Python + Jinja2</td>
+          <td class="w">Good</td>
+          <td class="g">Excellent (matplotlib)</td>
+          <td class="g">Native (pandas, etc.)</td>
+          <td class="g">Low</td>
+          <td>Data pipelines, programmatic generation</td>
+        </tr>
+        <tr>
+          <td>Python + Plotly</td>
+          <td class="b">Large (+3 MB)</td>
+          <td class="g">Excellent (interactive)</td>
+          <td class="g">Native</td>
+          <td class="g">Low</td>
+          <td>Interactive dashboards with filter controls</td>
+        </tr>
+        <tr>
+          <td>Node.js + templating</td>
+          <td class="w">Fair</td>
+          <td class="g">Excellent</td>
+          <td class="w">Good</td>
+          <td class="b">Medium</td>
+          <td>Complex UI with React/Vue components</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Recommendation: Pure HTML/JS for maximum portability</h3>
+  <p>For reports that need to open offline, be emailed as a single attachment, or work in restricted environments — pure HTML/JS wins. Embed data as a JSON literal in a <code>&lt;script&gt;</code> block, render charts via Canvas API or a bundled charting library, and keep all CSS inline. The entire deliverable is one <code>.html</code> file that opens in any browser from 2018 onward.</p>
+
+  <h3>When to use Python + Jinja2 instead</h3>
+  <p>If the report is generated from a data pipeline (pandas DataFrames, database queries, numpy arrays), Python wins on data integration. Use Jinja2 templates to separate the HTML structure from the Python logic. Use matplotlib with <code>savefig(BytesIO)</code> + base64 encoding to embed static charts with no JavaScript required. This approach produces smaller files than Plotly-embedded HTML.</p>
+
+  <div class="warn-box">
+    <p class="warn-lbl">Avoid this combination</p>
+    <p>Node.js + React for a one-off technical report. The build toolchain complexity (webpack, babel, npm packages) vastly exceeds the value. Reserve React for reports that need state management, filtering, or real-time data. For static technical reports, it is pure overhead.</p>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 3 — CHARTING
+══════════════════════════════════════════════════ -->
+<section id="charting">
+<div class="w">
+  <p class="eyebrow"><span class="sn">3</span> Charting libraries</p>
+  <h2>The right library and how to use it correctly</h2>
+  <p class="intro">Bundle size and rendering model are the two variables that determine which library belongs in a self-contained HTML file. Canvas renders faster at scale; SVG is easier to style and makes accessible DOM nodes. Choose deliberately.</p>
+
+  <div class="specs">
+    <div class="spec"><span class="spec-dot" style="background:var(--accent)"></span><div class="spec-v">92 KB</div><div class="spec-l">Chart.js · gzipped full bundle</div></div>
+    <div class="spec"><span class="spec-dot" style="background:var(--cyan)"></span><div class="spec-v">~167 KB</div><div class="spec-l">Apache ECharts · gzipped (bundlephobia)</div></div>
+    <div class="spec"><span class="spec-dot" style="background:var(--amber)"></span><div class="spec-v">365 KB</div><div class="spec-l">Plotly.js Basic bundle · gzipped</div></div>
+    <div class="spec"><span class="spec-dot" style="background:var(--red)"></span><div class="spec-v">1.4 MB</div><div class="spec-l">Plotly.js Full bundle · gzipped</div></div>
+    <div class="spec"><span class="spec-dot" style="background:var(--green)"></span><div class="spec-v">~15 KB</div><div class="spec-l">D3.js custom tree-shaken build</div></div>
+  </div>
+
+  <!-- Bundle size chart -->
+  <div class="chart-panel">
+    <p class="chart-title">Library bundle size — gzipped (log scale)</p>
+    <p class="chart-sub">Smaller = better for self-contained HTML. Log scale because Plotly full is 15× Chart.js.</p>
+    <div id="bundle-chart"></div>
+    <p style="font-size:12px;color:var(--text3);margin:10px 0 0">Sources: Bundlephobia, official dist READMEs, Chart.js docs</p>
+  </div>
+
+  <h3>Chart.js — recommended for self-contained HTML</h3>
+  <p><strong>When to use it:</strong> Bar, line, pie, radar, doughnut charts in a self-contained HTML file. 92 KB gzipped. Canvas-based rendering. Tree-shakeable since v3 — import only the chart types you use to shave ~56 KB from the bundle.</p>
+  <p><strong>Self-contained embed:</strong> Download <code>chart.umd.min.js</code> from the CDN once, paste its content into a <code>&lt;script&gt;</code> block. No npm, no build step.</p>
+
+  <div class="code-file">
+    <div class="code-file-hd">📄 minimal-chart.html — Chart.js inline bar chart</div>
+<pre><code><span class="pu">&lt;</span><span class="tp">canvas</span> <span class="at">id</span><span class="op">=</span><span class="str">"myChart"</span> <span class="at">width</span><span class="op">=</span><span class="str">"600"</span> <span class="at">height</span><span class="op">=</span><span class="str">"300"</span><span class="pu">&gt;&lt;/</span><span class="tp">canvas</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">script</span><span class="pu">&gt;</span>
+<span class="cm">// Chart.js UMD bundle pasted here (chart.umd.min.js content)</span>
+<span class="kw">const</span> ctx <span class="op">=</span> document.<span class="fn">getElementById</span>(<span class="str">'myChart'</span>).<span class="fn">getContext</span>(<span class="str">'2d'</span>);
+<span class="kw">new</span> <span class="tp">Chart</span>(ctx, {
+  type: <span class="str">'bar'</span>,
+  data: {
+    labels: [<span class="str">'Red'</span>, <span class="str">'Blue'</span>, <span class="str">'Yellow'</span>, <span class="str">'Green'</span>],
+    datasets: [{
+      label: <span class="str">'Votes (n=120)'</span>,       <span class="cm">// ← always include a meaningful label</span>
+      data: [<span class="nm">42</span>, <span class="nm">31</span>, <span class="nm">27</span>, <span class="nm">20</span>],
+      backgroundColor: [<span class="str">'#4f46e5'</span>, <span class="str">'#0891b2'</span>, <span class="str">'#d97706'</span>, <span class="str">'#059669'</span>]
+    }]
+  },
+  options: {
+    responsive: <span class="kw">true</span>,
+    layout: { padding: <span class="nm">12</span> },        <span class="cm">// ← prevents label clipping</span>
+    plugins: {
+      title: { display: <span class="kw">true</span>, text: <span class="str">'Color preference survey'</span> },
+      legend: { position: <span class="str">'top'</span> }
+    },
+    scales: {
+      x: { title: { display: <span class="kw">true</span>, text: <span class="str">'Color'</span> } },   <span class="cm">// ← axis labels</span>
+      y: { title: { display: <span class="kw">true</span>, text: <span class="str">'Votes'</span> }, beginAtZero: <span class="kw">true</span> }
+    }
+  }
+});
+<span class="pu">&lt;/</span><span class="tp">script</span><span class="pu">&gt;</span></code></pre>
+  </div>
+  <p class="code-cap">► layout.padding prevents data labels from being clipped at the canvas edge — a top-5 Chart.js bug.</p>
+
+  <h3>Plotly.js — for interactive or Python-generated reports</h3>
+  <p><strong>When to use it:</strong> When your report needs zoom, pan, hover tooltips, or is generated from Python. The Python API (<code>fig.to_html(include_plotlyjs=<span class="str">'include'</span>)</code>) produces a fully offline HTML file but adds ~3 MB inline. For JavaScript, use the Basic partial bundle (365 KB gzipped) when you only need scatter/bar/pie.</p>
+
+  <div class="code-file">
+    <div class="code-file-hd">🐍 generate_report.py — matplotlib → base64 PNG embed</div>
+<pre><code><span class="kw">import</span> matplotlib.pyplot <span class="kw">as</span> plt
+<span class="kw">import</span> io, base64
+
+fig, ax <span class="op">=</span> plt.<span class="fn">subplots</span>(figsize<span class="op">=</span>(<span class="nm">8</span>, <span class="nm">4</span>), dpi<span class="op">=</span><span class="nm">120</span>)
+ax.<span class="fn">bar</span>([<span class="str">'A'</span>, <span class="str">'B'</span>, <span class="str">'C'</span>], [<span class="nm">42</span>, <span class="nm">31</span>, <span class="nm">27</span>], color<span class="op">=</span><span class="str">'#4f46e5'</span>)
+ax.<span class="fn">set_title</span>(<span class="str">'Category counts'</span>)          <span class="cm"># ← title is mandatory</span>
+ax.<span class="fn">set_xlabel</span>(<span class="str">'Category'</span>)               <span class="cm"># ← label both axes</span>
+ax.<span class="fn">set_ylabel</span>(<span class="str">'Count'</span>)
+ax.<span class="fn">set_ylim</span>(<span class="nm">0</span>, <span class="nm">50</span>)                       <span class="cm"># ← explicit range prevents odd scaling</span>
+fig.<span class="fn">tight_layout</span>()                       <span class="cm"># ← prevents clipped tick labels</span>
+
+buf <span class="op">=</span> io.<span class="fn">BytesIO</span>()
+fig.<span class="fn">savefig</span>(buf, format<span class="op">=</span><span class="str">'png'</span>)
+buf.<span class="fn">seek</span>(<span class="nm">0</span>)
+img_b64 <span class="op">=</span> base64.<span class="fn">b64encode</span>(buf.<span class="fn">getvalue</span>()).<span class="fn">decode</span>(<span class="str">'utf-8'</span>)
+
+html_snippet <span class="op">=</span> <span class="str">f'&lt;img src="data:image/png;base64,{img_b64}" alt="Category counts bar chart"&gt;'</span>
+<span class="cm"># ↑ always include a descriptive alt attribute</span></code></pre>
+  </div>
+  <p class="code-cap">► fig.tight_layout() is critical — without it, axis labels and titles clip on the figure boundary.</p>
+
+  <h3>Common chart failure patterns</h3>
+
+  <div class="cmp">
+    <div class="cmp-bad">
+      <div class="cmp-hd">✗ Bad — no labels, no title</div>
+<pre><code><span class="kw">new</span> <span class="tp">Chart</span>(ctx, {
+  type: <span class="str">'bar'</span>,
+  data: {
+    labels: [<span class="str">'A'</span>, <span class="str">'B'</span>, <span class="str">'C'</span>],
+    datasets: [{
+      data: [<span class="nm">10</span>, <span class="nm">20</span>, <span class="nm">30</span>]
+    }]
+  }
+});</code></pre>
+    </div>
+    <div class="cmp-good">
+      <div class="cmp-hd">✓ Good — title, labels, legend</div>
+<pre><code><span class="kw">new</span> <span class="tp">Chart</span>(ctx, {
+  type: <span class="str">'bar'</span>,
+  data: {
+    labels: [<span class="str">'A'</span>, <span class="str">'B'</span>, <span class="str">'C'</span>],
+    datasets: [{
+      label: <span class="str">'Frequency'</span>,
+      data: [<span class="nm">10</span>, <span class="nm">20</span>, <span class="nm">30</span>]
+    }]
+  },
+  options: {
+    plugins: { title: {
+      display: <span class="kw">true</span>,
+      text: <span class="str">'Letter frequency'</span>
+    }},
+    scales: {
+      x: {title:{display:<span class="kw">true</span>,text:<span class="str">'Letter'</span>}},
+      y: {title:{display:<span class="kw">true</span>,text:<span class="str">'Count'</span>}}
+    }
+  }
+});</code></pre>
+    </div>
+  </div>
+
+  <div class="warn-box">
+    <p class="warn-lbl">Color-only encoding</p>
+    <p>Never use color as the only differentiator between data series. ~8% of men have red-green color blindness. Always pair color with shape, pattern, or direct labels. In Chart.js, add <code>pointStyle</code> variations to scatter charts and use <code>datalabels</code> plugin to label bars directly rather than relying on legend color matching alone.</p>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 4 — SELF-CONTAINED HTML
+══════════════════════════════════════════════════ -->
+<section id="containment">
+<div class="w">
+  <p class="eyebrow"><span class="sn">4</span> Self-Contained HTML</p>
+  <h2>How to make an HTML file truly self-contained</h2>
+  <p class="intro">A self-contained HTML file opens correctly with no internet connection, no local server, and no sibling files. Every resource — fonts, CSS, JS, images — must live inside the single <code>.html</code> file.</p>
+
+  <h3>Fonts: use system font stacks (preferred)</h3>
+  <p>The simplest approach: use a system font stack that requires zero embedding and works on every platform without a single byte of overhead.</p>
+
+  <div class="code-file">
+    <div class="code-file-hd">CSS — system font stack (zero external dependency)</div>
+<pre><code><span class="at">body</span> {
+  font-family: <span class="op">-</span>apple-system, BlinkMacSystemFont, <span class="str">'Segoe UI'</span>,
+               Roboto, <span class="str">'Helvetica Neue'</span>, Arial, sans-serif;
+}
+<span class="at">code</span>, <span class="at">pre</span> {
+  font-family: <span class="str">'JetBrains Mono'</span>, <span class="str">'Cascadia Code'</span>, <span class="str">'Fira Code'</span>,
+               <span class="str">'SF Mono'</span>, Consolas, <span class="str">'Courier New'</span>, monospace;
+}</code></pre>
+  </div>
+
+  <h3>Fonts: base64 embed (when a specific typeface is required)</h3>
+  <p>Base64-encoded fonts add ~33% size overhead versus the original file and block CSS parsing. The break-even point is approximately 10 KB: below this threshold, eliminating one HTTP round-trip outweighs the payload increase. For WOFF2 files (typically 15–80 KB), this makes external loading + <code>font-display: swap</code> the better choice <em>unless</em> offline use is mandatory.</p>
+
+  <div class="code-file">
+    <div class="code-file-hd">CSS — base64 font embed pattern</div>
+<pre><code><span class="at">@font-face</span> {
+  font-family: <span class="str">'MyFont'</span>;
+  src: <span class="fn">url</span>(<span class="str">'data:font/woff2;base64,d09GMgABAAAAA...'</span>) <span class="fn">format</span>(<span class="str">'woff2'</span>);
+  font-weight: <span class="nm">400</span>;
+  font-style: normal;
+  font-display: block; <span class="cm">/* block instead of swap — file is already inline */</span>
+}
+<span class="cm">/* Generate the base64 string: */</span>
+<span class="cm">/* python: base64.b64encode(open('font.woff2','rb').read()).decode() */</span></code></pre>
+  </div>
+
+  <h3>CSS: always inline in &lt;style&gt;</h3>
+  <p>Never use <code>@import</code> in a self-contained file. <code>@import</code> creates a serial dependency chain: the browser must finish downloading and parsing the first stylesheet before it can even request the imported one. Inline all CSS in one <code>&lt;style&gt;</code> block in <code>&lt;head&gt;</code>.</p>
+
+  <h3>JavaScript libraries: paste the minified source</h3>
+  <p>For Chart.js or similar: download the UMD minified bundle once, paste its content inside a <code>&lt;script&gt;</code> tag at the bottom of <code>&lt;body&gt;</code>. Do not use a CDN URL. CDN links require internet and may return 404 after the CDN provider changes their URL structure.</p>
+
+  <div class="code-file">
+    <div class="code-file-hd">HTML structure — correct load order for self-contained reports</div>
+<pre><code><span class="pu">&lt;!</span><span class="tp">DOCTYPE html</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">html</span> <span class="at">lang</span><span class="op">=</span><span class="str">"en"</span><span class="pu">&gt;</span>          <span class="cm">&lt;!-- lang= is mandatory for screen readers --&gt;</span>
+<span class="pu">&lt;</span><span class="tp">head</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">meta</span> <span class="at">charset</span><span class="op">=</span><span class="str">"UTF-8"</span><span class="pu">&gt;</span>   <span class="cm">&lt;!-- must appear within first 1024 bytes --&gt;</span>
+<span class="pu">&lt;</span><span class="tp">meta</span> <span class="at">name</span><span class="op">=</span><span class="str">"viewport"</span> <span class="at">content</span><span class="op">=</span><span class="str">"width=device-width, initial-scale=1"</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">meta</span> <span class="at">name</span><span class="op">=</span><span class="str">"color-scheme"</span> <span class="at">content</span><span class="op">=</span><span class="str">"light dark"</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">title</span><span class="pu">&gt;</span>Report Title<span class="pu">&lt;/</span><span class="tp">title</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">style</span><span class="pu">&gt;</span>
+  <span class="cm">/* ALL CSS here — no @import, no external href */</span>
+  <span class="at">:root</span> { <span class="at">--accent</span>: <span class="nm">#4f46e5</span>; }
+  <span class="at">@media</span> (prefers-color-scheme: dark) {
+    <span class="at">:root</span> { <span class="at">--accent</span>: <span class="nm">#818cf8</span>; }
+  }
+<span class="pu">&lt;/</span><span class="tp">style</span><span class="pu">&gt;</span>
+<span class="pu">&lt;/</span><span class="tp">head</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">body</span><span class="pu">&gt;</span>
+  <span class="cm">&lt;!-- Content --&gt;</span>
+<span class="pu">&lt;</span><span class="tp">script</span><span class="pu">&gt;</span>
+  <span class="cm">/* charting library source pasted here */</span>
+  <span class="cm">/* page-specific chart init code here  */</span>
+<span class="pu">&lt;/</span><span class="tp">script</span><span class="pu">&gt;</span>
+<span class="pu">&lt;/</span><span class="tp">body</span><span class="pu">&gt;</span>
+<span class="pu">&lt;/</span><span class="tp">html</span><span class="pu">&gt;</span></code></pre>
+  </div>
+
+  <h3>Images: SVG inline, raster as base64</h3>
+  <p>For icons and diagrams, use inline <code>&lt;svg&gt;</code> — it stays structured text, compresses well with gzip, and can be styled with CSS. For raster images (matplotlib output, screenshots), embed as <code>data:image/png;base64,...</code> in an <code>&lt;img src=&quot;&quot;&gt;</code> attribute.</p>
+
+  <h3>Dark mode: CSS custom properties + media query</h3>
+  <p>Define your entire color palette as CSS custom properties at <code>:root</code> level, then redefine them inside <code>@media (prefers-color-scheme: dark)</code>. Every element that uses <code>var(--token)</code> automatically switches theme. Never hardcode hex colors outside the token block.</p>
+
+  <div class="code-file">
+    <div class="code-file-hd">CSS — dark mode via custom properties (single-source-of-truth)</div>
+<pre><code><span class="at">:root</span> {
+  <span class="at">--bg</span>:     <span class="nm">#f9f8f6</span>;
+  <span class="at">--text</span>:   <span class="nm">#1c1a18</span>;
+  <span class="at">--accent</span>: <span class="nm">#4f46e5</span>;
+}
+<span class="at">@media</span> (prefers-color-scheme: dark) {
+  <span class="at">:root</span> {
+    <span class="at">--bg</span>:     <span class="nm">#0f1117</span>;
+    <span class="at">--text</span>:   <span class="nm">#e8e4dc</span>;
+    <span class="at">--accent</span>: <span class="nm">#818cf8</span>;   <span class="cm">/* lighter shade for dark bg contrast */</span>
+  }
+}
+<span class="at">body</span> { background: <span class="fn">var</span>(<span class="at">--bg</span>); color: <span class="fn">var</span>(<span class="at">--text</span>); }
+<span class="at">a</span>    { color: <span class="fn">var</span>(<span class="at">--accent</span>); }
+<span class="cm">/* Never write: background: #f9f8f6; outside :root */</span></code></pre>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 5 — CLAUDE.MD BLOCK
+══════════════════════════════════════════════════ -->
+<section id="claudemd">
+<div class="w">
+  <p class="eyebrow"><span class="sn">5</span> CLAUDE.md</p>
+  <h2>CLAUDE.md instructions for HTML report quality</h2>
+  <p class="intro">Paste this block into your project's CLAUDE.md. These rules enforce the most common failure modes that AI agents commit when generating HTML reports. Rules are written as testable statements, not aspirations.</p>
+
+  <div class="code-file">
+    <div class="code-file-hd">📄 CLAUDE.md — HTML report quality rules (ready to paste)</div>
+<pre><code><span class="cm">## HTML Report Rules</span>
+
+<span class="cm">### Output requirements</span>
+<span class="str">- Output is a single .html file with zero external dependencies. No CDN links, no
+  relative asset paths, no external CSS files. The file must open correctly offline.</span>
+<span class="str">- Every chart must have: a title, labeled x-axis, labeled y-axis, and a legend or
+  direct data labels. A chart without all four is a blocking defect.</span>
+<span class="str">- No placeholder data (Lorem ipsum, [VALUE], TODO, sample data, dummy). Every data
+  point in every chart must come from the actual source data for this report.</span>
+<span class="str">- All colors are defined as CSS custom properties at :root level. Never hardcode
+  a hex color outside the :root block, except inside JS chart configuration where
+  CSS vars are unavailable — in that case, add a comment mapping it to the token.</span>
+<span class="str">- The report must render correctly in both light and dark system themes. Test by
+  defining @media (prefers-color-scheme: dark) with a full :root override.</span>
+<span class="str">- No inline style attributes that override layout (width, margin, padding on
+  structural elements). All layout lives in the &lt;style&gt; block.</span>
+<span class="str">- Responsive at 1200px and 768px viewport widths. Tables must be wrapped in
+  overflow-x: auto containers. No fixed-pixel widths on content columns.</span>
+
+<span class="cm">### Chart requirements</span>
+<span class="str">- Chart.js: always set layout.padding to at least 12 to prevent label clipping.
+  Always set beginAtZero: true on numeric axes unless the data range argues against it.</span>
+<span class="str">- matplotlib: always call fig.tight_layout() before savefig(). Set dpi=120 minimum.
+  Always provide alt text in the &lt;img&gt; tag describing the chart content.</span>
+<span class="str">- Do not use color as the only distinguishing feature between data series.</span>
+
+<span class="cm">### HTML structure requirements</span>
+<span class="str">- &lt;html lang="en"&gt; — lang attribute is mandatory.
+- &lt;meta charset="UTF-8"&gt; must be within first 1024 bytes of document.
+- &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt; required.
+- &lt;meta name="color-scheme" content="light dark"&gt; required when dark mode is supported.
+- All JavaScript is in one &lt;script&gt; block at the bottom of &lt;body&gt;.
+- No duplicate id attributes anywhere in the document.</span>
+
+<span class="cm">### Verification checklist (run before declaring done)</span>
+<span class="str">- [ ] Every chart has title, axis labels, legend/data labels
+- [ ] File opens offline in a browser (no network requests)
+- [ ] Color palette works in both light and dark mode
+- [ ] No placeholder or sample data
+- [ ] No fixed-pixel widths that break at 768px
+- [ ] No duplicate IDs
+- [ ] lang, charset, viewport, color-scheme meta tags present</span></code></pre>
+  </div>
+
+  <div class="note">
+    <p class="note-lbl">Why testable rules beat aspirational ones</p>
+    <p>"Format code properly" cannot be verified. "Use 2-space indentation" can be checked by a linter. The rules above are written so that each one has a clear pass/fail: you can grep for missing axis labels, open DevTools Network tab to confirm zero external requests, and run the W3C validator for duplicate IDs. Testable rules close the verification loop without human review.</p>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 6 — FAILURE MODES
+══════════════════════════════════════════════════ -->
+<section id="failures">
+<div class="w">
+  <p class="eyebrow"><span class="sn">6</span> Failure modes</p>
+  <h2>Ten specific failure modes — and how to fix each</h2>
+  <p class="intro">These are the failure modes observed empirically in AI-generated HTML reports. Each has a structural cause, not just a surface symptom, and a specific fix that closes the issue.</p>
+
+  <div class="failures">
+    <div class="fail">
+      <div class="fail-n">1</div>
+      <div>
+        <div class="fail-title">Missing chart title, axis labels, or legend</div>
+        <p class="fail-desc">The AI generates functional chart code but omits all metadata. The chart renders as a blob of colored bars with no context. A reader cannot determine what the chart measures, what units the axes use, or what the series represent.</p>
+        <p class="fail-fix">Fix: add title, x-axis label, y-axis label, and either a legend or direct data labels as mandatory fields. Make absence of any of these a blocking rule in CLAUDE.md.</p>
+      </div>
+    </div>
+    <div class="fail">
+      <div class="fail-n">2</div>
+      <div>
+        <div class="fail-title">Data label clipping at canvas edge</div>
+        <p class="fail-desc">Chart.js renders labels that extend beyond the canvas boundary. The browser clips them. Root cause: <code>layout.padding</code> defaults to 0, so labels at the top of tall bars are cut off. Also occurs with rotated x-axis tick labels.</p>
+        <p class="fail-fix">Fix: set <code>layout: { padding: 12 }</code> in Chart.js options. For rotated labels, set <code>ticks: { maxRotation: 45 }</code> and increase bottom padding.</p>
+      </div>
+    </div>
+    <div class="fail">
+      <div class="fail-n">3</div>
+      <div>
+        <div class="fail-title">Hardcoded hex colors outside the token system</div>
+        <p class="fail-desc">Colors scattered throughout the stylesheet as literal hex values. The report looks fine in light mode but has broken contrast in dark mode. Changing the accent color requires a find-and-replace across dozens of locations, missing some.</p>
+        <p class="fail-fix">Fix: define a CSS custom property for every semantic color at <code>:root</code> level. Reference <em>only</em> <code>var(--token)</code> in the rest of the stylesheet. One change propagates everywhere.</p>
+      </div>
+    </div>
+    <div class="fail">
+      <div class="fail-n">4</div>
+      <div>
+        <div class="fail-title">External CDN dependencies</div>
+        <p class="fail-desc">Report uses <code>&lt;script src="https://cdn.jsdelivr.net/..."&gt;</code> or <code>@import url('https://fonts.googleapis.com/...')</code>. The report appears to work during generation (when the machine has internet) but fails silently offline. CDN URLs also rot over time.</p>
+        <p class="fail-fix">Fix: download any required library as a local file or paste its minified content inline in a <code>&lt;script&gt;</code> block. Use system font stacks to eliminate font CDN dependencies entirely.</p>
+      </div>
+    </div>
+    <div class="fail">
+      <div class="fail-n">5</div>
+      <div>
+        <div class="fail-title">No dark mode support</div>
+        <p class="fail-desc">The report is designed for a white background. On macOS, Windows 11, or iOS in dark mode, the browser renders the white background as white — a blinding white page. Embedded chart images with white backgrounds become jarring white rectangles.</p>
+        <p class="fail-fix">Fix: add <code>&lt;meta name="color-scheme" content="light dark"&gt;</code> and a complete <code>@media (prefers-color-scheme: dark)</code> <code>:root</code> override. For matplotlib images, set <code>plt.style.use('dark_background')</code> or check the user's preferred scheme server-side.</p>
+      </div>
+    </div>
+    <div class="fail">
+      <div class="fail-n">6</div>
+      <div>
+        <div class="fail-title">Placeholder or sample data</div>
+        <p class="fail-desc">The AI generates a structurally correct chart populated with <code>[12, 34, 56]</code> or <code>['Category A', 'Category B']</code> instead of the actual data from the source. The page looks complete during code review but conveys no information.</p>
+        <p class="fail-fix">Fix: in CLAUDE.md, make placeholder data a blocking defect. In the prompt, explicitly provide the data or a reference to where it lives. The AI must use the provided data, not invented values.</p>
+      </div>
+    </div>
+    <div class="fail">
+      <div class="fail-n">7</div>
+      <div>
+        <div class="fail-title">Fixed-pixel widths that break on mobile</div>
+        <p class="fail-desc">Report uses <code>width: 800px</code> on charts or content columns. At 768px viewport, content overflows. Tables are especially problematic — they overflow horizontally without a scroll container, breaking the page layout.</p>
+        <p class="fail-fix">Fix: use <code>max-width</code> + <code>width: 100%</code> on all content. Wrap every <code>&lt;table&gt;</code> in <code>&lt;div style="overflow-x: auto"&gt;</code>. Set Chart.js <code>responsive: true</code>. Canvas elements automatically adapt.</p>
+      </div>
+    </div>
+    <div class="fail">
+      <div class="fail-n">8</div>
+      <div>
+        <div class="fail-title">Color-only data encoding</div>
+        <p class="fail-desc">The chart distinguishes data series by color alone. ~8% of men and ~0.5% of women have red-green color blindness. A pie chart with red and green slices is unreadable for a significant portion of readers. Legends that say "Red line = Series A, Green line = Series B" are inaccessible.</p>
+        <p class="fail-fix">Fix: pair color with shape (different <code>pointStyle</code> in Chart.js), pattern fills, or direct data labels on chart elements. Test by simulating deuteranopia using browser devtools accessibility filters.</p>
+      </div>
+    </div>
+    <div class="fail">
+      <div class="fail-n">9</div>
+      <div>
+        <div class="fail-title">Missing lang, charset, or viewport meta tags</div>
+        <p class="fail-desc">22.3% of the top 1 million websites omit the <code>lang</code> attribute. Without it, screen readers apply incorrect pronunciation rules. Without <code>charset=UTF-8</code> in the first 1024 bytes, the browser may misparse the document. Without <code>viewport</code>, mobile browsers default to a 980px desktop viewport and scale the page down, making text unreadably small.</p>
+        <p class="fail-fix">Fix: the required trio — <code>&lt;html lang="en"&gt;</code>, <code>&lt;meta charset="UTF-8"&gt;</code> (first in head), <code>&lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;</code> — is boilerplate. Add to every CLAUDE.md template.</p>
+      </div>
+    </div>
+    <div class="fail">
+      <div class="fail-n">10</div>
+      <div>
+        <div class="fail-title">Non-deterministic output across identical prompts</div>
+        <p class="fail-desc">Two invocations of the same prompt produce reports with different color palettes, different label placements, and different data ordering. The AI samples from its distribution each time. This makes the report feel unreviewed and inconsistent when compared to a prior version.</p>
+        <p class="fail-fix">Fix: define the visual system completely in CLAUDE.md (color tokens, font stack, component structure) so there is nothing left for the AI to invent. Lower temperature in API calls if using the API directly. The less design latitude given, the more reproducible the output.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 7 — COMPLETE MINIMAL EXAMPLE
+══════════════════════════════════════════════════ -->
+<section id="example">
+<div class="w">
+  <p class="eyebrow"><span class="sn">7</span> Working example</p>
+  <h2>A complete minimal working example</h2>
+  <p class="intro">The chart below is rendered by the code shown — no charting library, no external dependency, pure Canvas 2D API. This demonstrates the baseline pattern: a titled, labeled, responsive chart in a self-contained HTML file.</p>
+
+  <div class="chart-panel">
+    <p class="chart-title">Library bundle sizes — gzipped transfer size</p>
+    <p class="chart-sub">Self-contained HTML report example · Canvas 2D API · no external dependencies</p>
+    <div class="canvas-wrap">
+      <canvas id="demo-chart" height="280"></canvas>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-top:10px">Hover or resize — chart adapts to container width. Axes, title, and legend are all computed in JS.</p>
+  </div>
+
+  <p>The complete code for that chart (data, layout, rendering) fits in ~70 lines of vanilla JavaScript with no dependencies:</p>
+
+  <div class="code-file">
+    <div class="code-file-hd">📄 report-example.html — ~70-line self-contained chart</div>
+<pre><code><span class="pu">&lt;!</span><span class="tp">DOCTYPE html</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">html</span> <span class="at">lang</span><span class="op">=</span><span class="str">"en"</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">head</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">meta</span> <span class="at">charset</span><span class="op">=</span><span class="str">"UTF-8"</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">meta</span> <span class="at">name</span><span class="op">=</span><span class="str">"viewport"</span> <span class="at">content</span><span class="op">=</span><span class="str">"width=device-width, initial-scale=1"</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">meta</span> <span class="at">name</span><span class="op">=</span><span class="str">"color-scheme"</span> <span class="at">content</span><span class="op">=</span><span class="str">"light dark"</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">title</span><span class="pu">&gt;</span>Bundle Size Report<span class="pu">&lt;/</span><span class="tp">title</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">style</span><span class="pu">&gt;</span>
+<span class="at">:root</span> { <span class="at">--bg</span>: <span class="nm">#f9f8f6</span>; <span class="at">--text</span>: <span class="nm">#1c1a18</span>; <span class="at">--border</span>: <span class="nm">#e2ddd8</span>; }
+<span class="at">@media</span> (prefers-color-scheme: dark) {
+  <span class="at">:root</span> { <span class="at">--bg</span>: <span class="nm">#0f1117</span>; <span class="at">--text</span>: <span class="nm">#e8e4dc</span>; <span class="at">--border</span>: <span class="nm">#2d3748</span>; }
+}
+<span class="at">body</span> { margin: <span class="nm">0</span>; background: <span class="fn">var</span>(<span class="at">--bg</span>); color: <span class="fn">var</span>(<span class="at">--text</span>);
+       font-family: system-ui, sans-serif; padding: <span class="nm">32px</span>; }
+<span class="at">h1</span> { font-size: <span class="nm">1.4rem</span>; margin: <span class="nm">0 0 4px</span>; }
+<span class="at">p.sub</span> { margin: <span class="nm">0 0 20px</span>; font-size: <span class="nm">13px</span>; color: #<span class="nm">888</span>; }
+<span class="at">canvas</span> { display: block; width: <span class="nm">100%</span>; max-width: <span class="nm">720px</span>; }
+<span class="pu">&lt;/</span><span class="tp">style</span><span class="pu">&gt;</span>
+<span class="pu">&lt;/</span><span class="tp">head</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">body</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">h1</span><span class="pu">&gt;</span>JS Charting Libraries — Gzipped Bundle Size<span class="pu">&lt;/</span><span class="tp">h1</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">p</span> <span class="at">class</span><span class="op">=</span><span class="str">"sub"</span><span class="pu">&gt;</span>Smaller = better for self-contained HTML delivery<span class="pu">&lt;/</span><span class="tp">p</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">canvas</span> <span class="at">id</span><span class="op">=</span><span class="str">"c"</span> <span class="at">aria-label</span><span class="op">=</span><span class="str">"Bar chart: library bundle sizes"</span> <span class="at">role</span><span class="op">=</span><span class="str">"img"</span><span class="pu">&gt;&lt;/</span><span class="tp">canvas</span><span class="pu">&gt;</span>
+<span class="pu">&lt;</span><span class="tp">script</span><span class="pu">&gt;</span>
+<span class="kw">const</span> data <span class="op">=</span> [
+  { label: <span class="str">'D3 (custom)'</span>,      kb: <span class="nm">15</span>,   color: <span class="str">'#059669'</span> },
+  { label: <span class="str">'Chart.js'</span>,         kb: <span class="nm">92</span>,   color: <span class="str">'#4f46e5'</span> },
+  { label: <span class="str">'ECharts'</span>,          kb: <span class="nm">167</span>,  color: <span class="str">'#0891b2'</span> },
+  { label: <span class="str">'Plotly Basic'</span>,     kb: <span class="nm">365</span>,  color: <span class="str">'#d97706'</span> },
+  { label: <span class="str">'Plotly Full'</span>,      kb: <span class="nm">1400</span>, color: <span class="str">'#dc2626'</span> },
+];
+<span class="kw">const</span> pad <span class="op">=</span> { t: <span class="nm">40</span>, r: <span class="nm">20</span>, b: <span class="nm">60</span>, l: <span class="nm">120</span> };
+<span class="kw">function</span> <span class="fn">draw</span>() {
+  <span class="kw">const</span> canvas <span class="op">=</span> document.<span class="fn">getElementById</span>(<span class="str">'c'</span>);
+  <span class="kw">const</span> W <span class="op">=</span> canvas.parentElement.clientWidth;
+  <span class="kw">const</span> H <span class="op">=</span> Math.<span class="fn">min</span>(<span class="nm">320</span>, W <span class="op">*</span> <span class="nm">0.55</span>);
+  canvas.width  <span class="op">=</span> W; canvas.height <span class="op">=</span> H;
+  <span class="kw">const</span> ctx <span class="op">=</span> canvas.<span class="fn">getContext</span>(<span class="str">'2d'</span>);
+  <span class="kw">const</span> dark <span class="op">=</span> window.matchMedia(<span class="str">'(prefers-color-scheme:dark)'</span>).matches;
+  <span class="kw">const</span> fg <span class="op">=</span> dark <span class="op">?</span> <span class="str">'#b4aaa0'</span> : <span class="str">'#4a4540'</span>;
+  ctx.clearRect(<span class="nm">0</span>, <span class="nm">0</span>, W, H);
+  <span class="kw">const</span> maxKb <span class="op">=</span> Math.<span class="fn">max</span>(...data.<span class="fn">map</span>(d <span class="op">=&gt;</span> d.kb));
+  <span class="kw">const</span> bh <span class="op">=</span> (H <span class="op">-</span> pad.t <span class="op">-</span> pad.b) <span class="op">/</span> data.length;
+  data.<span class="fn">forEach</span>((d, i) <span class="op">=&gt;</span> {
+    <span class="kw">const</span> y0 <span class="op">=</span> pad.t <span class="op">+</span> i <span class="op">*</span> bh;
+    <span class="kw">const</span> bw <span class="op">=</span> (d.kb <span class="op">/</span> maxKb) <span class="op">*</span> (W <span class="op">-</span> pad.l <span class="op">-</span> pad.r);
+    ctx.fillStyle <span class="op">=</span> d.color;
+    ctx.<span class="fn">fillRect</span>(pad.l, y0 <span class="op">+</span> <span class="nm">4</span>, bw, bh <span class="op">-</span> <span class="nm">8</span>);
+    ctx.fillStyle <span class="op">=</span> fg; ctx.font <span class="op">=</span> <span class="str">'12px system-ui'</span>;
+    ctx.textAlign <span class="op">=</span> <span class="str">'right'</span>;
+    ctx.<span class="fn">fillText</span>(d.label, pad.l <span class="op">-</span> <span class="nm">8</span>, y0 <span class="op">+</span> bh <span class="op">/</span> <span class="nm">2</span> <span class="op">+</span> <span class="nm">4</span>);
+    ctx.textAlign <span class="op">=</span> <span class="str">'left'</span>;
+    ctx.<span class="fn">fillText</span>(d.kb <span class="op">+</span> <span class="str">' KB'</span>, pad.l <span class="op">+</span> bw <span class="op">+</span> <span class="nm">6</span>, y0 <span class="op">+</span> bh <span class="op">/</span> <span class="nm">2</span> <span class="op">+</span> <span class="nm">4</span>);
+  });
+  ctx.fillStyle <span class="op">=</span> fg; ctx.font <span class="op">=</span> <span class="str">'bold 13px system-ui'</span>; ctx.textAlign <span class="op">=</span> <span class="str">'center'</span>;
+  ctx.<span class="fn">fillText</span>(<span class="str">'← Gzipped transfer size (KB) →'</span>, pad.l <span class="op">+</span> (W <span class="op">-</span> pad.l <span class="op">-</span> pad.r) <span class="op">/</span> <span class="nm">2</span>, H <span class="op">-</span> <span class="nm">8</span>);
+}
+<span class="fn">draw</span>();
+<span class="kw">new</span> <span class="tp">ResizeObserver</span>(<span class="fn">draw</span>).<span class="fn">observe</span>(document.body);
+<span class="pu">&lt;/</span><span class="tp">script</span><span class="pu">&gt;</span>
+<span class="pu">&lt;/</span><span class="tp">body</span><span class="pu">&gt;</span>
+<span class="pu">&lt;/</span><span class="tp">html</span><span class="pu">&gt;</span></code></pre>
+  </div>
+
+  <div class="note">
+    <p class="note-lbl">What makes this example correct</p>
+    <p>Zero external dependencies. Chart title and axis label present. Responsive via ResizeObserver. Dark mode handled by reading matchMedia at draw time. Alt text on the canvas element. Real data (not placeholder values). Every color has meaning (red = largest, green = smallest). The label text "← Gzipped transfer size (KB) →" tells the reader what the axis measures and its direction.</p>
+  </div>
+</div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="w">
+    <p>Claude Code HTML Report Guide · 2026-06-26 · Fully self-contained, no external dependencies</p>
+  </div>
+</footer>
+
+<script>
+/* ── Progress bar ── */
+window.addEventListener('scroll', () => {
+  const d = document.documentElement;
+  document.getElementById('prog').style.width =
+    (d.scrollTop / (d.scrollHeight - d.clientHeight) * 100) + '%';
+});
+
+/* ── Bundle size SVG chart (Section 3) ── */
+(function() {
+  const el = document.getElementById('bundle-chart');
+  if (!el) return;
+  const libs = [
+    { name: 'D3 custom',     kb: 15,   color: '#059669' },
+    { name: 'Chart.js',      kb: 92,   color: '#4f46e5' },
+    { name: 'ECharts',       kb: 167,  color: '#0891b2' },
+    { name: 'Plotly Basic',  kb: 365,  color: '#d97706' },
+    { name: 'Plotly Full',   kb: 1400, color: '#dc2626' },
+  ];
+  const W = el.clientWidth || 800, H = 220;
+  const pad = { t: 20, r: 80, b: 40, l: 100 };
+  const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+  const bh = ch / libs.length;
+  // log scale
+  const logMin = Math.log10(10), logMax = Math.log10(2000);
+  const toX = kb => pad.l + (Math.log10(kb) - logMin) / (logMax - logMin) * cw;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
+    style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">`;
+
+  // grid lines
+  [10, 50, 100, 500, 1000].forEach(v => {
+    const x = toX(v);
+    svg += `<line x1="${x}" y1="${pad.t}" x2="${x}" y2="${pad.t+ch}"
+      stroke="currentColor" stroke-opacity=".08" stroke-width="1"/>`;
+    svg += `<text x="${x}" y="${pad.t+ch+16}" text-anchor="middle"
+      font-size="10" fill="currentColor" opacity=".5">${v >= 1000 ? v/1000+'MB' : v+'KB'}</text>`;
+  });
+
+  // bars
+  libs.forEach((lib, i) => {
+    const y = pad.t + i * bh + 2;
+    const barH = bh - 4;
+    const barW = toX(lib.kb) - pad.l;
+    svg += `<rect x="${pad.l}" y="${y}" width="${barW}" height="${barH}" rx="4"
+      fill="${lib.color}" opacity=".85"/>`;
+    // y-axis label
+    svg += `<text x="${pad.l - 8}" y="${y + barH/2 + 4}" text-anchor="end"
+      font-size="12" fill="currentColor" opacity=".7">${lib.name}</text>`;
+    // value label
+    svg += `<text x="${pad.l + barW + 6}" y="${y + barH/2 + 4}" text-anchor="start"
+      font-size="11" fill="${lib.color}" font-weight="600">
+      ${lib.kb >= 1000 ? (lib.kb/1000).toFixed(1)+'MB' : lib.kb+'KB'}</text>`;
+  });
+
+  // x-axis
+  svg += `<text x="${pad.l + cw/2}" y="${H - 4}" text-anchor="middle"
+    font-size="11" fill="currentColor" opacity=".5">Gzipped transfer size (log scale)</text>`;
+
+  svg += '</svg>';
+  el.innerHTML = svg;
+})();
+
+/* ── Demo canvas chart (Section 7) ── */
+(function() {
+  const canvas = document.getElementById('demo-chart');
+  if (!canvas) return;
+  const data = [
+    { label: 'D3 (custom)',  kb: 15,   color: '#059669' },
+    { label: 'Chart.js',     kb: 92,   color: '#4f46e5' },
+    { label: 'ECharts',      kb: 167,  color: '#0891b2' },
+    { label: 'Plotly Basic', kb: 365,  color: '#d97706' },
+    { label: 'Plotly Full',  kb: 1400, color: '#dc2626' },
+  ];
+  const pad = { t: 40, r: 30, b: 50, l: 120 };
+
+  function draw() {
+    const W = canvas.parentElement.clientWidth || 600;
+    const H = 280;
+    canvas.width  = W * devicePixelRatio;
+    canvas.height = H * devicePixelRatio;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+
+    const dark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+    const fg   = dark ? '#b4aaa0' : '#4a4540';
+    const grid = dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.07)';
+
+    const maxKb = Math.max(...data.map(d => d.kb));
+    const bh = (H - pad.t - pad.b) / data.length;
+    const cw = W - pad.l - pad.r;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // title
+    ctx.fillStyle = fg;
+    ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('JS Charting Libraries — Gzipped Bundle Size', pad.l, 22);
+
+    // grid
+    [200, 400, 600, 800, 1000, 1200, 1400].forEach(kb => {
+      const x = pad.l + (kb / maxKb) * cw;
+      ctx.strokeStyle = grid;
+      ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + bh * data.length);
+      ctx.stroke();
+    });
+
+    // bars + labels
+    data.forEach((d, i) => {
+      const y0 = pad.t + i * bh;
+      const bw = (d.kb / maxKb) * cw;
+
+      // bar
+      ctx.fillStyle = d.color;
+      ctx.beginPath();
+      ctx.roundRect(pad.l, y0 + 4, bw, bh - 8, 4);
+      ctx.fill();
+
+      // y label
+      ctx.fillStyle = fg;
+      ctx.font = '12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(d.label, pad.l - 10, y0 + bh / 2 + 5);
+
+      // value label
+      ctx.fillStyle = d.color;
+      ctx.textAlign = 'left';
+      const valText = d.kb >= 1000 ? (d.kb/1000).toFixed(1) + ' MB' : d.kb + ' KB';
+      ctx.fillText(valText, pad.l + bw + 8, y0 + bh / 2 + 5);
+    });
+
+    // x-axis label
+    ctx.fillStyle = fg;
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Gzipped transfer size (KB)', pad.l + cw / 2, H - 10);
+  }
+
+  draw();
+  new ResizeObserver(draw).observe(canvas.parentElement);
+  window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', draw);
+})();
+</script>
+</body>
+</html>
