@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Google Fitbit Air — Hardware Teardown Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+  <style>
+    :root { --accent: #00c4a7; }
+    .hero-bg {
+      background:
+        radial-gradient(800px 500px at 70% 30%, rgba(0,196,167,.09), transparent 60%),
+        radial-gradient(600px 400px at 15% 75%, rgba(95,208,166,.07), transparent 60%);
+    }
+    .avail-badge {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      padding: 3px 9px;
+      border-radius: 5px;
+    }
+    .badge-pass  { background: rgba(95,208,166,.15); color: var(--good); }
+    .badge-warn  { background: rgba(240,162,75,.12);  color: var(--warn); }
+    .badge-fail  { background: rgba(255,90,82,.12);   color: var(--bad);  }
+  </style>
+</head>
+<body>
+<div id="prog"></div>
+
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+    <div class="kicker"><span class="dot"></span> FITBIT AIR · HARDWARE REPORT</div>
+    <h1>Google Fitbit Air <span style="color:var(--accent)">Hardware Report</span></h1>
+    <p class="lead">A component-level hardware report on Google's 2026 screenless fitness tracker ("the pebble"). Covers every confirmed sensor, the battery, and the hard limits of what the public record contains. No teardown exists as of this report — read that as the conclusion, not a gap to fill with speculation.</p>
+    <p class="mut">2026-07-01</p>
+    <div class="scrolltip"><span class="arr">↓</span> start reading</div>
+  </div>
+</header>
+
+<!-- ─── 01 SOURCE STATUS ─────────────────────────────────────────── -->
+<section id="s1">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">01</span> Source Availability</p>
+    <h2>What the Public Record Contains</h2>
+
+    <p>The Fitbit Air began shipping May 26, 2026. As of 2026-07-01, no physical teardown has been published anywhere. The FCC filing exists (model GW9C8, FCC grantee code SZGGW9C8) but internal photographs and RF test exhibits are not accessible through the public web interface. All component-level conclusions in this report come from the sources below. <span class="ref" title="[1]">[1]</span></p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Source</th><th>Status</th><th>What it provides</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>FCC filing — SZGGW9C8</td>
+          <td><span class="avail-badge badge-warn">INACCESSIBLE</span></td>
+          <td>Filing confirmed; internal photos / RF exhibits not publicly reachable via web interface</td>
+        </tr>
+        <tr>
+          <td>iFixit teardown</td>
+          <td><span class="avail-badge badge-fail">NONE</span></td>
+          <td>No teardown published as of 2026-07-01</td>
+        </tr>
+        <tr>
+          <td>TechInsights / System Plus</td>
+          <td><span class="avail-badge badge-fail">NONE</span></td>
+          <td>No public report found; likely unpublished or paywalled</td>
+        </tr>
+        <tr>
+          <td>Google sustainability / regulatory doc</td>
+          <td><span class="avail-badge badge-pass">VERIFIED</span></td>
+          <td>Battery: capacity (34.5 mAh), chemistry, dual suppliers, model numbers, cycle life</td>
+        </tr>
+        <tr>
+          <td>Google official blog</td>
+          <td><span class="avail-badge badge-pass">VERIFIED</span></td>
+          <td>Sensor list (no part numbers), physical dimensions, water rating, feature claims</td>
+        </tr>
+        <tr>
+          <td>DC Rainmaker review</td>
+          <td><span class="avail-badge badge-pass">VERIFIED</span></td>
+          <td>Connectivity, HR save interval, FDA certification, housing materials</td>
+        </tr>
+        <tr>
+          <td>The5kRunner accuracy analysis</td>
+          <td><span class="avail-badge badge-pass">VERIFIED</span></td>
+          <td>Real-world PPG sampling rate (~25 Hz), confidence-gated storage, data-density numbers</td>
+        </tr>
+        <tr>
+          <td>Google PPG patent US11051706B1</td>
+          <td><span class="avail-badge badge-warn">CONTEXTUAL</span></td>
+          <td>Google's PPG wavelength design space — predates Fitbit Air; not a confirmed BOM</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="warn-note">
+      <div class="lbl">NO TEARDOWN EXISTS — READ THIS FIRST</div>
+      <p>No component-level part numbers are publicly available for any sensor in this device. Manufacturer, die area, package type, and ODR specifications for the PPG IC, IMU, and skin temperature sensor cannot be determined from open sources. Where this report says "unknown," that is the factual answer — not a gap awaiting a future update.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 02 DEVICE OVERVIEW ─────────────────────────────────────── -->
+<section id="s2">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">02</span> Device Overview</p>
+    <h2>Physical Specifications</h2>
+
+    <p>The Fitbit Air is a $99 screenless fitness tracker, described by Google as "our smallest tracker yet." At 5.2 grams without a band and 8.3 mm thick, it targets 24/7 wrist wear without the bulk of a smartwatch. <span class="ref" title="[1]">[1]</span> It is positioned against continuous-wear subscription bands such as WHOOP rather than against display-equipped trackers.</p>
+
+    <div class="spec-grid">
+      <div class="spec-card">
+        <span class="sc" style="background:var(--accent)"></span>
+        <div class="sv">5.2 g</div>
+        <div class="sl">tracker only (no band)</div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:#5b8cff"></span>
+        <div class="sv">12 g</div>
+        <div class="sl">with band fitted</div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:#5fd0a6"></span>
+        <div class="sv">8.3 mm</div>
+        <div class="sl">thickness</div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:#f0a24b"></span>
+        <div class="sv">50 m</div>
+        <div class="sl">water resistance rating</div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:#a070e0"></span>
+        <div class="sv">BT 5.0</div>
+        <div class="sl">Bluetooth version</div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:#ff5a52"></span>
+        <div class="sv">No GPS</div>
+        <div class="sl">no barometer; offloads to phone GPS</div>
+      </div>
+    </div>
+
+    <p>Housing material is recycled polycarbonate and PBT (polybutylene terephthalate). <span class="ref" title="[3]">[3]</span> No GPS or barometer are present — route tracking requires a paired phone. <span class="ref" title="[3]">[3]</span> The device carries FDA clearance for background Afib detection. <span class="ref" title="[3]">[3]</span></p>
+
+    <h3>Hardware platform: Fitbit Charge 6, minus two sensors</h3>
+
+    <p>The Fitbit Air's sensor hardware is derived from the Fitbit Charge 6. DC Rainmaker describes it as "essentially taking a Fitbit Charge 6, and removing the display." <span class="ref" title="[3]">[3]</span> Three independent reviewers confirm the same sensor lineage. <span class="ref" title="[3]">[3]</span> <span class="ref" title="[10]">[10]</span> The two sensors from the Charge 6 that do not carry over:</p>
+
+    <ul>
+      <li><strong>ECG</strong> (single-lead electrocardiogram) — present on Charge 6 for on-demand Afib snapshots; absent on Air, which uses continuous background Afib detection via PPG instead</li>
+      <li><strong>EDA</strong> (electrodermal activity) — present on Charge 6 for skin conductance / stress measurement; absent on Air</li>
+    </ul>
+
+    <p>Everything else from the Charge 6 sensor suite is retained. The algorithms running on that hardware are, per a direct statement from Fitbit to DC Rainmaker, "built atop the Pixel Watch 4 algorithms" — Google's own description of the update from the Charge 6 baseline. <span class="ref" title="[3]">[3]</span></p>
+
+    <div class="note">
+      <div class="lbl">KEY FINDING</div>
+      <p>Charge 6 sensor hardware + Pixel Watch 4-derived algorithms. This explains why the feature set is largely identical to the Charge 6 (same sensor suite, same optical topology) while Google claims slightly better measurement accuracy than the prior generation. Sensor IC part numbers for the Charge 6 are also not publicly confirmed from teardowns, so this lineage helps frame the search but does not resolve the unknown BOM.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 03 PPG AND HEART RATE ─────────────────────────────────── -->
+<section id="s3">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">03</span> PPG &amp; Heart Rate Sensor</p>
+    <h2>Optical Heart Rate — Architecture and Sampling</h2>
+
+    <p>The Fitbit Air uses photoplethysmography (PPG): green LEDs on the underside of the tracker flash at the skin surface, and photodiodes measure how much light bounces back. Each heartbeat pushes a bolus of blood into the wrist capillaries, momentarily increasing light absorption and dropping reflectance. The photodiodes track that modulation and the firmware extracts heart rate. <span class="ref" title="[5]">[5]</span></p>
+
+    <div class="note">
+      <div class="lbl">KEY FINDING</div>
+      <p>No IC manufacturer or part number for the Fitbit Air PPG module is publicly known. The wavelength figures below come from a Google PPG design patent (US11051706B1) <span class="ref" title="[7]">[7]</span> — which describes Google's general PPG architecture, not the specific die inside this device. Without a teardown or FCC internal photo, actual LED wavelengths cannot be confirmed.</p>
+    </div>
+
+    <h3>Wavelengths — from Google PPG patent architecture</h3>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Channel</th><th>Patent wavelength range</th><th>Typical center</th><th>Primary use</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Green</td>
+          <td>495 – 570 nm</td>
+          <td class="good">~528 nm</td>
+          <td>Continuous HR (peak absorption contrast in surface capillaries)</td>
+        </tr>
+        <tr>
+          <td>Red</td>
+          <td>650 – 940 nm</td>
+          <td class="warn">~660 nm</td>
+          <td>SpO2 — oxy-Hb absorbs less red than deoxy-Hb</td>
+        </tr>
+        <tr>
+          <td>Infrared</td>
+          <td>750 – 1700 nm</td>
+          <td class="warn">730 – 940 nm (common)</td>
+          <td>SpO2 reference channel; deeper tissue penetration than red</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <div class="lbl">PATENT ≠ CONFIRMED BOM</div>
+      <p>US11051706B1 defines Google's design space — what wavelengths the architecture <em>can</em> accommodate, not what is soldered into the Fitbit Air. The time-multiplexed LED activation scheme described in the patent (each channel fires on a distinct schedule via internal clock; photodetectors placed 1–10 mm from LED sources) <span class="ref" title="[7]">[7]</span> is likely representative of the general approach, but no teardown has confirmed part numbers or exact wavelengths for this device.</p>
+    </div>
+
+    <h3>Sampling rate: what "2-second interval" actually means</h3>
+
+    <p>Google's published spec cites a "2-second interval" for heart rate. This is not the optical sampling rate. The photodiodes sample at approximately 25 Hz (25 readings per second). The "2-second" figure is the cadence at which processed HR estimates are written to onboard storage. <span class="ref" title="[4]">[4]</span> The gap between raw optical sampling and what gets stored is governed by a confidence-gating algorithm.</p>
+
+    <div class="conflict">
+      <div class="lbl">CONFLICT — MARKETED SPEC vs MEASURED BEHAVIOR</div>
+      <p><strong>Marketed:</strong> 2-second data storage interval.<br>
+      <strong>Measured (wrist, sport activity):</strong> Storage interval stretches to approximately 5 seconds because the firmware only writes a data point when the optical signal meets an internal quality threshold. In practice this produces roughly one-fifth the data density of competing devices: 600–1,200 paired data points per analyzed session versus 5,500–5,600 from trackers running 1-second intervals. <span class="ref" title="[4]">[4]</span><br>
+      <strong>Implication:</strong> Accuracy statistics published by Google describe only the data points the device chose to keep — not the complete distribution of signal quality across a session.</p>
+    </div>
+
+    <!-- SVG: sensor sampling diagram -->
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">PPG Data Pipeline — from photons to stored HR</span>
+        <span class="panel-sub">schematic only — not confirmed internal block diagram</span>
+      </div>
+      <div id="ppg-diagram"></div>
+      <p class="panel-cap">The ~25 Hz raw optical stream is processed on-chip; only frames passing the confidence gate reach storage. The "2-second spec" describes the nominal gate output rate, not the optical sample rate. During vigorous wrist-worn exercise the gate opens less frequently — stretching to ~5 s.</p>
+    </div>
+
+    <h3>Accuracy and light leakage</h3>
+
+    <p>The thin-band form factor creates a hardware accuracy constraint. An 8.3 mm thick tracker with a narrow cuff leaves the optical sensor aperture exposed to ambient light at the edges. In certain workouts, DC Rainmaker measured errors of 20–40 bpm above actual heart rate. <span class="ref" title="[8]">[8]</span> This is an optical isolation problem inherent to the device geometry — not a firmware issue.</p>
+
+    <p>Placement dramatically changes performance. Moving the tracker to the bicep instead of the wrist reduces the effective storage interval to 2.4 seconds with near-zero bias against an ECG reference. Google does not disclose this placement sensitivity in consumer documentation. <span class="ref" title="[4]">[4]</span></p>
+
+    <h3>Heart rate variability (HRV)</h3>
+
+    <p>HRV is reported using RMSSD (root mean square of successive differences between consecutive RR intervals). RMSSD is the standard short-term HRV metric and correlates with parasympathetic nervous system tone. The device derives HRV from the longest continuous sleep period in the past 24 hours; sessions shorter than 3 hours are excluded from calculation. <span class="ref" title="[5]">[5]</span></p>
+  </div>
+</section>
+
+<!-- ─── 04 SpO2 ────────────────────────────────────────────────── -->
+<section id="s4">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">04</span> SpO2 Sensor</p>
+    <h2>Blood Oxygen Measurement</h2>
+
+    <p>SpO2 measurement uses the red and infrared channels on the optical sensor. <span class="ref" title="[1]">[1]</span> The underlying physics: oxygenated hemoglobin (HbO₂) absorbs red light (~660 nm) weakly and IR strongly; deoxygenated hemoglobin (Hb) does the reverse. The ratio of pulsatile red-to-IR reflectance — calibrated against a lookup table derived from clinical measurements — gives the SpO2 estimate. This is standard transmissive or reflective pulse oximetry applied to a wrist optical geometry.</p>
+
+    <div class="callout">
+      <div class="lbl">MODULE ARCHITECTURE UNKNOWN</div>
+      <p>Whether the red/IR pair for SpO2 is integrated into a single optical module alongside the green HR LEDs, or is a physically separate die/component, cannot be determined from public sources. No teardown or FCC internal photo exists to confirm module count, PCB footprint, or component identity.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 05 SKIN TEMPERATURE ───────────────────────────────────── -->
+<section id="s5">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">05</span> Skin Temperature Sensor</p>
+    <h2>Skin Temperature — What It Measures and What It Doesn't</h2>
+
+    <p>The skin temperature sensor takes a reading every minute during wear. <span class="ref" title="[6]">[6]</span> This measures peripheral wrist surface temperature — the thermal equilibrium of the skin in contact with the tracker backplate. This is <em>not</em> core body temperature. Peripheral skin temperature is heavily influenced by:</p>
+
+    <ul>
+      <li>Ambient air temperature (vasoconstriction in cold = lower skin temp)</li>
+      <li>Cardiovascular state (vasodilation from exercise or fever = higher skin temp)</li>
+      <li>Sweat evaporation (cooling effect)</li>
+      <li>Wrist pressure and contact area</li>
+      <li>Sleep stage (skin temp rises during NREM, drops at REM onset)</li>
+    </ul>
+
+    <p>Google's documentation explicitly states that significant ambient temperature changes will degrade tracking accuracy. <span class="ref" title="[6]">[6]</span> The device requires a minimum of 3 days of wear to establish a personal baseline and uses up to 30 days of rolling data to continuously recalibrate that baseline. <span class="ref" title="[6]">[6]</span> Relative deviations from baseline are more interpretable than absolute values.</p>
+
+    <div class="warn-note">
+      <div class="lbl">SENSOR TYPE UNKNOWN</div>
+      <p>Whether the temperature sensor is an NTC thermistor, a MEMS thermopile, a dedicated silicon temperature IC (e.g., TMP series), or integrated into the PPG ASIC is not disclosed by Google and cannot be determined without a teardown. No manufacturer or part number is available from any public source.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 06 IMU ─────────────────────────────────────────────────── -->
+<section id="s6">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">06</span> IMU — Accelerometer &amp; Gyroscope</p>
+    <h2>Inertial Measurement Unit</h2>
+
+    <p>The Fitbit Air contains a 3-axis accelerometer and a gyroscope — a combined 6-axis IMU. <span class="ref" title="[1]">[1]</span> The accelerometer drives step counting, activity recognition (walk / run / swim detection), and sleep staging (wrist movement patterns during sleep transitions). The gyroscope adds rotational-rate data, enabling better discrimination between meaningful motion events and stationary arm movements that would otherwise generate false steps.</p>
+
+    <div class="warn-note">
+      <div class="lbl">NO PART NUMBER AVAILABLE</div>
+      <p>Manufacturer (Bosch Sensortec, STMicroelectronics, TDK InvenSense, or other), part number, full-scale g-range (±2 g / ±4 g / ±8 g / ±16 g), output data rate, and noise density are all unknown. No teardown or FCC component-marking photograph is publicly available for this device.</p>
+    </div>
+
+    <p>Known firmware issues at launch included step counting inaccuracies and automatic workout mis-detection (running sessions labeled as generic activity). A firmware update was released approximately seven weeks post-launch to address step and sleep tracking bugs. <span class="ref" title="[9]">[9]</span> Whether the root cause was IMU register configuration, algorithm tuning, or both is not disclosed by Google.</p>
+  </div>
+</section>
+
+<!-- ─── 07 BATTERY ─────────────────────────────────────────────── -->
+<section id="s7">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">07</span> Battery</p>
+    <h2>Cell Chemistry &amp; Specifications</h2>
+
+    <p>Battery details come from Google's regulatory product documentation — typically the most reliable public source for cell capacity on consumer electronics, as it is submitted for compliance and carries legal weight. <span class="ref" title="[2]">[2]</span></p>
+
+    <div class="spec-grid">
+      <div class="spec-card">
+        <span class="sc" style="background:var(--accent)"></span>
+        <div class="sv">34.5 mAh</div>
+        <div class="sl">nominal capacity</div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:#5b8cff"></span>
+        <div class="sv">Li-Ion</div>
+        <div class="sl">cell chemistry</div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:#5fd0a6"></span>
+        <div class="sv">~0.9 g</div>
+        <div class="sl">cell mass (both supplier variants)</div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:#f0a24b"></span>
+        <div class="sv">300 cycles</div>
+        <div class="sl">to ≥80% capacity retention</div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:#a070e0"></span>
+        <div class="sv">7 days</div>
+        <div class="sl">rated battery life (typical use)</div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:#ff8c42"></span>
+        <div class="sv">5 min</div>
+        <div class="sl">fast charge for ~1 day runtime</div>
+      </div>
+    </div>
+
+    <h3>Dual-supplier cell</h3>
+
+    <p>Google's battery regulatory document lists two approved cell manufacturers. Either may appear in any production unit — both cells are functionally identical at 34.5 mAh Li-Ion. <span class="ref" title="[2]">[2]</span></p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Supplier</th><th>Cell model</th><th>Mass</th><th>Origin</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Chongqing VDL Electronics Co., Ltd.</td>
+          <td>GV9Z8</td>
+          <td>0.908 g</td>
+          <td>China</td>
+        </tr>
+        <tr>
+          <td>Guangdong Highpower New Energy Technology Co., Ltd.</td>
+          <td>GV9Z8</td>
+          <td>0.9 g</td>
+          <td>China</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>Critical raw materials: lithium and cobalt in both variants; phosphorus additionally listed for the Chongqing cell. Electrolyte hazardous substances include 1,3-Propanesultone, propylene carbonate, and ethyl propionate. <span class="ref" title="[2]">[2]</span></p>
+
+    <h3>Charging</h3>
+
+    <p>The Fitbit Air charges via USB-C, compliant with USB Power Delivery. Supported input: 5 V DC (max 3 A) or 9 V DC (max 2 A). <span class="ref" title="[2]">[2]</span> Fast charging achieves approximately one day of runtime from a 5-minute charge; full charge takes roughly 90 minutes. <span class="ref" title="[1]">[1]</span></p>
+
+    <div class="callout">
+      <div class="lbl">CELL DIMENSIONS UNKNOWN</div>
+      <p>Physical cell dimensions (L × W × H in mm) are not disclosed in any public document. The ~0.9 g mass from the regulatory filing is the only physical attribute confirmed. A 34.5 mAh Li-Ion cell inside an 8.3 mm thick device is consistent with a thin pouch cell geometry, but dimensions require teardown confirmation.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 08 KNOWN UNKNOWNS ─────────────────────────────────────── -->
+<section id="s8">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">08</span> Known Unknowns</p>
+    <h2>What the Public Record Cannot Answer</h2>
+
+    <p>As of 2026-07-01, the following hardware specifications are unavailable from any public source. The FCC filing internal documents (which often contain component-marking photos) are not publicly accessible; no teardown has been published. These are genuine open questions, not omissions.</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Component</th><th>Unknown specification</th><th>Reason</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>PPG / SpO2 IC</td>
+          <td>Manufacturer, part number, integration level (combined module or separate)</td>
+          <td class="bad">No teardown</td>
+        </tr>
+        <tr>
+          <td>PPG LEDs</td>
+          <td>Actual dominant wavelengths, forward current, drive scheme</td>
+          <td class="bad">No teardown; patent range only</td>
+        </tr>
+        <tr>
+          <td>IMU</td>
+          <td>Manufacturer, part number, g-range, ODR, noise density</td>
+          <td class="bad">No teardown</td>
+        </tr>
+        <tr>
+          <td>Skin temp sensor</td>
+          <td>Type (NTC thermistor / thermopile / MEMS IC), manufacturer, accuracy spec</td>
+          <td class="bad">Not disclosed; no teardown</td>
+        </tr>
+        <tr>
+          <td>SoC / application processor</td>
+          <td>Manufacturer, core count, clock speed</td>
+          <td class="bad">Not disclosed; no teardown</td>
+        </tr>
+        <tr>
+          <td>RAM / flash</td>
+          <td>Capacity, manufacturer</td>
+          <td class="bad">Not disclosed; no teardown</td>
+        </tr>
+        <tr>
+          <td>Battery cell dimensions</td>
+          <td>L × W × H in mm</td>
+          <td class="warn">Not disclosed; only mass (~0.9 g) confirmed from regulatory doc</td>
+        </tr>
+        <tr>
+          <td>FCC internal photos</td>
+          <td>PCB layout, component markings</td>
+          <td class="warn">Filing exists (SZGGW9C8 / model GW9C8) — exhibits not publicly accessible via fccid.io web interface</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="aside">The single most actionable path to resolving these gaps is a physical teardown. Until iFixit or an equivalent publishes one, or the FCC exhibits become accessible, sensor part numbers remain proprietary.</div>
+  </div>
+</section>
+
+<details class="src">
+  <summary>References <span class="chev">▾</span></summary>
+  <div class="srcbody">
+    <ol>
+      <li id="r1">[1] Google. "Introducing Fitbit Air." Google Blog, May 2026. <a href="https://blog.google/products-and-platforms/devices/fitbit/fitbit-air/">https://blog.google/products-and-platforms/devices/fitbit/fitbit-air/</a></li>
+      <li id="r2">[2] Google. "Fitbit Air Battery Regulatory Information." Google Support Product Documentation, 2026. <a href="https://support.google.com/product-documentation/answer/17050752">https://support.google.com/product-documentation/answer/17050752</a></li>
+      <li id="r3">[3] DC Rainmaker. "Fitbit Air vs WHOOP — Everything You Need To Know." DCRainmaker.com, May 2026. <a href="https://www.dcrainmaker.com/2026/05/fitbit-air-whoop-competitor-everything-details.html">https://www.dcrainmaker.com/2026/05/fitbit-air-whoop-competitor-everything-details.html</a></li>
+      <li id="r4">[4] The5kRunner. "Fitbit Air Accuracy &amp; Sampling Rate Deep-Dive." The5kRunner.com, June 2026. <a href="https://the5krunner.com/2026/06/03/fitbit-air-accuracy-sampling-rate/">https://the5krunner.com/2026/06/03/fitbit-air-accuracy-sampling-rate/</a></li>
+      <li id="r5">[5] Google. "Understanding Heart Rate and HRV on Fitbit." Google Health Support, 2026. <a href="https://support.google.com/googlehealth/answer/14237938">https://support.google.com/googlehealth/answer/14237938</a></li>
+      <li id="r6">[6] Google. "Skin Temperature Tracking on Fitbit." Google Health Support, 2026. <a href="https://support.google.com/googlehealth/answer/14237207">https://support.google.com/googlehealth/answer/14237207</a></li>
+      <li id="r7">[7] Google LLC. "Multi-wavelength photoplethysmography (PPG) system." US Patent US11051706B1. <a href="https://patents.google.com/patent/US11051706B1/en">https://patents.google.com/patent/US11051706B1/en</a></li>
+      <li id="r8">[8] DC Rainmaker. "Fitbit Air vs WHOOP — Heart Rate Accuracy." DCRainmaker.com, May 2026. <a href="https://www.dcrainmaker.com/2026/05/fitbit-review-vs-whoop.html">https://www.dcrainmaker.com/2026/05/fitbit-review-vs-whoop.html</a></li>
+      <li id="r9">[9] Android GadgetHacks. "Fitbit Air Firmware Update Targets Step and Sleep Tracking Bugs." Android.GadgetHacks.com, 2026. <a href="https://android.gadgethacks.com/news/fitbit-air-firmware-update-targets-step-and-sleep-tracking-bugs/">https://android.gadgethacks.com/news/fitbit-air-firmware-update-targets-step-and-sleep-tracking-bugs/</a></li>
+      <li id="r10">[10] 9to5Google. "Fitbit Air Review." 9to5Google.com, May 2026. <a href="https://9to5google.com/2026/05/fitbit-air-review/">https://9to5google.com/2026/05/fitbit-air-review/</a></li>
+    </ol>
+  </div>
+</details>
+
+<footer><div class="wrap"><a class="back-link" href="../index.html">← Index</a></div></footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const el = document.documentElement;
+    document.getElementById('prog').style.width =
+      (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+  });
+
+  // PPG pipeline diagram
+  (function() {
+    const W = 760, H = 120;
+    const boxes = [
+      { x: 20,  label: 'Green / Red / IR LEDs', sub: 'time-multiplexed', color: '#00c4a7' },
+      { x: 200, label: 'Photodiode array',       sub: '1–10 mm spacing',  color: '#5b8cff' },
+      { x: 380, label: 'On-chip ADC + DSP',      sub: '~25 Hz raw',       color: '#a070e0' },
+      { x: 560, label: 'Confidence gate',         sub: 'quality threshold', color: '#f0a24b' },
+    ];
+    const arrowColor = 'rgba(255,255,255,.18)';
+    let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+    boxes.forEach((b, i) => {
+      const bw = 160, bh = 68, by = (H - bh) / 2;
+      svg += `<rect x="${b.x}" y="${by}" width="${bw}" height="${bh}" rx="9"
+        fill="rgba(255,255,255,.04)" stroke="${b.color}" stroke-width="1.2"/>`;
+      svg += `<text x="${b.x + bw/2}" y="${by + 24}" text-anchor="middle"
+        font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600"
+        fill="${b.color}">${b.label}</text>`;
+      svg += `<text x="${b.x + bw/2}" y="${by + 42}" text-anchor="middle"
+        font-family="JetBrains Mono,monospace" font-size="10" fill="rgba(255,255,255,.4)">${b.sub}</text>`;
+      if (i < boxes.length - 1) {
+        const ax = b.x + bw + 2, ay = H / 2;
+        svg += `<line x1="${ax}" y1="${ay}" x2="${ax + 36}" y2="${ay}"
+          stroke="${arrowColor}" stroke-width="1.4" marker-end="url(#arr)"/>`;
+      }
+    });
+    // Storage label
+    svg += `<text x="${720}" y="${H/2 - 6}" text-anchor="middle"
+      font-family="JetBrains Mono,monospace" font-size="10" fill="rgba(255,255,255,.5)">→ Storage</text>`;
+    svg += `<text x="${720}" y="${H/2 + 10}" text-anchor="middle"
+      font-family="JetBrains Mono,monospace" font-size="9" fill="rgba(240,162,75,.7)">~2–5 s interval</text>`;
+    svg += `<defs><marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="${arrowColor}"/></marker></defs>`;
+    svg += '</svg>';
+    document.getElementById('ppg-diagram').innerHTML = svg;
+  })();
+</script>
+</body>
+</html>
