@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ECG Acquisition via nRF + Electrode Front-End</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+  <style>
+    :root {
+      --accent: #e05252;
+      --accent2: #5b8cff;
+      --chain-bg: #16101a;
+    }
+
+    /* signal chain block diagram */
+    .chain-block { fill: #1e1525; stroke: var(--accent); stroke-width: 1.5; rx: 8; }
+    .chain-text  { fill: #f2ebe6; font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 600; text-anchor: middle; }
+    .chain-sub   { fill: #a8978f; font-family: 'JetBrains Mono', monospace; font-size: 9px; text-anchor: middle; }
+    .chain-arrow { fill: #7e716c; }
+    .chain-line  { stroke: #7e716c; stroke-width: 1.5; fill: none; }
+    .chain-gnd   { fill: #5fd0a6; stroke: #5fd0a6; }
+
+    /* stage detail cards */
+    .stage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 22px 0; }
+    .stage-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+    .stage-num  { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); margin-bottom: 6px; }
+    .stage-name { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 14px; margin-bottom: 8px; }
+    .stage-val  { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--mut); line-height: 1.7; }
+
+    /* why-not grid */
+    .fail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 22px 0; }
+    .fail-card { background: rgba(255,90,82,.05); border: 1px solid rgba(255,90,82,.18); border-radius: 12px; padding: 16px; }
+    .fail-lbl  { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--bad); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
+    .fail-val  { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 600; color: var(--bad); margin-bottom: 4px; }
+    .fail-body { font-size: 13px; color: var(--mut); line-height: 1.5; }
+  </style>
+</head>
+<body>
+<div id="prog"></div>
+
+<header class="hero">
+  <div class="hero-bg" style="background:
+    radial-gradient(800px 500px at 65% 30%, rgba(224,82,82,.10), transparent 60%),
+    radial-gradient(600px 400px at 20% 70%, rgba(91,140,255,.07), transparent 60%);"></div>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+    <div class="kicker"><span class="dot" style="background:var(--accent);box-shadow:0 0 10px var(--accent)"></span> BIOPOTENTIAL · ECG ACQUISITION</div>
+    <h1>ECG via <span style="color:var(--accent)">nRF + Electrode</span></h1>
+    <p class="lead">A surface ECG is a 1 mV differential signal sitting on a ±300 mV DC pedestal, buried under common-mode mains interference 100–1000× its amplitude. The nRF52 SAADC can digitize it — but only after five distinct analog conditioning stages remove the offset, reject interference, and protect the hardware.</p>
+    <p class="mut">2026-07-04</p>
+    <div class="scrolltip"><span class="arr">↓</span> start reading</div>
+  </div>
+</header>
+
+<!-- ── SECTION 1: Signal ── -->
+<section id="s1">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">01</span> The ECG signal</p>
+    <h2>What you are actually measuring</h2>
+    <p>A surface ECG electrode picks up the cumulative electrical activity of the heart — a differential voltage between two points on the skin. Think of it as a very weak, band-limited signal generator in series with two large, noisy impedances (the skin contacts) and a common-mode interference source (mains hum coupled into the body).</p>
+
+    <div class="spec-grid">
+      <div class="spec-card">
+        <span class="sc" style="background:var(--accent)"></span>
+        <div class="sv">1 mV</div>
+        <div class="sl">Typical ECG amplitude (0.01–5 mV range) <span class="ref" title="[1]">[1]</span></div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:#5b8cff"></span>
+        <div class="sv">0.05–100 Hz</div>
+        <div class="sl">Clinical bandwidth; diagnostic detail in 0.05–35 Hz <span class="ref" title="[1]">[1]</span></div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:var(--warn)"></span>
+        <div class="sv">±300 mV</div>
+        <div class="sl">DC electrode offset (wet); up to ±700 mV dry <span class="ref" title="[2]">[2]</span><span class="ref" title="[3]">[3]</span></div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:var(--good)"></span>
+        <div class="sv">500 SPS</div>
+        <div class="sl">Recommended sampling rate for diagnostic ECG <span class="ref" title="[4]">[4]</span></div>
+      </div>
+    </div>
+
+    <h3>The DC offset problem</h3>
+    <p>Each electrode develops a <strong>half-cell potential</strong> — a DC voltage generated by electrochemistry at the interface between the electrode metal and the conductive gel (think of it as a small battery built into the electrode-gel contact). For Ag/AgCl in standard conditions this voltage is approximately +0.223 V relative to a hydrogen reference electrode <span class="ref" title="[5]">[5]</span>. Two electrodes at slightly different temperatures or gel concentrations produce an offset of up to ±300 mV. This is not signal — it is a DC artifact 300× larger than the ECG itself. Any amplifier stage must remove it before applying gain, or the DC component will saturate everything downstream.</p>
+
+    <h3>The electrode impedance problem</h3>
+    <p>A wet Ag/AgCl electrode presents approximately 5 kΩ at 10 Hz with properly abraded skin <span class="ref" title="[6]">[6]</span>. A dry electrode is 50–1000× higher: 250 kΩ to 10 MΩ <span class="ref" title="[7]">[7]</span><span class="ref" title="[8]">[8]</span>. Any amplifier input connected to these electrodes must have an input impedance at least 100× the electrode impedance — otherwise the electrode-amp voltage divider attenuates the signal. For dry electrodes, you need input impedance in the hundreds of megaohms to gigaohm range.</p>
+
+    <div class="callout">
+      <div class="lbl">CMRR MATH</div>
+      <p>The body acts as an antenna. Mains hum (50 or 60 Hz) couples capacitively into the body, producing a common-mode voltage of 1–10 V across both electrode inputs. This common-mode signal is 1000–10,000× larger than the 1 mV ECG <span class="ref" title="[9]">[9]</span>. If the amplifier has 60 dB CMRR (1000:1 rejection), a 1 V common-mode signal produces 1 mV of differential error — equal to the ECG itself. You need ≥90 dB CMRR to keep the mains residual well below the signal floor <span class="ref" title="[10]">[10]</span>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 2: Why nRF alone fails ── -->
+<section id="s2">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">02</span> Why the nRF SAADC can't read ECG directly</p>
+    <h2>Four blocking problems</h2>
+    <p>The nRF52840 SAADC is a competent general-purpose ADC: 12-bit, up to 200 kSPS, 0.6 V internal reference, gain range 1/6–4 <span class="ref" title="[11]">[11]</span><span class="ref" title="[12]">[12]</span>. It is entirely unsuitable for direct electrode connection. Here is why:</p>
+
+    <div class="fail-grid">
+      <div class="fail-card">
+        <div class="fail-lbl">Problem 1</div>
+        <div class="fail-val">0 CMRR</div>
+        <div class="fail-body">The SAADC is single-ended. Its negative input is shorted to ground internally <span class="ref" title="[13]">[13]</span>. It has no differential mode and therefore zero common-mode rejection. The 1–10 V mains hum passes straight through.</div>
+      </div>
+      <div class="fail-card">
+        <div class="fail-lbl">Problem 2</div>
+        <div class="fail-val">Saturation</div>
+        <div class="fail-body">The ±300 mV electrode DC offset added to the 1 mV signal has nowhere to go — the ADC input must stay within 0 to VDD <span class="ref" title="[14]">[14]</span>. Without AC coupling or active offset cancellation, the offset alone drives the ADC rail-to-rail.</div>
+      </div>
+      <div class="fail-card">
+        <div class="fail-lbl">Problem 3</div>
+        <div class="fail-val">~72 dB SNR</div>
+        <div class="fail-body">ECG requires approximately 80 dB SNR <span class="ref" title="[15]">[15]</span>. A 12-bit ADC gives 72 dB theoretical maximum. You need 14-bit effective resolution via hardware oversampling to close the gap — and that requires a clean, low-noise input signal first.</div>
+      </div>
+      <div class="fail-card">
+        <div class="fail-lbl">Problem 4</div>
+        <div class="fail-val">&lt;5 MΩ</div>
+        <div class="fail-body">The SAADC input impedance is >5 MΩ idle, but drops during conversion when a sample-and-hold capacitor is switched in <span class="ref" title="[16]">[16]</span>. Exact value is not specified in the datasheet. Dry electrodes at 10 MΩ would form a resistive divider with the ADC — attenuating the signal.</div>
+      </div>
+    </div>
+
+    <div class="warn-note">
+      <div class="lbl">WARNING</div>
+      <p>Direct electrode-to-ADC connection also bypasses all protection. The IEC 60601-1 defibrillation test fires 4724 V with a 9 µs rise time into the patient leads <span class="ref" title="[17]">[17]</span>. Without series protection resistors and a shunt clamp, the ADC input is destroyed instantly. Even without a defibrillator, ESD events from a patient touch are lethal to unprotected MCU pins.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 3: Signal chain ── -->
+<section id="s3">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">03</span> The required signal chain</p>
+    <h2>Five stages between skin and ADC</h2>
+    <p>Every stage solves a specific problem. Remove any one and the measurement fails or becomes unsafe.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">ECG Signal Chain — Skin to nRF SAADC</span>
+        <span class="panel-sub">block diagram</span>
+      </div>
+      <div id="chain-svg"></div>
+      <p class="panel-cap">Signal flows left to right. Each block addresses one failure mode. The RLD electrode is a third electrode connected back to the body to drive common-mode interference out.</p>
+    </div>
+
+    <div class="stage-grid">
+      <div class="stage-card">
+        <div class="stage-num">STAGE 1</div>
+        <div class="stage-name">Electrode Protection</div>
+        <div class="stage-val">
+          50 kΩ series resistor<br>
+          TVS or gas-discharge shunt<br>
+          Limits defibrillation energy<br>
+          &lt;10% pulse absorbed <span class="ref" title="[17]">[17]</span>
+        </div>
+      </div>
+      <div class="stage-card">
+        <div class="stage-num">STAGE 2</div>
+        <div class="stage-name">Instrumentation Amp</div>
+        <div class="stage-val">
+          Differential → single-ended<br>
+          Input Z: 10 GΩ (AD8232) <span class="ref" title="[18]">[18]</span><br>
+          CMRR: 80 dB min <span class="ref" title="[19]">[19]</span><br>
+          Gain: 100 V/V fixed <span class="ref" title="[20]">[20]</span>
+        </div>
+      </div>
+      <div class="stage-card">
+        <div class="stage-num">STAGE 3</div>
+        <div class="stage-name">High-Pass Filter</div>
+        <div class="stage-val">
+          Corner: 0.05 Hz<br>
+          Blocks electrode DC offset<br>
+          Must pass &gt;0.05 Hz ECG<br>
+          AC couple: large C × large R
+        </div>
+      </div>
+      <div class="stage-card">
+        <div class="stage-num">STAGE 4</div>
+        <div class="stage-name">Right-Leg Drive</div>
+        <div class="stage-val">
+          Active CMRR booster<br>
+          Drives CM back into body<br>
+          Requires compensation <span class="ref" title="[21]">[21]</span><br>
+          Rc+Cc in feedback for stability
+        </div>
+      </div>
+      <div class="stage-card">
+        <div class="stage-num">STAGE 5</div>
+        <div class="stage-name">Anti-Alias + Notch</div>
+        <div class="stage-val">
+          LPF corner: 150–200 Hz<br>
+          Stops aliasing into ADC<br>
+          Optional 50/60 Hz notch <span class="ref" title="[22]">[22]</span><br>
+          Trade-off: ringing vs. rejection
+        </div>
+      </div>
+    </div>
+
+    <h3>Stage 1 — Electrode protection (defibrillation-proof path)</h3>
+    <p>Place a 50 kΩ resistor in series with each electrode lead before any active circuitry. These resistors limit the peak current during a defibrillation event. In parallel with the downstream circuitry, add a shunt device — a gas-discharge tube or transient voltage suppressor (TVS) — to clamp the voltage before it reaches the INA inputs. IEC 60601-1 (Third Edition) requires that patient-connected devices absorb less than 10% of the defibrillation pulse energy <span class="ref" title="[17]">[17]</span>. The defibrillation test pulse peaks at 4724 V with a 9 µs rise time — conventional ESD diodes (with ns-scale turn-on) are marginal; a gas-discharge tube is preferred for the shunt <span class="ref" title="[17]">[17]</span>.</p>
+
+    <div class="aside">The 50 kΩ series resistors also protect against patient ESD. They contribute noise (Johnson noise = √(4kTRΔf)), but at 50 kΩ and the ECG bandwidth (100 Hz), this is √(4 × 1.38×10⁻²³ × 310 × 50×10³ × 100) ≈ 290 nVrms — well below the 20 µVp-p noise floor of the AD8232 INA.</div>
+
+    <h3>Stage 2 — Instrumentation amplifier</h3>
+    <p>The INA converts the differential electrode voltage into a single-ended signal the ADC can read, while rejecting the large common-mode interference. Key requirements: input impedance far above the electrode impedance (≥100× rule — for 5 kΩ wet electrodes you need >500 kΩ; for 10 MΩ dry electrodes you need >100 MΩ), CMRR ≥80 dB, and gain high enough to lift the 1 mV ECG signal to a voltage the ADC can resolve cleanly.</p>
+    <p>The AD8232 provides 10 GΩ || 7.5 pF differential input impedance <span class="ref" title="[18]">[18]</span> — adequate for wet electrodes, marginal for dry. Its fixed INA gain is 100 V/V <span class="ref" title="[20]">[20]</span>, and the total board gain (INA × output op-amp) is configurable — the evaluation board defaults to 1100 V/V.</p>
+
+    <h3>Stage 3 — High-pass filter (0.05 Hz corner)</h3>
+    <p>After the INA, the signal still contains the amplified DC offset (100 V/V × 300 mV = 30 V — which would saturate the op-amp stage). A high-pass filter (HPF) removes DC and low-frequency baseline wander before the output gain stage. The ECG standard requires 0.05 Hz corner frequency to pass the full clinical waveform. The AD8232 evaluation board ships with an HPF at 7 Hz (suitable only for heart rate detection, not diagnostic ECG) <span class="ref" title="[23]">[23]</span> — you must change the RC values if you need 0.05 Hz. For fc = 0.05 Hz with R = 10 MΩ, C = 1/(2π × 0.05 × 10×10⁶) ≈ 318 nF.</p>
+
+    <h3>Stage 4 — Right-leg drive (RLD)</h3>
+    <p>The RLD amplifier samples the common-mode voltage at the INA inputs, inverts it, amplifies it, and injects it back into the patient via a third electrode (typically on the right leg, hence the name). This creates a negative feedback loop that actively cancels the common-mode interference at the body, boosting the effective CMRR of the entire system by 20–40 dB beyond the INA alone. Think of it like noise-canceling headphones: instead of canceling sound in your ear, the RLD broadcasts an inverted copy of the mains hum back into the patient via the right leg electrode — the body's own electrical summing then cancels the interference at the electrode inputs.</p>
+    <div class="warn-note">
+      <div class="lbl">WARNING — RLD oscillation</div>
+      <p>An uncompensated RLD circuit is inherently unstable. Without an external compensation network, the loop gain crosses unity with a rate-of-closure greater than 20 dB/dec — a guaranteed oscillation condition <span class="ref" title="[21]">[21]</span>. The AD8232 RLD uses an internal 150 kΩ resistor and requires an external 1 nF compensation capacitor to stabilize the loop; crossover is approximately 1 kHz, loop gain approximately 20 at 50/60 Hz <span class="ref" title="[24]">[24]</span>. Even with compensation, RLD stability depends on the cable impedance and must be validated per-design <span class="ref" title="[25]">[25]</span>.</p>
+    </div>
+
+    <h3>Stage 5 — Low-pass filter and optional notch</h3>
+    <p>Before the ADC, a low-pass filter (LPF) with a corner at 150–200 Hz prevents aliasing. With a 500 SPS ADC rate, Nyquist is 250 Hz — a first-order RC at 150 Hz provides adequate roll-off. The AD8232 evaluation board defaults to approximately 25 Hz LPF, which is fine for pulse detection but too narrow for full diagnostic ECG (you lose ST-segment detail above 25 Hz).</p>
+    <p>A 50/60 Hz notch filter is optional but commonly added. Be aware: IIR notch filters cause 0–40 µV ringing artifacts in the ST-T segment, and there is a fundamental trade-off — narrower stopband reduces ECG distortion but worsens transient ringing <span class="ref" title="[22]">[22]</span>. For basic monitoring, skip the notch and rely on RLD + CMRR. For recording, apply the notch only in firmware as an FIR with linear phase.</p>
+  </div>
+</section>
+
+<!-- ── SECTION 4: AD8232 ── -->
+<section id="s4">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">04</span> The AD8232 — one IC, most of the signal chain</p>
+    <h2>What it contains and what it does not</h2>
+    <p>The AD8232 is a single-supply ECG front-end IC that integrates the INA, two HPF stages, a low-pass output op-amp, and the RLD amplifier into one package. For a wearable single-lead ECG it is the standard building block.</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Parameter</th><th>Value</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>INA gain</td><td class="good">100 V/V (fixed)</td><td>Internal; not adjustable</td></tr>
+        <tr><td>Input impedance</td><td class="good">10 GΩ || 7.5 pF differential</td><td>Sufficient for wet; marginal for dry electrodes <span class="ref" title="[18]">[18]</span></td></tr>
+        <tr><td>CMRR</td><td class="warn">80 dB (DC–60 Hz)</td><td>Below the 90 dB clinical recommendation <span class="ref" title="[19]">[19]</span></td></tr>
+        <tr><td>Input noise</td><td class="good">20 µVp-p (0.5–40 Hz)</td><td>Datasheet typical <span class="ref" title="[26]">[26]</span></td></tr>
+        <tr><td>Supply voltage</td><td class="good">2.0–3.5 V</td><td>Compatible with nRF52 3.3 V rail <span class="ref" title="[19]">[19]</span></td></tr>
+        <tr><td>Supply current</td><td class="good">170 µA typical</td><td>Suitable for battery operation <span class="ref" title="[19]">[19]</span></td></tr>
+        <tr><td>Output</td><td class="good">Rail-to-rail, single-ended</td><td>Directly connectable to nRF SAADC <span class="ref" title="[27]">[27]</span></td></tr>
+        <tr><td>Default HPF corner</td><td class="warn">~7 Hz (eval board)</td><td>Must change RC for 0.05 Hz diagnostic ECG <span class="ref" title="[23]">[23]</span></td></tr>
+        <tr><td>Default LPF corner</td><td class="warn">~25 Hz (eval board)</td><td>Must change for full diagnostic bandwidth</td></tr>
+        <tr><td>RLD</td><td class="good">Integrated (150 kΩ internal)</td><td>Needs external 1 nF compensation capacitor <span class="ref" title="[24]">[24]</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="conflict">
+      <div class="lbl">CONFLICT — CMRR: 80 dB vs. 90 dB requirement</div>
+      <p>Researcher A found ECG amplifiers require ≥90 dB CMRR to adequately reject mains interference <span class="ref" title="[10]">[10]</span>. Researcher B confirmed the AD8232 provides 80 dB CMRR <span class="ref" title="[19]">[19]</span>. These are not reconciled by the sources. In practice, the 80 dB AD8232 CMRR is supplemented by the RLD circuit and shielded cables — combined effective CMRR is significantly higher. For a research or wearable non-clinical device the AD8232 is widely used successfully. For a certified clinical device, the 10 dB shortfall is a design risk that must be addressed by risk analysis or a different front-end IC.</p>
+    </div>
+
+    <h3>What the AD8232 does NOT provide</h3>
+    <ul>
+      <li><strong>Defibrillation protection</strong> — no series resistors, no shunt clamp. You must add these externally.</li>
+      <li><strong>Galvanic isolation</strong> — required for Type BF/CF classification under IEC 60601-1. The AD8232 shares a common ground with the nRF supply. Add an isolation barrier (ISO7741, ADuM1201, or similar) if you need regulatory compliance.</li>
+      <li><strong>Lead-off detection beyond LOD± pins</strong> — the AD8232 provides lead-off detect pins but the detection current is small and not suitable for all electrode types.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ── SECTION 5: Connecting to nRF ── -->
+<section id="s5">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">05</span> Connecting the AFE output to the nRF SAADC</p>
+    <h2>ADC configuration and voltage translation</h2>
+
+    <p>The AD8232 output is a single-ended, rail-to-rail voltage centered at approximately half the supply. On a 3.3 V supply, the output idles at ~1.65 V (mid-rail) and swings ±300 mV for a typical ECG — staying comfortably within 0 to VDD that the SAADC requires <span class="ref" title="[14]">[14]</span><span class="ref" title="[27]">[27]</span>.</p>
+
+    <div class="callout">
+      <div class="lbl">SAADC CONFIGURATION FOR ECG</div>
+      <p><strong>Reference:</strong> Internal 0.6 V. <strong>Gain:</strong> 1/6 → full-scale = 0.6 / (1/6) = 3.6 V (covers the full 0–3.3 V output swing) <span class="ref" title="[28]">[28]</span>.<br>
+      <strong>Resolution:</strong> 14-bit (via oversampling, 12-bit ADC × 4) to approach the 80 dB SNR requirement <span class="ref" title="[29]">[29]</span>.<br>
+      <strong>Acquisition time:</strong> If driving SAADC from AD8232 output (low-impedance &lt;1 kΩ source), use minimum acquisition time (3 µs). The SAADC acquisition time must be set to allow the internal capacitor to fully settle <span class="ref" title="[30]">[30]</span>.<br>
+      <strong>Sampling rate:</strong> 500 SPS minimum for diagnostic ECG. At 500 SPS with 14-bit oversampling (4 samples averaged), the actual SAADC conversion rate is 2000 SPS — well within the BLE-limited 40 kSPS ceiling <span class="ref" title="[31]">[31]</span>.</p>
+    </div>
+
+    <h3>Conversion formula</h3>
+    <p>Raw SAADC result to voltage <span class="ref" title="[32]">[32]</span>:</p>
+    <div class="panel" style="padding:18px 22px">
+      <code style="font-size:15px; color:var(--accent)">V = RESULT × 0.6 / (1/6) / 2<sup>14</sup> = RESULT × 3.6 / 16384</code>
+      <p class="panel-cap">With gain 1/6, internal 0.6 V reference, 14-bit resolution: 1 LSB = 219.7 µV. After AD8232 gain of 1100×, 1 LSB referred to the electrode ≈ 0.2 µV — sufficient to resolve sub-millivolt ECG features.</p>
+    </div>
+
+    <h3>Decoupling and source impedance</h3>
+    <p>Nordic recommends 10 pF decoupling on the SAADC input pin, with an AC coupling capacitor close to the chip and source impedance matched to 50 Ω on the PCB trace <span class="ref" title="[33]">[33]</span>. Place the AD8232 output resistor (if used for LPF) as close as possible to the nRF pin to minimize the unshielded trace length picking up noise between the two ICs.</p>
+  </div>
+</section>
+
+<!-- ── SECTION 6: Safety / IEC 60601 ── -->
+<section id="s6">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">06</span> IEC 60601 safety classification</p>
+    <h2>Isolation, leakage, and when you legally need what</h2>
+
+    <p>IEC 60601-1 classifies patient-connected equipment by how much leakage current can flow through the patient connection. This determines whether galvanic isolation is required and at what voltage.</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Type</th><th>Leakage (normal)</th><th>Leakage (single fault)</th><th>Isolation (output-to-ground)</th><th>When required</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>B</td>
+          <td>100 µA</td>
+          <td>500 µA</td>
+          <td>500 VAC min</td>
+          <td>External surface contact, low risk</td>
+        </tr>
+        <tr>
+          <td>BF</td>
+          <td>100 µA</td>
+          <td>500 µA</td>
+          <td class="warn">1500 VAC min</td>
+          <td>Body surface contact requiring isolation <span class="ref" title="[34]">[34]</span></td>
+        </tr>
+        <tr>
+          <td>CF</td>
+          <td class="bad">10 µA</td>
+          <td class="bad">50 µA</td>
+          <td class="bad">1500 VAC min</td>
+          <td>Cardiac contact risk (any ECG near chest) <span class="ref" title="[34]">[34]</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>Currents as low as 10–100 µA applied directly to the myocardium can trigger ventricular fibrillation <span class="ref" title="[35]">[35]</span>. This is why Type CF limits are 10 µA — the safety margin exists because ECG electrodes are placed on the chest near the heart, and a fault current path (through the electrode gel and skin into the myocardium) is plausible.</p>
+
+    <div class="note">
+      <div class="lbl">KEY FINDING — When isolation is required</div>
+      <p>CF classification is not automatically mandatory for all ECG equipment. The determination depends on intended use, patient connection type, and risk analysis <span class="ref" title="[36]">[36]</span>. For a research prototype or personal-use wearable powered by battery (no mains connection), the leakage current is often within Type B limits without isolation. For a mains-powered device or any device where mains voltage could appear on the patient connection under single-fault conditions, full galvanic isolation is required. Run the risk analysis — do not assume Type B is sufficient.</p>
+    </div>
+
+    <h3>Adding galvanic isolation</h3>
+    <p>If you need Type BF or CF compliance, place an isolation barrier between the electrode-side circuitry (AD8232 + analog power) and the nRF52 (digital side). Options:</p>
+    <ul>
+      <li><strong>Digital isolator</strong> — digitize the ECG on the patient side with a dedicated ADC (ADS1292, MAX30003), then send the digital output across a digital isolator (ISO7741, ADuM1201). Data crosses the barrier as SPI/I2C; no analog crossing needed.</li>
+      <li><strong>Isolated power</strong> — run the patient-side circuitry from an isolated DC/DC converter (e.g., R05CT05S or similar). The analog signal can then cross as a modulated signal (capacitively or optically coupled).</li>
+    </ul>
+    <p>Input-to-output isolation must withstand 4000 VAC minimum; output-to-ground for Type BF/CF must withstand 1500 VAC <span class="ref" title="[34]">[34]</span>.</p>
+  </div>
+</section>
+
+<!-- ── SECTION 7: PCB Layout ── -->
+<section id="s7">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">07</span> PCB layout and practical tips</p>
+    <h2>Where ECG designs die on the board</h2>
+
+    <h3>Separate analog and digital power planes</h3>
+    <p>Running the AD8232 from the same power rail as the nRF52 radio is a common mistake. <strong>Power planes</strong> here means separate voltage regulators and ground areas on the PCB — one regulator and one ground pour for the ECG analog front-end, a separate regulator and ground pour for the nRF52 and its radio. The BLE radio transmit burst injects switching noise directly into the analog supply, and this appears as periodic artifacts in the ECG trace. Use a separate LDO for the analog side, referenced to a clean analog ground <span class="ref" title="[37]">[37]</span>. A ferrite bead or RC filter between the digital and analog supply rails is the minimum acceptable approach.</p>
+
+    <div class="warn-note">
+      <div class="lbl">BLE COUPLING WARNING</div>
+      <p>The nRF52 BLE radio transmits at 0 dBm to +8 dBm at 2.4 GHz in bursts of ~1.25 ms per connection event. This couples capacitively into every nearby trace. Your ECG signal is 1 mV — even −60 dBm of coupling (−60 dBm = 1 µW into 50 Ω = 7 mVp-p) is 7× the signal amplitude. Separate power supplies and physical separation of analog components from the antenna are non-negotiable <span class="ref" title="[37]">[37]</span>.</p>
+    </div>
+
+    <h3>Guard rings</h3>
+    <p>Surround the AD8232 and its passive components with a driven guard ring connected to the mid-supply reference voltage (the same voltage that drives the INA reference input). A guard ring driven to the same potential as the signal common mode eliminates leakage currents from the PCB surface resistance that would otherwise inject noise into the high-impedance input nodes <span class="ref" title="[38]">[38]</span>. The guard trace should be continuous with no gaps or branches, and as wide as space allows.</p>
+
+    <h3>Cable and electrode routing</h3>
+    <p>Power-line interference couples capacitively into both the electrode leads and the body. Shielded cables reduce coupling into the leads, but the electrode tip itself is unshielded — the high-impedance tip remains a capacitive antenna at the mains frequency <span class="ref" title="[39]">[39]</span>. Short cables reduce capacitance. Twisted pairs reduce differential interference pickup. The RLD electrode handles what remains.</p>
+
+    <h3>Component placement checklist</h3>
+    <ul>
+      <li>AD8232 supply decoupling: 0.1 µF ceramic immediately at the supply pin, 1 µF bulk within 5 mm <span class="ref" title="[40]">[40]</span></li>
+      <li>RLD capacitor (1 nF): within 2 mm of the AD8232 RLD pin — long traces add parasitic inductance that destabilizes the loop</li>
+      <li>HPF capacitors: use low-leakage film capacitors for the 0.05 Hz path — ceramic X5R/X7R dielectrics have DC bias dependence that shifts the corner frequency</li>
+      <li>nRF52 SAADC input: 10 pF to analog ground at the pin <span class="ref" title="[33]">[33]</span></li>
+      <li>Electrode protection resistors (50 kΩ): physically at the board edge, before any other circuitry — they protect everything downstream</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ── SECTION 8: Putting it together ── -->
+<section id="s8">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">08</span> Complete build summary</p>
+    <h2>What you need, in order</h2>
+
+    <div class="note">
+      <div class="lbl">MINIMUM VIABLE ECG WITH nRF52</div>
+      <p><strong>ICs:</strong> AD8232 (AFE) + nRF52832 or nRF52840 (MCU/BLE)<br>
+      <strong>Electrodes:</strong> 3× Ag/AgCl — LA (left arm), RA (right arm), RL (right leg / RLD)<br>
+      <strong>Protection:</strong> 2× 50 kΩ series resistors on LA and RA; 2× TVS shunt to analog ground<br>
+      <strong>HPF:</strong> Change AD8232 HPF components for 0.05 Hz corner (R = 10 MΩ, C ≈ 320 nF) for diagnostic ECG, or leave at 7 Hz for pulse detection only<br>
+      <strong>RLD compensation:</strong> 1 nF capacitor on AD8232 RLDREF pin (already specified in datasheet)<br>
+      <strong>ADC config:</strong> Gain 1/6, internal 0.6 V ref, 14-bit (oversampled), 500 SPS<br>
+      <strong>Power:</strong> Separate LDO for AD8232 analog supply; ferrite bead separation from nRF52 digital supply<br>
+      <strong>Isolation:</strong> Not required for battery-powered research prototype; required for mains-connected or certified medical device</p>
+    </div>
+
+    <p>The nRF52832 is already proven in commercial ECG wearables — the AppSens ECG247 Smart Heart Sensor uses it for cardiac rhythm disorder detection <span class="ref" title="[41]">[41]</span>. The path from electrode to BLE is well-trodden; the work is in the analog signal chain, not the digital side.</p>
+  </div>
+</section>
+
+<details class="src">
+  <summary>References <span class="chev">▾</span></summary>
+  <div class="srcbody">
+    <ol>
+      <li id="r1">[1] Various authors. "Computational Diagnostic Techniques for ECG Signal Analysis." PMC/NIH, 2020. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7664289/">https://pmc.ncbi.nlm.nih.gov/articles/PMC7664289/</a></li>
+      <li id="r2">[2] Various authors. "Computational Diagnostic Techniques for ECG Signal Analysis." PMC/NIH, 2020. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7664289/">https://pmc.ncbi.nlm.nih.gov/articles/PMC7664289/</a> — DC electrode offset ±300 mV claim (same article as [1]).</li>
+      <li id="r3">[3] ArXiv. "Design of a Novel Wearable ECG Monitoring Device," 2025. <a href="https://arxiv.org/pdf/2507.17154">https://arxiv.org/pdf/2507.17154</a> — dry electrode DC offset up to ±700 mV.</li>
+      <li id="r4">[4] IEEE Xplore. "ECG Front-End Design," 2021. DOI: <a href="https://ieeexplore.ieee.org/document/9403666/">10.1109/9403666</a> — sampling rate recommendations.</li>
+      <li id="r5">[5] Various authors. "Human Body–Electrode Interfaces Review." PMC, 2021. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8401560/">https://pmc.ncbi.nlm.nih.gov/articles/PMC8401560/</a> — Ag/AgCl half-cell potential +0.223 V.</li>
+      <li id="r6">[6] Various authors. "Dry Electrodes for Human Bioelectrical Signal Monitoring." PMC, 2020. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7374322/">https://pmc.ncbi.nlm.nih.gov/articles/PMC7374322/</a> — wet electrode impedance ~5 kΩ at 10 Hz.</li>
+      <li id="r7">[7] PMC 2021 (same as [5]) — dry electrode 50× impedance increase vs. wet.</li>
+      <li id="r8">[8] ResearchGate. "An Ultra-High Input Impedance ECG Amplifier for Long-Term Monitoring of Athletes." <a href="https://www.researchgate.net/publication/230723393">https://www.researchgate.net/publication/230723393</a> — dry electrodes 10 MΩ vs. 10 kΩ wet.</li>
+      <li id="r9">[9] Analog Devices. "Common-Mode Rejection in Biopotential Amplifiers." <a href="https://www.analog.com/en/resources/technical-articles/common-mode-rejection.html">https://www.analog.com/en/resources/technical-articles/common-mode-rejection.html</a></li>
+      <li id="r10">[10] ResearchGate. "Minimal CMRR for ECG Bioelectric Amplifiers." <a href="https://www.researchgate.net/figure/recapitulates-the-minimal-CMRR-50-Hz-we-recommend-for-an-amplifier-for-bioelectric_tbl1_23182056">https://www.researchgate.net/figure/...</a> — ≥90 dB required.</li>
+      <li id="r11">[11] Nordic Developer Academy. "ADC Peripheral on Nordic Devices." <a href="https://academy.nordicsemi.com/courses/nrf-connect-sdk-intermediate/lessons/lesson-6-analog-to-digital-converter-adc/topic/adc-peripheral-on-nordic-devices/">https://academy.nordicsemi.com/...</a></li>
+      <li id="r12">[12] Nordic Developer Academy (same as [11]) — 200 kSPS max rate, 2 µs conversion time.</li>
+      <li id="r13">[13] Nordic Developer Academy (same as [11]) — single-ended mode shorts negative input to ground.</li>
+      <li id="r14">[14] Nordic DevZone. "nRF52840 SAADC Input Voltage Limits." <a href="https://devzone.nordicsemi.com/f/nordic-q-a/62959/nrf52840-saadc-input-voltage-limits">https://devzone.nordicsemi.com/f/nordic-q-a/62959/</a></li>
+      <li id="r15">[15] Spectrum Instrumentation. "ADC and Resolution." <a href="https://spectrum-instrumentation.com/support/knowledgebase/hardware_features/ADC_and_Resolution.php">https://spectrum-instrumentation.com/...</a> — ECG requires ~80 dB SNR.</li>
+      <li id="r16">[16] Nordic DevZone. "nRF52840 SAADC Input Impedance." <a href="https://devzone.nordicsemi.com/f/nordic-q-a/37680/nrf52840-what-is-the-input-impedance-of-the-adc-inputs-in-spec-it-is-greater-than-1m-but-how-much">https://devzone.nordicsemi.com/f/nordic-q-a/37680/</a></li>
+      <li id="r17">[17] MEDTEQ. "IEC 60601-1 Defibrillator Protection Design and Test." <a href="https://www.medteq.net/article/iec-60601-1-defibrillator-protection-design-test">https://www.medteq.net/article/iec-60601-1-defibrillator-protection-design-test</a></li>
+      <li id="r18">[18] Radiolocman / AD8232 Datasheet. "AD8232 Input Impedance," p. 2. <a href="https://www.radiolocman.com/datasheet/pdf.html?di=169983&p=2">https://www.radiolocman.com/datasheet/pdf.html?di=169983&p=2</a></li>
+      <li id="r19">[19] Utmel. "AD8232 Single-Lead ECG Front End Design Guide." <a href="https://www.utmel.com/components/ad8232-single-lead-ecg-front-end-design-guide?id=7772">https://www.utmel.com/components/ad8232-single-lead-ecg-front-end-design-guide?id=7772</a></li>
+      <li id="r20">[20] Analog Devices. "AD8232 Product Page." <a href="https://www.analog.com/en/products/ad8232.html">https://www.analog.com/en/products/ad8232.html</a> — fixed 100 V/V INA gain.</li>
+      <li id="r21">[21] Texas Instruments. "Right Leg Drive Stability Analysis." <a href="https://e2e.ti.com/cfs-file/__key/communityserver-discussions-components-files/14/7838.RLD.pdf">https://e2e.ti.com/cfs-file/.../7838.RLD.pdf</a></li>
+      <li id="r22">[22] PMC. "Notch Filter Design and Effects on ECG Signal," 2013. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3701603/">https://pmc.ncbi.nlm.nih.gov/articles/PMC3701603/</a></li>
+      <li id="r23">[23] Analog Devices Wiki. "AD8232 Evaluation Board A03321A." <a href="https://wiki.analog.com/resources/eval/ad8232-evaluation-guide/a03321a">https://wiki.analog.com/resources/eval/ad8232-evaluation-guide/a03321a</a></li>
+      <li id="r24">[24] Radiolocman / AD8232 Datasheet, p. 18. "RLD amplifier design." <a href="https://www.radiolocman.com/datasheet/pdf.html?di=169983&p=18">https://www.radiolocman.com/datasheet/pdf.html?di=169983&p=18</a></li>
+      <li id="r25">[25] Analog Devices EngineerZone. "ADAS1000 Right Leg Drive Function." <a href="https://ez.analog.com/data_converters/precision_adcs/w/documents/3412/adas1000-right-leg-drive-function">https://ez.analog.com/data_converters/...</a></li>
+      <li id="r26">[26] Radiolocman / AD8232 Datasheet, p. 8. "20 µVp-p noise (0.5–40 Hz)." <a href="https://www.radiolocman.com/datasheet/pdf.html?di=169983&p=8">https://www.radiolocman.com/datasheet/pdf.html?di=169983&p=8</a></li>
+      <li id="r27">[27] SparkFun. "AD8232 Heart Rate Monitor Hookup Guide." <a href="https://learn.sparkfun.com/tutorials/ad8232-heart-rate-monitor-hookup-guide/all">https://learn.sparkfun.com/tutorials/ad8232-heart-rate-monitor-hookup-guide/all</a></li>
+      <li id="r28">[28] Adafruit. "Bluefruit nRF52 Feather — nRF52 ADC." <a href="https://learn.adafruit.com/bluefruit-nrf52-feather-learning-guide/nrf52-adc">https://learn.adafruit.com/bluefruit-nrf52-feather-learning-guide/nrf52-adc</a></li>
+      <li id="r29">[29] Spectrum Instrumentation (same as [15]) — 14-bit or oversampling needed for 80 dB SNR.</li>
+      <li id="r30">[30] Nordic DevZone. "SAADC_ACQTIME and Conversion Timing." <a href="https://devzone.nordicsemi.com/f/nordic-q-a/34978/saadc_acqtime-and-conversion-timing">https://devzone.nordicsemi.com/f/nordic-q-a/34978/</a></li>
+      <li id="r31">[31] Nordic DevZone. "nRF52840 SAADC Sample Rate with BLE Stack." <a href="https://devzone.nordicsemi.com/f/nordic-q-a/69939/how-to-increase-saadc-sample-rate-and-how-to-correctly-use-saadc-conversion-results-when-oversampling-nrf52840">https://devzone.nordicsemi.com/f/nordic-q-a/69939/</a></li>
+      <li id="r32">[32] EmbeddedExplorer. "Measuring Analog Signal with NRF52 SAADC." <a href="https://www.embeddedexplorer.com/nrf52-saadc-tutorial/">https://www.embeddedexplorer.com/nrf52-saadc-tutorial/</a></li>
+      <li id="r33">[33] Nordic DevZone. "nRF52 ADC Front-End Circuit." <a href="https://devzone.nordicsemi.com/f/nordic-q-a/14365/nrf52-adc-front-end-circuit">https://devzone.nordicsemi.com/f/nordic-q-a/14365/</a></li>
+      <li id="r34">[34] Advanced Energy. "Safety Requirements in Medical Equipment — BF and CF Classifications." <a href="https://www.advancedenergy.com/en-us/about/news/blog/safety-requirements-in-medical-equipment-designing-for-bf-and-cf-classifications/">https://www.advancedenergy.com/...</a></li>
+      <li id="r35">[35] Astute Labs. "Applied Parts Classification IEC 60601-1 Type B, BF, CF." <a href="https://www.astute-labs.com/blog/applied-parts-classification-iec-60601-1-type-b-bf-cf/">https://www.astute-labs.com/blog/applied-parts-classification-iec-60601-1-type-b-bf-cf/</a></li>
+      <li id="r36">[36] Astute Labs (same as [35]) — CF not automatically mandatory; depends on risk analysis.</li>
+      <li id="r37">[37] PMC. "A Flexible 12-Lead/Holter ECG Device," 2018. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6264074/">https://pmc.ncbi.nlm.nih.gov/articles/PMC6264074/</a> — separate analog/digital power supply.</li>
+      <li id="r38">[38] YT Electronic. "What are PCB Guard Rings?" <a href="https://yt-electronic.com/blog/what-are-pcb-guard-ring-how-to-avoid-common-layout-errors/">https://yt-electronic.com/blog/what-are-pcb-guard-ring-how-to-avoid-common-layout-errors/</a></li>
+      <li id="r39">[39] ResearchGate. "Interference Reduction in ECG Recordings by Using a Dual Ground Electrode." <a href="https://www.researchgate.net/publication/255570925">https://www.researchgate.net/publication/255570925</a></li>
+      <li id="r40">[40] Utmel (same as [19]) — AD8232 power decoupling 0.1 µF + 1 µF.</li>
+      <li id="r41">[41] Nordic Semiconductor News. "AppSens ECG247 Smart Heart Sensor employs nRF52832 SoC," Feb 2021. <a href="https://www.nordicsemi.com/Nordic-news/2021/02/AppSens-ECG247-Smart-Heart-Sensor-employs-nRF52832-SoC">https://www.nordicsemi.com/...</a></li>
+    </ol>
+  </div>
+</details>
+
+<footer><div class="wrap"><a class="back-link" href="../index.html">← Index</a></div></footer>
+
+<script>
+  /* scroll progress */
+  window.addEventListener('scroll', () => {
+    const el = document.documentElement;
+    document.getElementById('prog').style.width =
+      (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+  });
+
+  /* signal chain SVG */
+  (function() {
+    const W = 820, H = 160;
+    const blocks = [
+      { x: 10,  label: 'ELECTRODE', sub: 'skin contact' },
+      { x: 120, label: 'PROTECTION', sub: '50 kΩ + TVS' },
+      { x: 260, label: 'INA', sub: 'AD8232 100×' },
+      { x: 380, label: 'HPF', sub: '0.05 Hz' },
+      { x: 490, label: 'RLD', sub: 'active CMRR' },
+      { x: 600, label: 'LPF + NOTCH', sub: '150 Hz / 60 Hz' },
+      { x: 710, label: 'nRF SAADC', sub: '14-bit 500 SPS' },
+    ];
+    const BW = 100, BH = 56, BY = 52;
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+
+    /* arrows between blocks */
+    for (let i = 0; i < blocks.length - 1; i++) {
+      const x1 = blocks[i].x + BW;
+      const x2 = blocks[i+1].x;
+      const mx = (x1 + x2) / 2;
+      const cy = BY + BH / 2;
+      svg += `<line x1="${x1}" y1="${cy}" x2="${x2 - 7}" y2="${cy}" class="chain-line"/>`;
+      svg += `<polygon points="${x2-7},${cy-4} ${x2+1},${cy} ${x2-7},${cy+4}" class="chain-arrow"/>`;
+    }
+
+    /* RLD feedback arrow */
+    const rldBlock = blocks[4];
+    const rldCx = rldBlock.x + BW / 2;
+    const rldBottom = BY + BH;
+    svg += `<path d="M${rldCx},${rldBottom} L${rldCx},${H-10} L30,${H-10} L30,${BY+BH}" class="chain-line" stroke-dasharray="4,3"/>`;
+    svg += `<polygon points="26,${BY+BH+1} 34,${BY+BH+1} 30,${BY+BH-7}" fill="#7e716c"/>`;
+    svg += `<text x="${rldCx - 40}" y="${H - 2}" font-family="JetBrains Mono,monospace" font-size="9" fill="#7e716c">RLD feedback to patient</text>`;
+
+    /* blocks */
+    blocks.forEach((b, i) => {
+      const isNrf = i === blocks.length - 1;
+      const isElec = i === 0;
+      const stroke = isNrf ? '#5b8cff' : isElec ? '#5fd0a6' : '#e05252';
+      svg += `<rect x="${b.x}" y="${BY}" width="${BW}" height="${BH}" rx="8" fill="#1e1525" stroke="${stroke}" stroke-width="1.5"/>`;
+      svg += `<text x="${b.x + BW/2}" y="${BY + 22}" class="chain-text">${b.label}</text>`;
+      svg += `<text x="${b.x + BW/2}" y="${BY + 38}" class="chain-sub">${b.sub}</text>`;
+    });
+
+    svg += `</svg>`;
+    document.getElementById('chain-svg').innerHTML = svg;
+  })();
+</script>
+</body>
+</html>
