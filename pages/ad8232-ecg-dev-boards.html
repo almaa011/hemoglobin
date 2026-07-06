@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AD8232 ECG Dev Boards — Sourcing, Usage & Known Issues</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+  <style>
+    :root {
+      --accent: #2fb6c4;      /* board/cyan */
+      --accent2: #e05252;      /* ECG red for signal accents */
+    }
+
+    /* block-diagram + electrode svg helpers */
+    .dg-box   { fill: #1a141d; stroke: var(--accent); stroke-width: 1.5; }
+    .dg-box2  { fill: #1a141d; stroke: var(--accent2); stroke-width: 1.5; }
+    .dg-t     { fill: #f2ebe6; font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600; text-anchor: middle; }
+    .dg-s     { fill: #a8978f; font-family: 'JetBrains Mono', monospace; font-size: 9px; text-anchor: middle; }
+    .dg-line  { stroke: #7e716c; stroke-width: 1.5; fill: none; }
+    .dg-fb    { stroke: var(--accent2); stroke-width: 1.4; fill: none; stroke-dasharray: 4 3; }
+    .dg-arrow { fill: #7e716c; }
+    .body-out { fill: #201820; stroke: var(--line); stroke-width: 1.5; }
+    .elec     { fill: var(--accent); }
+    .elec-rl  { fill: var(--accent2); }
+    .elec-lbl { fill: #f2ebe6; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; }
+    .elec-sub { fill: #a8978f; font-family: 'JetBrains Mono', monospace; font-size: 9px; }
+
+    /* pin legend cards */
+    .pin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 10px; margin: 22px 0; }
+    .pin-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+    .pin-name { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 600; color: var(--accent); margin-bottom: 4px; }
+    .pin-desc { font-size: 12.5px; color: var(--mut); line-height: 1.5; }
+  </style>
+</head>
+<body>
+<div id="prog"></div>
+
+<header class="hero">
+  <div class="hero-bg" style="background:
+    radial-gradient(800px 500px at 70% 28%, rgba(47,182,196,.12), transparent 60%),
+    radial-gradient(600px 400px at 15% 75%, rgba(224,82,82,.07), transparent 60%);"></div>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+    <div class="kicker"><span class="dot"></span> ECG · AD8232 DEV BOARDS</div>
+    <h1>AD8232 ECG <span style="color:var(--accent)">Dev Boards</span></h1>
+    <p class="lead">A practical, sourced path from "board arrives" to "usable ECG trace": what the SparkFun SEN-12650 and clone boards actually give you, what the AD8232 datasheet says is inside, how to wire and sample it, and the specific failures people hit — each with its documented cause and fix.</p>
+    <p class="mut">2026-07-06</p>
+    <div class="scrolltip"><span class="arr">↓</span> start reading</div>
+  </div>
+</header>
+
+<!-- ── SECTION 1: Board landscape ── -->
+<section id="s1">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">01</span> Board landscape</p>
+    <h2>What you can actually buy</h2>
+    <p>The AD8232 is an analog front-end IC; you almost never buy the bare chip. You buy a breakout that adds a supply pin, a 3.5&nbsp;mm electrode jack (or headers), an activity LED, and the handful of resistors and capacitors that set the filter corners. Two things dominate the market: the <strong>SparkFun Single Lead Heart Rate Monitor (SEN-12650)</strong> — the reference against which everything else is judged — and a large population of visually similar generic/clone modules from AliExpress, Amazon, and no-name suppliers.</p>
+
+    <div class="spec-grid">
+      <div class="spec-card">
+        <span class="sc" style="background:var(--accent)"></span>
+        <div class="sv">SEN-12650</div>
+        <div class="sl">SparkFun part number <span class="ref" title="[1]">[1]</span></div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:var(--accent)"></span>
+        <div class="sv">$24.41</div>
+        <div class="sl">SparkFun retail price <span class="ref" title="[1]">[1]</span></div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:#5b8cff"></span>
+        <div class="sv">3.3 V</div>
+        <div class="sl">Board operating voltage <span class="ref" title="[1]">[1]</span></div>
+      </div>
+      <div class="spec-card">
+        <span class="sc" style="background:var(--warn)"></span>
+        <div class="sv">9 pins</div>
+        <div class="sl">SDN, LO+, LO−, OUTPUT, 3.3V, GND, RA, LA, RL <span class="ref" title="[1]">[1]</span></div>
+      </div>
+    </div>
+
+    <p>The SparkFun board breaks out nine connections — the six you need to run it (<code>SDN, LO+, LO−, OUTPUT, 3.3V, GND</code>) plus three electrode pads (<code>RA, LA, RL</code>) for soldering your own sensor leads — and provides a 3.5&nbsp;mm jack for a snap-electrode cable and an LED that visibly pulses with the heartbeat <span class="ref" title="[1]">[1]</span><span class="ref" title="[2]">[2]</span>.</p>
+
+    <div class="warn-note">
+      <div class="lbl">NOT A MEDICAL DEVICE</div>
+      <p>SparkFun states plainly on the product page: <em>"This product is <strong>NOT</strong> a medical device and is not intended to be used as such or as an accessory to such nor diagnose or treat any conditions."</em> <span class="ref" title="[1]">[1]</span> Everything below is for hobbyist/engineering experimentation. For the safety story (defibrillation protection, IEC&nbsp;60601 isolation, why you should run it from a battery and not mains-tied USB) see the companion page, <a href="ecg-nrf-electrode.html">ECG via nRF + Electrode Front-End</a>.</p>
+    </div>
+
+    <h3>SparkFun vs. clone boards — what actually differs</h3>
+    <p>Clone modules look almost identical and use the same AD8232 die, so the analog signal chain is nominally the same. The honest, sourced picture of the differences is narrower than most tutorials imply:</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Aspect</th><th>SparkFun SEN-12650</th><th>Generic / clone</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Core IC</td><td class="good">Genuine AD8232</td><td class="warn">AD8232-marked; same footprint</td></tr>
+        <tr><td>Passive values</td><td class="good">Published reference design <span class="ref" title="[20]">[20]</span></td><td class="warn">"Some passive component values differ" from the original <span class="ref" title="[15]">[15]</span></td></tr>
+        <tr><td>Electrode connector</td><td class="good">3.5 mm jack <span class="ref" title="[1]">[1]</span></td><td class="warn">Varies by vendor; not documented per-board <span class="ref" title="[15]">[15]</span></td></tr>
+        <tr><td>Broken-out pins</td><td class="good">9 pins incl. RA/LA/RL pads <span class="ref" title="[1]">[1]</span></td><td class="warn">Varies; not documented per-board</td></tr>
+        <tr><td>Design files</td><td class="good">Open on GitHub <span class="ref" title="[20]">[20]</span></td><td class="bad">None</td></tr>
+      </tbody>
+    </table>
+
+    <div class="conflict">
+      <div class="lbl">CONFLICT / GAP — clone component quality</div>
+      <p>The common claim that clones use "worse filtering" or "cheaper components" is <strong>not</strong> supported by a public teardown. The only sourced statement is an academic figure comparing an original and a cloned adapter board: <em>"The original and cloned boards look quite similar, although some visual details and passive components values are different."</em> <span class="ref" title="[15]">[15]</span> A component-level BOM comparison (which resistor/capacitor differs, and what it does to the filter corners) was not found anywhere public. Treat clone filtering as <strong>unknown until you measure your own board</strong>, not as a documented downgrade.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 2: Datasheet basis ── -->
+<section id="s2">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">02</span> What's inside — the datasheet basis</p>
+    <h2>The AD8232, block by block</h2>
+    <p>The AD8232 integrates almost the entire single-lead ECG front-end into one 4&nbsp;mm × 4&nbsp;mm LFCSP: an instrumentation amplifier, a two-pole high-pass filter, a three-pole low-pass op-amp stage, a right-leg-drive amplifier, a reference buffer, and lead-off detection. Everything in this section is <strong>datasheet-derived</strong> and cited to the Analog Devices AD8232 datasheet <span class="ref" title="[4]">[4]</span>; where a value comes from the ADI evaluation board or a design guide rather than the IC datasheet, that is flagged explicitly.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">AD8232 internal signal chain</span>
+        <span class="panel-sub">block diagram</span>
+      </div>
+      <svg viewBox="0 0 860 250" role="img" aria-label="AD8232 internal signal chain from electrodes to output and ADC">
+        <!-- electrodes -->
+        <text x="42" y="70" class="dg-s">RA / LA</text>
+        <text x="42" y="82" class="dg-s">electrodes</text>
+        <line x1="80" y1="66" x2="120" y2="66" class="dg-line"/>
+        <line x1="80" y1="86" x2="120" y2="86" class="dg-line"/>
+        <!-- IA -->
+        <rect x="120" y="46" width="110" height="60" rx="8" class="dg-box"/>
+        <text x="175" y="72" class="dg-t">Instr. Amp</text>
+        <text x="175" y="90" class="dg-s">G = 100, fixed</text>
+        <!-- HPF -->
+        <rect x="258" y="46" width="110" height="60" rx="8" class="dg-box"/>
+        <text x="313" y="72" class="dg-t">HPF</text>
+        <text x="313" y="90" class="dg-s">2-pole, RC-set</text>
+        <!-- LPF/opamp -->
+        <rect x="396" y="46" width="120" height="60" rx="8" class="dg-box"/>
+        <text x="456" y="66" class="dg-t">Op-amp + LPF</text>
+        <text x="456" y="82" class="dg-s">3-pole, gain</text>
+        <text x="456" y="96" class="dg-s">×11 (eval)</text>
+        <!-- OUTPUT -->
+        <rect x="544" y="46" width="96" height="60" rx="8" class="dg-box2"/>
+        <text x="592" y="72" class="dg-t">OUTPUT</text>
+        <text x="592" y="90" class="dg-s">→ single-ended</text>
+        <!-- ADC -->
+        <rect x="700" y="46" width="110" height="60" rx="8" class="dg-box"/>
+        <text x="755" y="72" class="dg-t">MCU ADC</text>
+        <text x="755" y="90" class="dg-s">your board</text>
+        <!-- arrows between -->
+        <line x1="230" y1="76" x2="256" y2="76" class="dg-line"/><polygon points="256,72 264,76 256,80" class="dg-arrow"/>
+        <line x1="368" y1="76" x2="394" y2="76" class="dg-line"/><polygon points="394,72 402,76 394,80" class="dg-arrow"/>
+        <line x1="516" y1="76" x2="542" y2="76" class="dg-line"/><polygon points="542,72 550,76 542,80" class="dg-arrow"/>
+        <line x1="640" y1="76" x2="698" y2="76" class="dg-line"/><polygon points="698,72 706,76 698,80" class="dg-arrow"/>
+        <!-- RLD feedback -->
+        <path d="M175 106 L175 170 L60 170 L60 100" class="dg-fb"/>
+        <polygon points="56,104 60,96 64,104" class="dg-arrow" style="fill:var(--accent2)"/>
+        <rect x="150" y="150" width="150" height="40" rx="8" class="dg-box2"/>
+        <text x="225" y="168" class="dg-t">Right Leg Drive</text>
+        <text x="225" y="182" class="dg-s">inverts CM → RL electrode</text>
+        <line x1="150" y1="170" x2="120" y2="170" class="dg-fb"/>
+        <text x="60" y="90" class="dg-s">RL</text>
+        <!-- leads-off -->
+        <rect x="360" y="150" width="180" height="40" rx="8" class="dg-box"/>
+        <text x="450" y="168" class="dg-t">Leads-Off Detect</text>
+        <text x="450" y="182" class="dg-s">AC/DC → LOD+ / LOD− → LO+ / LO−</text>
+        <line x1="450" y1="150" x2="450" y2="108" class="dg-line" style="stroke-dasharray:4 3"/>
+      </svg>
+      <p class="panel-cap">Signal flows left→right. The instrumentation amp does differential→single-ended conversion and the first ×100 of gain; the RC filters and output op-amp set the band and remaining gain; the RLD branch drives the third (RL) electrode to cancel mains common-mode. Filter component values are set externally, so the band depends on the specific board <span class="ref" title="[4]">[4]</span><span class="ref" title="[9]">[9]</span>.</p>
+    </div>
+
+    <h3>Core electrical specs (AD8232 datasheet)</h3>
+    <table class="tbl">
+      <thead>
+        <tr><th>Parameter</th><th>Value</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>IA gain</td><td class="good">100 V/V, fixed</td><td>Instrumentation-amp stage, not adjustable <span class="ref" title="[4]">[4]</span></td></tr>
+        <tr><td>Supply voltage</td><td class="good">2.0 – 3.5 V</td><td>Single-supply; coin cell / LiPo friendly <span class="ref" title="[4]">[4]</span></td></tr>
+        <tr><td>Supply current</td><td class="good">170 µA typ</td><td>IC only; board adds LED + passives <span class="ref" title="[4]">[4]</span></td></tr>
+        <tr><td>Shutdown current</td><td class="good">&lt; 200 nA</td><td>With SDN driven low <span class="ref" title="[4]">[4]</span></td></tr>
+        <tr><td>CMRR</td><td class="warn">80 dB (DC – 60 Hz)</td><td>Supplemented in practice by the RLD electrode <span class="ref" title="[4]">[4]</span></td></tr>
+        <tr><td>Input impedance</td><td class="good">10 GΩ ∥ 7.5 pF diff</td><td>Fine for wet electrodes, marginal for dry <span class="ref" title="[4]">[4]</span></td></tr>
+        <tr><td>Output range</td><td class="good">0.1 to (V<sub>S</sub>−0.1) V</td><td>Rail-to-rail into 50 kΩ; feeds an ADC directly <span class="ref" title="[4]">[4]</span></td></tr>
+        <tr><td>Filter topology</td><td class="good">2-pole HPF, 3-pole LPF</td><td>Corners set by external RC <span class="ref" title="[4]">[4]</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>The control pins you must wire correctly</h3>
+    <div class="pin-grid">
+      <div class="pin-card"><div class="pin-name">SDN</div><div class="pin-desc">Shutdown. Drive <strong>low</strong> to enter low-power shutdown; hold high for normal operation. <span class="ref" title="[5]">[5]</span></div></div>
+      <div class="pin-card"><div class="pin-name">FR</div><div class="pin-desc">Fast-Restore control. Drive <strong>high</strong> to enable fast recovery; otherwise low. <span class="ref" title="[5]">[5]</span></div></div>
+      <div class="pin-card"><div class="pin-name">AC/DC</div><div class="pin-desc">Leads-off mode select (pin 14). <strong>Low</strong> = DC mode, <strong>high</strong> = AC mode. <span class="ref" title="[5]">[5]</span></div></div>
+      <div class="pin-card"><div class="pin-name">LOD+ / LOD−</div><div class="pin-desc">Lead-off flags (the board's LO+/LO−). Go high when an electrode is disconnected. <span class="ref" title="[4]">[4]</span></div></div>
+      <div class="pin-card"><div class="pin-name">REFOUT</div><div class="pin-desc">Reference buffer output (pin 8). Use as a virtual ground; set REFIN to V<sub>S</sub>/2 for mid-supply. <span class="ref" title="[5]">[5]</span><span class="ref" title="[10]">[10]</span></div></div>
+      <div class="pin-card"><div class="pin-name">RLD</div><div class="pin-desc">Right-leg-drive output to the third electrode; a 1 nF integrator cap sets ~1 kHz crossover. <span class="ref" title="[6]">[6]</span></div></div>
+    </div>
+
+    <h3>Right-leg drive, fast restore, and lead-off in plain terms</h3>
+    <p><strong>Right-leg drive (RLD)</strong> is active common-mode cancellation. The amplifier inverts the common-mode reference voltage and pushes it back into the body through the third (RL) electrode via a current-limiting resistor — like noise-cancelling headphones broadcasting an inverted copy of the mains hum into the patient so it cancels at the input <span class="ref" title="[6]">[6]</span>. The datasheet's reference circuit adds a 1 nF cap between RLD FB and RLD to form an integrator (~1 kHz crossover) and specifies a minimum 330 kΩ current-limiting resistor on a 3.0 V supply, holding injected current below 10 µA <span class="ref" title="[6]">[6]</span>.</p>
+
+    <p><strong>Fast restore</strong> exists because a two-pole high-pass filter with a very low corner takes a long time to settle after the amplifier rails (e.g. when an electrode pops off). With FR enabled, the AD8232 detects the railed condition and temporarily raises the high-pass cutoff to settle quickly, then returns to normal <span class="ref" title="[4]">[4]</span>. A third-party explainer describes the mechanism as internal 10 kΩ resistors switched in parallel with the external filter resistors to shift the pole higher — plausible, but <em>this mechanism detail is third-party, not confirmed in the datasheet text</em> <span class="ref" title="[U1]">[U1]</span>.</p>
+
+    <p><strong>Lead-off detection</strong> has two modes selected by the AC/DC pin. In <strong>DC mode</strong>, LOD− goes high when the −IN electrode is off and LOD+ goes high when the +IN electrode is off. In <strong>AC mode</strong>, LOD− stays low and LOD+ goes high when <em>either</em> electrode disconnects; AC detection works by forcing a small 100 kHz current into the input terminals and watching for the loss of return path <span class="ref" title="[8]">[8]</span>. On the breakout these appear as the <code>LO+</code>/<code>LO−</code> pins you read with two digital inputs <span class="ref" title="[4]">[4]</span><span class="ref" title="[11]">[11]</span>.</p>
+
+    <div class="callout">
+      <div class="lbl">THE FILTER BAND IS "HEART-RATE," NOT "DIAGNOSTIC ECG"</div>
+      <p>The ADI evaluation board — and by extension most breakouts that copy its RC values — sets a <em>narrow</em> band. The first high-pass pole is placed at ~7 Hz (R = 10 MΩ, C = 0.22 µF) and the low-pass at ~25 Hz with a stage gain of 11, for an overall ~1100 V/V <span class="ref" title="[9]">[9]</span>. That is tuned for robust beat/heart-rate detection, <strong>not</strong> for the 0.05–150 Hz band a diagnostic ECG needs. A design guide quotes a comparable 0.5–40 Hz "fitness monitoring" band <span class="ref" title="[10]">[10]</span>. If you need P-waves and ST-segment detail, you must change the board's RC components — see the next section's known-issue about missing P waves.</p>
+    </div>
+
+    <div class="note">
+      <div class="lbl">METHODOLOGY — datasheet access this session</div>
+      <p>Every electrical spec above is a value from the Analog Devices AD8232 datasheet <span class="ref" title="[4]">[4]</span>, which is the authoritative source. During verification the official <code>analog.com</code> PDF host was unreachable from this environment (repeated connection resets/timeouts across multiple attempts). Each spec was therefore confirmed against datasheet mirrors that reproduce the ADI datasheet text verbatim (radiolocman <span class="ref" title="[5]">[5]</span><span class="ref" title="[6]">[6]</span>, alldatasheet <span class="ref" title="[7]">[7]</span>), plus an independent ADI design guide <span class="ref" title="[10]">[10]</span> and the ADI evaluation wiki <span class="ref" title="[9]">[9]</span>. Where a claim rested on a single non-datasheet source it is marked unverified.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 3: How to use it ── -->
+<section id="s3">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">03</span> How to use it</p>
+    <h2>Electrodes, wiring, sampling</h2>
+
+    <h3>Standard 3-lead electrode placement</h3>
+    <p>You use three electrodes: two that form the measurement pair (RA, LA) and one reference/drive electrode (RL). SparkFun's cable is colour-coded: <strong>Black = RA</strong> (right arm), <strong>Blue = LA</strong> (left arm), <strong>Red = RL</strong> (right leg / reference) <span class="ref" title="[2]">[2]</span>. Two placements are recommended: on the forearms with RL on the leg, or — for a stronger trace — near the chest with the reference on the upper-right abdomen. As the hookup guide puts it, <em>"the closer to the heart the pads are, the better the measurement"</em> <span class="ref" title="[2]">[2]</span>; a tutorial agrees the chest option gives the strongest, most reliable readings <span class="ref" title="[11]">[11]</span>.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">3-lead placement (Einthoven-style)</span>
+        <span class="panel-sub">RA · LA · RL</span>
+      </div>
+      <svg viewBox="0 0 360 260" role="img" aria-label="Torso with RA upper right, LA upper left, RL lower right electrode positions">
+        <!-- torso -->
+        <path d="M120 40 q60 -30 120 0 l-14 40 q0 90 -8 150 l-76 0 q-8 -60 -8 -150 z" class="body-out"/>
+        <text x="180" y="30" class="elec-sub" text-anchor="middle">viewer faces patient</text>
+        <!-- electrodes: note mirror — patient's right is viewer's left -->
+        <circle cx="150" cy="90" r="11" class="elec"/>
+        <text x="150" y="72" class="elec-lbl" text-anchor="middle">RA</text>
+        <text x="150" y="120" class="elec-sub" text-anchor="middle">black</text>
+        <circle cx="210" cy="90" r="11" class="elec"/>
+        <text x="210" y="72" class="elec-lbl" text-anchor="middle">LA</text>
+        <text x="210" y="120" class="elec-sub" text-anchor="middle">blue</text>
+        <circle cx="150" cy="185" r="11" class="elec-rl"/>
+        <text x="150" y="215" class="elec-lbl" text-anchor="middle">RL</text>
+        <text x="150" y="228" class="elec-sub" text-anchor="middle">red · reference</text>
+      </svg>
+      <p class="panel-cap">Chest option shown: RA and LA below the collarbones, RL (driven reference) on the lower-right ribs/abdomen. The RL electrode is not part of the measured signal — it is where the right-leg-drive injects its cancelling waveform <span class="ref" title="[2]">[2]</span><span class="ref" title="[6]">[6]</span>.</p>
+    </div>
+
+    <h3>Wiring to a microcontroller</h3>
+    <p>The board needs power, an analog line for the signal, and two optional digital lines for lead-off flags. SparkFun's reference Arduino wiring:</p>
+    <table class="tbl">
+      <thead>
+        <tr><th>AD8232 board</th><th>Arduino</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>3.3V</td><td>3.3V</td><td>Supply (2.0–3.5 V per datasheet <span class="ref" title="[4]">[4]</span>)</td></tr>
+        <tr><td>GND</td><td>GND</td><td>Common ground</td></tr>
+        <tr><td>OUTPUT</td><td>A0 (analog)</td><td>Conditioned ECG voltage → ADC <span class="ref" title="[2]">[2]</span></td></tr>
+        <tr><td>LO−</td><td>D11 (digital)</td><td>Lead-off flag (−IN) <span class="ref" title="[2]">[2]</span></td></tr>
+        <tr><td>LO+</td><td>D10 (digital)</td><td>Lead-off flag (+IN) <span class="ref" title="[2]">[2]</span></td></tr>
+        <tr><td>SDN</td><td>(tie high / GPIO)</td><td>Hold high to run; low = shutdown <span class="ref" title="[5]">[5]</span></td></tr>
+      </tbody>
+    </table>
+    <p>In the firmware loop you read <code>LO+</code> and <code>LO−</code> first; if either is high, an electrode is off and you skip/flag that sample instead of plotting garbage <span class="ref" title="[11]">[11]</span>. Otherwise you read <code>analogRead(A0)</code> and stream it out.</p>
+
+    <div class="warn-note">
+      <div class="lbl">3.3 V, NOT 5 V</div>
+      <p>The AD8232 supply maximum is 3.5 V <span class="ref" title="[4]">[4]</span>. Power it from the 3.3 V rail. If your MCU's ADC reference is 5 V (a classic UNO), the AD8232 output only ever swings within 0–3.3 V, so you simply lose some ADC range — but never feed the AD8232 itself 5 V.</p>
+    </div>
+
+    <h3>ADC sampling — rate and resolution</h3>
+    <p>The output is a slow, band-limited waveform, so the ADC requirements are modest. A real biopotential design samples the ECG at a <strong>256 Hz</strong> net rate, obtained by oversampling at 16 kHz and averaging down <span class="ref" title="[21]">[21]</span>. As a rule of thumb you want the sample rate comfortably above twice the low-pass cutoff (Nyquist); for the ~25–40 Hz band these boards ship with, a few-hundred samples/s is ample <em>(general engineering knowledge, not a specific citation)</em>. Resolution is not demanding either: the front-end already applies ~1100× of gain, so with a 12-bit ADC one step is ~0.8 mV at the output (3.3 V ÷ 4096) but under 1 µV referred to the electrode — far finer than the ECG's own noise floor <em>(engineering calculation from the datasheet gain <span class="ref" title="[4]">[4]</span> and eval gain <span class="ref" title="[9]">[9]</span>)</em>.</p>
+
+    <div class="conflict">
+      <div class="lbl">CONFLICT — how fast / how many bits?</div>
+      <p>The 256 Hz / modest-resolution figure above <span class="ref" title="[21]">[21]</span> targets heart-rate and morphology capture. It does <strong>not</strong> match diagnostic-grade requirements: the companion analysis argues diagnostic ECG wants ≥500 samples/s and closer to 14-bit effective resolution (via oversampling) to reach the ~80 dB SNR clinical figures — see <a href="ecg-nrf-electrode.html">ECG via nRF + Electrode Front-End</a>. Both are correct for their purpose; pick your sample rate and bit depth from what you are trying to measure (beat detection vs. full waveform), not from a single "recommended" number.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 4: Known limitations ── -->
+<section id="s4">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">04</span> Known limitations</p>
+    <h2>Where the signal goes wrong</h2>
+    <p>None of these are defects — they are inherent to a high-gain (~1100×) front-end reading a 1 mV signal off the skin. Knowing them turns "my trace is garbage" into a checklist.</p>
+
+    <h3>Mains hum (50/60 Hz) and power-supply sensitivity</h3>
+    <p>The body is an antenna for mains hum, and the AD8232's 80 dB CMRR alone does not fully reject it <span class="ref" title="[4]">[4]</span>. Community troubleshooting converges on three mitigations: a digital <strong>high-pass filter</strong> to isolate the QRS spikes from low-frequency drift, <strong>external shielding</strong>, and running the setup on <strong>battery power</strong> — one thread's advice is to <em>"high-pass filter so you only get the spikes"</em> and that <em>"external shielding is always a good idea... running the sensor with a battery operated laptop"</em> <span class="ref" title="[12]">[12]</span>. That battery power reduces mains hum is also general engineering knowledge: a mains-tied USB supply couples 50/60 Hz into the high-impedance front end, and a floating battery supply breaks that path <em>(general engineering knowledge, not tied to a single source)</em>.</p>
+
+    <h3>Motion and breathing artifact</h3>
+    <p>Because the front-end gain is enormous, small electrode-skin movements become large baseline swings. SparkFun's own troubleshooting notes that <em>deep breathing introduces gradual spikes resembling motion artifacts</em> in the trace <span class="ref" title="[3]">[3]</span>, and that degraded pads lose conductivity — <em>"the pads loose the ability to pass signals with multiple applications"</em>, so use fresh electrodes each session <span class="ref" title="[3]">[3]</span>.</p>
+
+    <h3>Fast-restore / lead-off quirks</h3>
+    <p>Lead-off detection is helpful but has sharp edges. If an electrode is loose or a pad is misplaced, the output clips to the rails (ADC reads pinned at 0 or 1023) or the demo prints a "!" marker <span class="ref" title="[3]">[3]</span>. And because the LOD outputs and fast-restore key off the amplifier railing, a marginal connection can flap between "signal" and "lead-off" states. The fix is mechanical: good skin prep, fresh gel electrodes, and strain-relieved cables.</p>
+
+    <div class="warn-note">
+      <div class="lbl">BREADBOARD TRAP</div>
+      <p>A widely-hit beginner failure: soldering a 3-pin header into the RA/LA/RL pads and pushing it into a breadboard <strong>shorts all three electrode nodes together</strong>, so you get only noise (one user saw a flat ~336–338 ADC counts) instead of a signal <em>"The breadboard will short all three together which might explain why you aren't getting a signal."</em> <span class="ref" title="[13]">[13]</span> Use the 3.5 mm jack or wire the electrode pads individually — never common them on a breadboard rail.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 5: Documented issues + fixes ── -->
+<section id="s5">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">05</span> Documented issues &amp; fixes</p>
+    <h2>Real reports, real causes, real fixes</h2>
+    <p>Every row below is tied to a specific forum thread or vendor page — nothing here is inferred. Where a fix is a community suggestion rather than a vendor instruction, that is noted in the source.</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Symptom</th><th>Reported cause</th><th>Suggested fix</th><th>Src</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Mains hum / low-freq drift</td>
+          <td>Environmental 50/60 Hz coupling into the front end</td>
+          <td>Digital high-pass filter + external shielding + battery-operated setup</td>
+          <td><span class="ref" title="[12]">[12]</span></td>
+        </tr>
+        <tr>
+          <td>Aliasing artifacts in the stream</td>
+          <td>Serial output rate too low for the sample rate</td>
+          <td>Raise the serial baud rate</td>
+          <td><span class="ref" title="[12]">[12]</span></td>
+        </tr>
+        <tr>
+          <td>Only noise, flat ~336 counts</td>
+          <td>3-pin header shorted RA/LA/RL in a breadboard</td>
+          <td>Don't common the electrode pads; use the jack</td>
+          <td><span class="ref" title="[13]">[13]</span></td>
+        </tr>
+        <tr>
+          <td>Only QRS visible; no P or U wave</td>
+          <td>High-pass cap too small → corner set too high</td>
+          <td>Increase HPF cap / lower the corner for diagnostic band</td>
+          <td><span class="ref" title="[14]">[14]</span></td>
+        </tr>
+        <tr>
+          <td>Clipped waveform (0/1023) or "!"</td>
+          <td>Misplaced pads or disconnected cable</td>
+          <td>Re-seat electrodes; check LO+/LO− before sampling</td>
+          <td><span class="ref" title="[3]">[3]</span></td>
+        </tr>
+        <tr>
+          <td>Signal weakens over sessions</td>
+          <td>Electrode pads degrade with reuse</td>
+          <td>Use fresh Ag/AgCl pads each measurement</td>
+          <td><span class="ref" title="[3]">[3]</span></td>
+        </tr>
+        <tr>
+          <td>Gradual spikes look like motion</td>
+          <td>Deep breathing moves the electrodes</td>
+          <td>Hold still / breathe shallow while capturing</td>
+          <td><span class="ref" title="[3]">[3]</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="aside">Pattern across almost every thread: the AD8232 itself is rarely the problem. The failures cluster around <strong>power cleanliness, electrode contact, and filter corner choice</strong>. Fix those three and most "bad board" complaints disappear.</div>
+  </div>
+</section>
+
+<!-- ── SECTION 6: Open-source starter projects ── -->
+<section id="s6">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">06</span> Open-source starter projects</p>
+    <h2>Working firmware to fork</h2>
+    <p>Star counts below were checked live on 2026-07-06 and are a rough quality/interest signal. GitHub did not expose reliable last-commit dates via fetch, so these are given as stars-only; check the repo's commit history yourself before depending on it.</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Repo</th><th>Target</th><th>Stars</th><th>What it does</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="https://github.com/coniferconifer/ESP32_Heart_Rate_MQTT">coniferconifer/ESP32_Heart_Rate_MQTT</a></td>
+          <td>ESP32</td>
+          <td class="good">23 <span class="ref" title="[17]">[17]</span></td>
+          <td>AD8232 → ESP32 → publishes heart rate to an MQTT broker (ThingsBoard) every 15 s; C++.</td>
+        </tr>
+        <tr>
+          <td><a href="https://github.com/ChrisDavi3s/ArduinoAD8232ECG">ChrisDavi3s/ArduinoAD8232ECG</a></td>
+          <td>Arduino</td>
+          <td class="good">22 <span class="ref" title="[16]">[16]</span></td>
+          <td>Arduino capture + Python GUI to plot/record; README disclaims medical use.</td>
+        </tr>
+        <tr>
+          <td><a href="https://github.com/Doenec/ecg-esp32">Doenec/ecg-esp32</a></td>
+          <td>ESP32</td>
+          <td class="warn">7 <span class="ref" title="[18]">[18]</span></td>
+          <td>ESP32 + AD8232 with a schematic PDF included; small repo (single commit).</td>
+        </tr>
+        <tr>
+          <td><a href="https://github.com/dannyngweekiat/esp32-serial-BLE-ECG">dannyngweekiat/esp32-serial-BLE-ECG</a></td>
+          <td>ESP32</td>
+          <td class="warn">6 <span class="ref" title="[19]">[19]</span></td>
+          <td>ESP32 + AD8232 streaming ECG over serial-over-BLE.</td>
+        </tr>
+        <tr>
+          <td><a href="https://github.com/sparkfun/AD8232_Heart_Rate_Monitor">sparkfun/AD8232_Heart_Rate_Monitor</a></td>
+          <td>Reference</td>
+          <td class="mut">—</td>
+          <td>SparkFun's official hardware design files + example sketch for the SEN-12650 <span class="ref" title="[20]">[20]</span>.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <div class="lbl">RECOMMENDED STARTING POINT</div>
+      <p>For the fastest "board-to-trace" path: start from the <a href="https://learn.sparkfun.com/tutorials/ad8232-heart-rate-monitor-hookup-guide/all">SparkFun hookup guide sketch</a> <span class="ref" title="[2]">[2]</span> to confirm your wiring and electrodes produce a signal at all, then move to one of the ESP32 repos above if you want wireless streaming (BLE or MQTT). Keep the lead-off check in your loop from day one — it saves hours of chasing "dead" traces that are really just a loose pad.</p>
+    </div>
+  </div>
+</section>
+
+<details class="src">
+  <summary>References <span class="chev">▾</span></summary>
+  <div class="srcbody">
+    <ol>
+      <li id="r1">[1] SparkFun. "SparkFun Single Lead Heart Rate Monitor - AD8232 (SEN-12650)." Product page. <a href="https://www.sparkfun.com/products/12650">https://www.sparkfun.com/products/12650</a></li>
+      <li id="r2">[2] SparkFun. "AD8232 Heart Rate Monitor Hookup Guide." learn.sparkfun.com. <a href="https://learn.sparkfun.com/tutorials/ad8232-heart-rate-monitor-hookup-guide/all">https://learn.sparkfun.com/tutorials/ad8232-heart-rate-monitor-hookup-guide/all</a></li>
+      <li id="r3">[3] SparkFun. "AD8232 Hookup Guide — Troubleshooting and Tips &amp; Tricks." <a href="https://learn.sparkfun.com/tutorials/ad8232-heart-rate-monitor-hookup-guide/troubleshooting-and-tips--tricks">https://learn.sparkfun.com/tutorials/ad8232-heart-rate-monitor-hookup-guide/troubleshooting-and-tips--tricks</a></li>
+      <li id="r4">[4] Analog Devices. "AD8232 Single-Lead, Heart Rate Monitor Front End — Data Sheet" (authoritative source for all IC electrical specs). <a href="https://www.analog.com/media/en/technical-documentation/data-sheets/ad8232.pdf">https://www.analog.com/media/en/technical-documentation/data-sheets/ad8232.pdf</a> — NOTE: official host was unreachable during this session; specs confirmed via mirrors [5][6][7] and corroborated by [9][10] (see Methodology note in §02).</li>
+      <li id="r5">[5] AD8232 Data Sheet (mirror), pin-function detail p.7 — FR, AC/DC, SDN, REFOUT pins. Radiolocman. <a href="https://www.radiolocman.com/datasheet/pdf.html?di=169983&p=7">https://www.radiolocman.com/datasheet/pdf.html?di=169983&amp;p=7</a></li>
+      <li id="r6">[6] AD8232 Data Sheet (mirror), RLD circuit p.18 — inverts CM reference, 1 nF integrator ~1 kHz, min 330 kΩ (&lt;10 µA at 3.0 V). Radiolocman. <a href="https://www.radiolocman.com/datasheet/pdf.html?di=169983&p=18">https://www.radiolocman.com/datasheet/pdf.html?di=169983&amp;p=18</a></li>
+      <li id="r7">[7] AD8232 Data Sheet (mirror) — headline specs: G=100, 2.0–3.5 V, 170 µA, 80 dB CMRR (DC–60 Hz), &lt;200 nA shutdown, 2-pole HPF / 3-pole LPF. AllDataSheet. <a href="https://www.alldatasheet.com/datasheet-pdf/pdf/527942/AD/AD8232.html">https://www.alldatasheet.com/datasheet-pdf/pdf/527942/AD/AD8232.html</a></li>
+      <li id="r8">[8] Analog Devices EngineerZone. "AD8232 AC leads-off detection" — AC/DC mode behavior; 100 kHz current injection. <a href="https://ez.analog.com/amplifiers/instrumentation-amplifiers/f/q-a/16290/ad8232-ac-leads-off-detection">https://ez.analog.com/amplifiers/instrumentation-amplifiers/f/q-a/16290/ad8232-ac-leads-off-detection</a></li>
+      <li id="r9">[9] Analog Devices Wiki. "AD8232 Evaluation Board Guide (A03321A)" — 7 Hz HPF (R=10 MΩ, C=0.22 µF), ~25 Hz LPF, 1100 V/V total, mid-supply reference. <a href="https://wiki.analog.com/resources/eval/ad8232-evaluation-guide/a03321a">https://wiki.analog.com/resources/eval/ad8232-evaluation-guide/a03321a</a></li>
+      <li id="r10">[10] Utmel. "AD8232 Single-Lead ECG Front-End Design Guide" — independent corroboration of gain/supply/CMRR/filter topology; 0.5–40 Hz fitness band. <a href="https://www.utmel.com/components/ad8232-single-lead-ecg-front-end-design-guide?id=7772">https://www.utmel.com/components/ad8232-single-lead-ecg-front-end-design-guide?id=7772</a></li>
+      <li id="r11">[11] Last Minute Engineers. "Interface AD8232 ECG Sensor Module with Arduino" — LO+/LO− usage; chest placement gives strongest readings. <a href="https://lastminuteengineers.com/ad8232-ecg-monitor-arduino-tutorial/">https://lastminuteengineers.com/ad8232-ecg-monitor-arduino-tutorial/</a></li>
+      <li id="r12">[12] Arduino Forum. "Noises in AD8232 analog output" — thread recommends high-pass filtering to isolate QRS spikes, external shielding, running on battery-operated equipment, and raising the serial baud rate to avoid aliasing. <a href="https://forum.arduino.cc/t/noises-in-ad8232-analog-output/603181">https://forum.arduino.cc/t/noises-in-ad8232-analog-output/603181</a> <span class="unverified">(Correction: an earlier research draft attributed a specific "2×AA / 60 Hz from the Arduino UNO 3.3 V output" quote to this thread; that quote is not present in the thread and has been removed.)</span></li>
+      <li id="r13">[13] Arduino Forum. "AD8232 ECG sensor incorrect waveform" — breadboard shorts RA/LA/RL. <a href="https://forum.arduino.cc/t/ad8232-ecg-sensor-incorrect-waveform/1418631">https://forum.arduino.cc/t/ad8232-ecg-sensor-incorrect-waveform/1418631</a></li>
+      <li id="r14">[14] Arduino Forum. "Problem with AD8232 ECG waveform" — missing P/U waves from too-small HPF cap. <a href="https://forum.arduino.cc/t/problem-with-ad8232-ecg-waveform/675912">https://forum.arduino.cc/t/problem-with-ad8232-ecg-waveform/675912</a></li>
+      <li id="r15">[15] Research figure. "AD8232 chip on an original adapter board (left) and cloned adapter board (right)" — original vs. clone differ in some passive values/visual details. ResearchGate. <a href="https://www.researchgate.net/figure/AD8232-chip-on-an-original-adapter-board-left-and-cloned-adapter-board-right_fig4_352870411">https://www.researchgate.net/figure/AD8232-chip-on-an-original-adapter-board-left-and-cloned-adapter-board-right_fig4_352870411</a></li>
+      <li id="r16">[16] GitHub. "ChrisDavi3s/ArduinoAD8232ECG" — Arduino + Python GUI; 22 stars (live 2026-07-06); README disclaims medical use. <a href="https://github.com/ChrisDavi3s/ArduinoAD8232ECG">https://github.com/ChrisDavi3s/ArduinoAD8232ECG</a></li>
+      <li id="r17">[17] GitHub. "coniferconifer/ESP32_Heart_Rate_MQTT" — ESP32 + AD8232 + MQTT; 23 stars (live 2026-07-06). <a href="https://github.com/coniferconifer/ESP32_Heart_Rate_MQTT">https://github.com/coniferconifer/ESP32_Heart_Rate_MQTT</a></li>
+      <li id="r18">[18] GitHub. "Doenec/ecg-esp32" — ESP32 + AD8232 with schematic; 7 stars (live 2026-07-06). <a href="https://github.com/Doenec/ecg-esp32">https://github.com/Doenec/ecg-esp32</a></li>
+      <li id="r19">[19] GitHub. "dannyngweekiat/esp32-serial-BLE-ECG" — ESP32 + AD8232 over BLE; 6 stars (live 2026-07-06). <a href="https://github.com/dannyngweekiat/esp32-serial-BLE-ECG">https://github.com/dannyngweekiat/esp32-serial-BLE-ECG</a></li>
+      <li id="r20">[20] GitHub. "sparkfun/AD8232_Heart_Rate_Monitor" — SparkFun official reference design files &amp; example sketch. <a href="https://github.com/sparkfun/AD8232_Heart_Rate_Monitor">https://github.com/sparkfun/AD8232_Heart_Rate_Monitor</a></li>
+      <li id="r21">[21] US Patent 9,456,763 — ECG sampling guidance: 256 Hz net rate (16 kHz oversampled), ≥2× (pref. 4–5×) filter cutoff = 200–250 SPS, 12-bit ≈ 0.8 mV/LSB over 0–3.3 V sufficient for ECG morphology. <a href="https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/9456763">https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/9456763</a></li>
+      <li id="rU1">[U1] <span class="unverified">UNVERIFIED — Fast-restore internal-resistor mechanism (internal 10 kΩ switched parallel to external filter R) described by a third-party page (shunlongwei.com), not confirmed against the official datasheet text. Behavior (raises HPF cutoff after railing) is datasheet-confirmed [4]; the specific internal-resistor value/mechanism is not.</span></li>
+    </ol>
+  </div>
+</details>
+
+<footer><div class="wrap"><a class="back-link" href="../index.html">← Index</a></div></footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const el = document.documentElement;
+    document.getElementById('prog').style.width =
+      (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+  });
+</script>
+</body>
+</html>
