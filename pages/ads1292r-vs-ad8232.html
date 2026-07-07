@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ADS1292R vs AD8232 — Which ECG Front-End Is Better for a Battery-Powered Design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+  <style>
+    :root {
+      --accent: #7c6fe0;      /* purple — ADS1292R / digital front-end */
+      --accent2: #2fb6c4;     /* cyan — carried over to represent AD8232 in comparisons */
+    }
+    .vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 22px 0; }
+    @media (max-width:640px){ .vs-grid { grid-template-columns: 1fr; } }
+    .vs-card { border-radius: 14px; padding: 18px 20px; border: 1px solid var(--line); }
+    .vs-card.ti { background: linear-gradient(180deg, rgba(124,111,224,.09), rgba(124,111,224,.02)); border-color: rgba(124,111,224,.28); }
+    .vs-card.ad { background: linear-gradient(180deg, rgba(47,182,196,.09), rgba(47,182,196,.02)); border-color: rgba(47,182,196,.28); }
+    .vs-card h4 { margin: 0 0 10px; font-family:'Space Grotesk',sans-serif; font-size: 15px; }
+    .vs-card.ti h4 { color: var(--accent); }
+    .vs-card.ad h4 { color: var(--accent2); }
+    .vs-card ul { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--mut); line-height: 1.7; }
+    .vs-card li strong { color: var(--ink); }
+    .dg-box   { fill: #1a141d; stroke: var(--accent); stroke-width: 1.5; }
+    .dg-box2  { fill: #1a141d; stroke: var(--accent2); stroke-width: 1.5; }
+    .dg-t     { fill: #f2ebe6; font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600; text-anchor: middle; }
+    .dg-s     { fill: #a8978f; font-family: 'JetBrains Mono', monospace; font-size: 9px; text-anchor: middle; }
+    .dg-line  { stroke: #7e716c; stroke-width: 1.5; fill: none; }
+    .dg-arrow { fill: #7e716c; }
+  </style>
+</head>
+<body>
+<div id="prog"></div>
+
+<header class="hero">
+  <div class="hero-bg" style="background:
+    radial-gradient(800px 500px at 70% 28%, rgba(124,111,224,.12), transparent 60%),
+    radial-gradient(600px 400px at 15% 75%, rgba(47,182,196,.08), transparent 60%);"></div>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+    <div class="kicker"><span class="dot"></span> ECG · AFE SELECTION</div>
+    <h1>ADS1292R vs <span style="color:var(--accent2)">AD8232</span></h1>
+    <p class="lead">A datasheet-grounded comparison of the TI ADS1292R (24-bit dual-channel ADC + AFE) against the ADI AD8232 (analog-only single-lead front-end), using the AD8232 dev-board page on this site as the baseline. Covers architecture, noise/CMRR, features, known pitfalls, power, design complexity, and cost — with every claim traced to a datasheet, TI application note, or verified pricing/status page.</p>
+    <p class="mut">2026-07-07</p>
+    <div class="scrolltip"><span class="arr">↓</span> start reading</div>
+  </div>
+</header>
+
+<!-- ── SECTION 1: Bottom line ── -->
+<section id="s1">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">01</span> Bottom line</p>
+    <h2>Which one, and when</h2>
+    <p>For a serious battery-powered ECG device — one that needs more than a single heart-rate trace — the <strong>ADS1292R is the better silicon</strong>. It replaces the AD8232's fixed-gain analog chain plus your MCU's onboard ADC with a purpose-built 24-bit front-end that has 40 dB more CMRR headroom, real lead-off detection with selectable current levels, an integrated right-leg-drive amplifier, and a respiration-impedance channel the AD8232 simply does not have <span class="ref" title="[1]">[1]</span>. The AD8232 remains the better choice when the whole point is "wire an analog voltage to whatever ADC I already have" — it needs no SPI stack, no register programming, and costs a fraction as much in bare-die pricing <span class="ref" title="[9]">[9]</span><span class="ref" title="[10]">[10]</span>.</p>
+
+    <div class="note">
+      <div class="lbl">KEY FINDING</div>
+      <p>The architectural difference is not cosmetic: the AD8232 datasheet block diagram ends at an analog <code>OUTPUT</code> pin feeding your MCU's ADC <span class="ref" title="[AD1]">[AD1]</span>; the ADS1292R datasheet block diagram ends at an SPI bus with a 24-bit digital word already on it <span class="ref" title="[1]">[1]</span>. Every downstream design decision — sample timing, noise floor, filter design, firmware complexity — follows from that one fork in the signal chain.</p>
+    </div>
+
+    <div class="conflict">
+      <div class="lbl">CONFLICT — is the ADS1292R actually a good design choice?</div>
+      <p>A 2022 peer-reviewed survey of bioamplifier ICs states flatly that <em>"the development of portable AFE-based cardiographs on chips from Texas Instruments with fewer channels, such as ADS1292R (two-channel system) and ADS1294R (four-channel system), was particularly unsuccessful"</em> <span class="ref" title="[11]">[11]</span> — without explaining why (the paper gives no cost, technical, or adoption reasoning). This sits awkwardly against directly-verified facts: the ADS1292R is TI's <strong>ACTIVE</strong> production status (not NRND, not EOL) <span class="ref" title="[7]">[7]</span>, it is in Digi-Key stock today <span class="ref" title="[9]">[9]</span>, and TI shipped a 2019 reference design (TIDA-01614) built around it for a multiparameter patient monitor <span class="ref" title="[8]">[8]</span>. This page does not resolve that conflict — it is surfaced here as-is so you can weigh a strongly-worded but unexplained academic claim against concrete production/design-win evidence.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 2: Architecture ── -->
+<section id="s2">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">02</span> Architecture</p>
+    <h2>Analog front-end vs. front-end-plus-ADC</h2>
+    <p>The AD8232 is exactly what its datasheet title says: a "single-lead heart rate monitor front end" — an instrumentation amp (fixed ×100 gain), a 2-pole high-pass filter, a 3-pole low-pass/gain stage, and a right-leg-drive amplifier, all analog, ending in a single-ended voltage you feed into whatever ADC your MCU has <span class="ref" title="[AD1]">[AD1]</span> (see the companion <a href="ad8232-ecg-dev-boards.html">AD8232 dev boards page</a> for the full breakdown). The ADS1292R integrates the equivalent front-end <em>and</em> the data converter: two independent PGAs (gains 1/2/3/4/6/8/12, not a fixed ×100) each feeding its own 24-bit delta-sigma ADC, with a shared SPI digital interface delivering finished samples — no external ADC, no MCU ADC channel consumed <span class="ref" title="[1]">[1]</span>.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Signal chain: AD8232 (top) vs ADS1292R (bottom)</span>
+        <span class="panel-sub">datasheet block diagrams, simplified</span>
+      </div>
+      <svg viewBox="0 0 860 230" role="img" aria-label="AD8232 ends in an analog output pin feeding an external MCU ADC; ADS1292R ends in an SPI digital interface with finished 24-bit samples">
+        <text x="40" y="34" class="dg-s">Electrodes</text>
+        <line x1="76" y1="30" x2="106" y2="30" class="dg-line"/>
+        <rect x="106" y="10" width="110" height="40" rx="8" class="dg-box2"/>
+        <text x="161" y="34" class="dg-t">AD8232 IA+filters</text>
+        <line x1="216" y1="30" x2="246" y2="30" class="dg-line"/><polygon points="246,26 254,30 246,34" class="dg-arrow"/>
+        <rect x="254" y="10" width="90" height="40" rx="8" class="dg-box2"/>
+        <text x="299" y="34" class="dg-t">OUTPUT pin</text>
+        <line x1="344" y1="30" x2="374" y2="30" class="dg-line"/><polygon points="374,26 382,30 374,34" class="dg-arrow"/>
+        <rect x="382" y="10" width="130" height="40" rx="8" class="dg-box"/>
+        <text x="447" y="30" class="dg-t">Your MCU's ADC</text>
+        <text x="447" y="44" class="dg-s">consumes a channel</text>
+
+        <text x="40" y="124" class="dg-s">Electrodes</text>
+        <line x1="76" y1="120" x2="106" y2="120" class="dg-line"/>
+        <rect x="106" y="100" width="110" height="40" rx="8" class="dg-box"/>
+        <text x="161" y="124" class="dg-t">PGA1 / PGA2</text>
+        <line x1="216" y1="120" x2="246" y2="120" class="dg-line"/><polygon points="246,116 254,120 246,124" class="dg-arrow"/>
+        <rect x="254" y="100" width="110" height="40" rx="8" class="dg-box"/>
+        <text x="309" y="120" class="dg-t">24-bit ΔΣ ADC ×2</text>
+        <text x="309" y="134" class="dg-s">125 SPS–8 kSPS</text>
+        <line x1="364" y1="120" x2="394" y2="120" class="dg-line"/><polygon points="394,116 402,120 394,124" class="dg-arrow"/>
+        <rect x="402" y="100" width="90" height="40" rx="8" class="dg-box"/>
+        <text x="447" y="120" class="dg-t">SPI bus</text>
+        <line x1="492" y1="120" x2="522" y2="120" class="dg-line"/><polygon points="522,116 530,120 522,124" class="dg-arrow"/>
+        <rect x="530" y="100" width="140" height="40" rx="8" class="dg-box2"/>
+        <text x="600" y="120" class="dg-t">Your MCU</text>
+        <text x="600" y="134" class="dg-s">no ADC channel used</text>
+
+        <rect x="106" y="170" width="564" height="46" rx="8" class="dg-box" style="opacity:.5"/>
+        <text x="388" y="188" class="dg-t" style="fill:var(--accent2)">Also inside ADS1292R, no AD8232 equivalent:</text>
+        <text x="388" y="204" class="dg-s">RLD amplifier · lead-off detect (4 current levels) · respiration impedance (ADS1292R only) · 2ch mux · internal ref/osc</text>
+      </svg>
+      <p class="panel-cap">The AD8232 stops at an analog pin; every downstream stage (sampling, quantization, digital filtering) is built by you. The ADS1292R's PGA→ADC→SPI chain plus its RLD/lead-off/respiration blocks are all on one die <span class="ref" title="[1]">[1]</span><span class="ref" title="[AD1]">[AD1]</span>.</p>
+    </div>
+
+    <h3>What this means for your design</h3>
+    <div class="vs-grid">
+      <div class="vs-card ti">
+        <h4>ADS1292R implications</h4>
+        <ul>
+          <li>Frees your MCU's ADC entirely — SPI is the only interface <span class="ref" title="[1]">[1]</span></li>
+          <li>Two <strong>independently</strong> programmable-gain, simultaneously-sampled channels — true 2-lead ECG without external muxing <span class="ref" title="[1]">[1]</span></li>
+          <li>24-bit resolution means the gain/quantization tradeoff your MCU's 10-12 bit ADC forces on the AD8232 mostly disappears</li>
+          <li>Requires firmware: SPI driver, register configuration, DRDY-synchronized reads <span class="ref" title="[1]">[1]</span></li>
+        </ul>
+      </div>
+      <div class="vs-card ad">
+        <h4>AD8232 implications</h4>
+        <ul>
+          <li>Any MCU with a single analog input pin works — no digital protocol at all</li>
+          <li>Fixed ×100 IA gain, external RC sets the rest of the band — simple but inflexible <span class="ref" title="[AD1]">[AD1]</span> (see baseline page, §02)</li>
+          <li>Single channel only — a second lead needs a second AD8232</li>
+          <li>Debug with a multimeter/scope on one pin; no register map to get wrong</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 3: Signal quality ── -->
+<section id="s3">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">03</span> Signal quality</p>
+    <h2>Resolution, noise, CMRR, sample rate</h2>
+    <p>Every number below for the ADS1292R is read directly from the TI datasheet (SBAS502C) Electrical Characteristics table and Noise Measurement tables <span class="ref" title="[1]">[1]</span><span class="ref" title="[2]">[2]</span>. AD8232 numbers are carried over from this project's <a href="ad8232-ecg-dev-boards.html">AD8232 dev boards page</a>, itself datasheet-sourced.</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>Parameter</th><th>ADS1292R</th><th>AD8232</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Resolution</td><td class="good">24-bit ΔΣ ADC (integrated)</td><td class="warn">None — analog out only</td><td>AD8232 resolution is whatever external ADC you attach <span class="ref" title="[1]">[1]</span></td></tr>
+        <tr><td>Gain</td><td class="good">1/2/3/4/6/8/12, per-channel register</td><td class="warn">Fixed ×100</td><td>ADS1292R trades gain for headroom at design time, not fab time <span class="ref" title="[1]">[1]</span></td></tr>
+        <tr><td>Input-referred noise</td><td class="good">8 µV<sub>PP</sub> (gain=6, 150Hz BW, 500SPS)</td><td class="mut">Not separately specified this way</td><td>Drops to 0.4 µV<sub>RMS</sub> at gain=12/125SPS <span class="ref" title="[1]">[1]</span><span class="ref" title="[2]">[2]</span></td></tr>
+        <tr><td>CMRR</td><td class="good">105 dB min / 120 dB typ (50/60Hz)</td><td class="warn">80 dB (DC–60Hz)</td><td>~25–40 dB more headroom before RLD assistance is even needed <span class="ref" title="[1]">[1]</span></td></tr>
+        <tr><td>SNR</td><td class="good">107 dB typ (10Hz input, gain=6)</td><td class="mut">Not directly specified</td><td>ADS1292R datasheet Electrical Characteristics <span class="ref" title="[1]">[1]</span></td></tr>
+        <tr><td>Data rate</td><td class="good">125 SPS – 8 kSPS, register-selectable</td><td class="mut">N/A — set by your external ADC</td><td>Both channels sample simultaneously on the ADS1292R <span class="ref" title="[1]">[1]</span></td></tr>
+        <tr><td>Channel count</td><td class="good">2 (+1 aux differential)</td><td class="bad">1 per IC</td><td>Third ADS1292R channel available when respiration demod unused <span class="ref" title="[1]">[1]</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <div class="lbl">THE CMRR GAP IS THE HEADLINE NUMBER</div>
+      <p>80 dB vs 105–120 dB is not a marginal improvement — that's a 25–40 dB gap, or roughly 18–100x better rejection of common-mode mains hum before any RLD help. The AD8232's 80 dB is a big reason that page's known-issues section is full of "mains hum" complaints <span class="ref" title="[AD-hum]">[AD-hum]</span> that require external shielding, battery power, and digital filtering to work around. The ADS1292R still needs a driven-reference electrode for a clean trace, but it starts from a much stronger position.</p>
+    </div>
+
+    <p>One caution worth flagging: the datasheet's own THD test footnote for "ADS1292R channel 1" specifies a 47 nF PGA filter capacitor, while the PGA Settings section text explicitly recommends 4.7 nF as the typical/general value and states the respiration channel should use 4.7 nF <span class="ref" title="[1]">[1]</span>. That's a 10x discrepancy between two places in the same document. This was <strong>not independently confirmed as a TI-acknowledged typo</strong> — treat it as an internal datasheet inconsistency to verify against your own board bring-up, and default to the 4.7 nF recommendation in the PGA Settings prose unless you're specifically replicating the THD test condition.</p>
+  </div>
+</section>
+
+<!-- ── SECTION 4: Features ── -->
+<section id="s4">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">04</span> Features</p>
+    <h2>Lead-off, RLD, respiration, power modes</h2>
+
+    <h3>Lead-off detection</h3>
+    <p>The AD8232 offers AC or DC lead-off detection with two comparator outputs, selected by one pin <span class="ref" title="[AD1]">[AD1]</span>. The ADS1292R's lead-off block is more configurable: four selectable excitation current levels (6 nA, 22 nA, 6 µA, 22 µA) with ±10% current accuracy and ±10 mV comparator threshold accuracy, all register-set rather than pin-strapped <span class="ref" title="[1]">[1]</span>. More current settings means you can trade detection speed against injected-current safety margin per application, something the AD8232's fixed excitation can't do.</p>
+
+    <h3>Right-leg drive (RLD)</h3>
+    <p>Both parts have an RLD amplifier for active common-mode cancellation. The mechanism is the same idea (invert the sensed common-mode voltage and drive it back through a reference electrode), but the ADS1292R's is a closed-loop system you can tune: TI's dedicated app note on the shared ADS129x RLD architecture shows CMR improving from roughly 70–83 dB with no RLD feedback to 93–96 dB with the loop closed, using RF/CF component choices to set closed-loop bandwidth (~106 Hz in the tested example) <span class="ref" title="[5]">[5]</span>. That gain comes with a real stability hazard: the app note is explicit that the protection resistor and cable/electrode impedance form a low-pass filter whose pole can be as small as 2 kHz, and that if an RLD-driven electrode (RA/LA) loses contact, the loop can drive the patient's common-mode voltage into a rail and stall the PGA — TI's guidance is to <strong>open the RLD loop whenever a lead-off condition is detected</strong> <span class="ref" title="[5]">[5]</span>.</p>
+
+    <div class="warn-note">
+      <div class="lbl">DESIGN PITFALL — RLD + lead-off is not "set and forget"</div>
+      <p>Closing the RLD feedback loop and running lead-off detection are not independent decisions. If you leave RLD closed while an electrode is disconnected, the datasheet's own app note warns the loop can rail the front-end and stop it working <span class="ref" title="[5]">[5]</span>. Your firmware needs to watch the lead-off status bits and open the RLD loop (or fall back to a fixed reference) the moment a lead-off event fires. This is a genuine extra state machine the AD8232 — which has no closed feedback loop to manage — does not require.</p>
+    </div>
+
+    <h3>Respiration impedance (ADS1292R only, no AD8232 equivalent)</h3>
+    <p>This is the ADS1292R's standout feature. It injects a small AC excitation current (32 or 64 kHz internally, or an external 32–64 kHz clock) through the electrodes and demodulates the resulting amplitude change to track thoracic impedance, which correlates with breathing <span class="ref" title="[1]">[1]</span><span class="ref" title="[6]">[6]</span>. TI's method note describes the physics directly: typical baseline thoracic impedance is ~500 Ω, with the actual respiratory signal (ΔR) being only 0.1–1 Ω on top of that — a small AC signal riding a much larger DC-ish baseline <span class="ref" title="[6]">[6]</span>. The ADS1292R's own datasheet specifies impedance range 2,000–10,000 Ω, impedance measurement noise of 40 mΩ<sub>PP</sub>, and register-selectable demodulation phase (0°, 112.5°, 168.75°) <span class="ref" title="[1]">[1]</span>.</p>
+
+    <div class="warn-note">
+      <div class="lbl">DESIGN PITFALL — respiration accuracy is phase-sensitive</div>
+      <p>TI's own respiration app note shows the demodulator's output gain is proportional to the cosine of the phase difference between the modulation and demodulation clocks, falling to <strong>zero gain at a 90° mismatch</strong> <span class="ref" title="[6]">[6]</span>. The ADS1292R gives you a fixed set of phase-shift register options (0/112.5/168.75°) rather than continuous calibration, so getting a clean respiration signal depends on your electrode/cable impedance landing close to one of those fixed points. This is a real accuracy ceiling on the respiration channel, not a bug — budget bench time to characterize it against your actual electrode/cable combination rather than trusting the datasheet numbers to hold as-is on your hardware.</p>
+    </div>
+
+    <h3>Power modes</h3>
+    <p>The ADS1292R has three explicit states in the datasheet: normal, standby, and power-down, plus documented wake-up timing — power-on-reset to first valid sample (DRDY low) takes 32 ms, while standby-to-DRDY or power-down-to-DRDY takes 10 ms <span class="ref" title="[1]">[1]</span>. The AD8232 has a simpler binary shutdown pin (SDN) with sub-200 nA shutdown current and no register-based standby state (see baseline page, Core electrical specs table) <span class="ref" title="[AD1]">[AD1]</span>.</p>
+
+    <table class="tbl">
+      <thead><tr><th>Mode</th><th>ADS1292R (2ch, 3V analog supply)</th><th>AD8232</th></tr></thead>
+      <tbody>
+        <tr><td>Normal / active</td><td class="mut">670–740 µW total (335 µW/ch typ)</td><td class="mut">170 µA typ × supply V ≈ 340–600 µW</td></tr>
+        <tr><td>Standby</td><td class="good">160 µW</td><td class="mut">No separate standby state</td></tr>
+        <tr><td>Power-down/shutdown</td><td class="good">1–10 µW (DVDD/analog dependent)</td><td class="good">&lt; 200 nA (~&lt;0.7 µW at 3.3V)</td></tr>
+      </tbody>
+    </table>
+    <p class="mut" style="font-size:13px">Values from ADS1292R Power Dissipation table and Device Wake Up row <span class="ref" title="[1]">[1]</span>; AD8232 values from this site's baseline page core specs table <span class="ref" title="[AD1]">[AD1]</span>. Note AD8232's shutdown current is roughly 2 orders of magnitude lower than the ADS1292R's power-down floor — the AD8232 wins outright at the deepest sleep state.</p>
+  </div>
+</section>
+
+<!-- ── SECTION 5: Known issues ── -->
+<section id="s5">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">05</span> Known issues &amp; errata</p>
+    <h2>What actually bites people</h2>
+
+    <div class="conflict">
+      <div class="lbl">NO DEDICATED ERRATA SHEET FOUND</div>
+      <p>Unlike some TI product lines, no standalone public errata document for the ADS1291/ADS1292/ADS1292R family was located after two independent search passes plus a direct check of the TI product page. TI appears to manage device-specific issues through its E2E support forum rather than a published errata sheet for this part. This is reported as a finding, not a gap — if TI publishes one in the future, it isn't indexed anywhere this research could reach.</p>
+    </div>
+
+    <table class="tbl">
+      <thead><tr><th>Issue</th><th>Cause</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>RLD loop can rail the PGA on lead-off</td>
+          <td>Closed RLD feedback + disconnected RA/LA electrode drives common-mode to a rail; loop must be opened on lead-off detection</td>
+          <td><span class="ref" title="[5]">[5]</span></td>
+        </tr>
+        <tr>
+          <td>RLD loop stability depends on cable/electrode model</td>
+          <td>Protection resistor + cable impedance form a low-pass filter, pole as low as 2 kHz — needs a compensating zero capacitor (C<sub>P</sub>)</td>
+          <td><span class="ref" title="[5]">[5]</span></td>
+        </tr>
+        <tr>
+          <td>Respiration demod gain collapses with phase mismatch</td>
+          <td>Demodulated output ∝ cos(phase error); zero gain at 90° mismatch between modulation/demod clocks</td>
+          <td><span class="ref" title="[6]">[6]</span></td>
+        </tr>
+        <tr>
+          <td>4.7 nF vs 47 nF PGA filter cap discrepancy</td>
+          <td>Datasheet PGA Settings text recommends 4.7 nF; Electrical Characteristics THD footnote for ADS1292R ch.1 specifies 47 nF</td>
+          <td><span class="ref" title="[1]">[1]</span> — unresolved, see §03</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="aside">Two forum-sourced claims researched for this page — a reported SPI RDATAC/DRDY timing gotcha and a reset/clock-pin pull-up question — could not be independently verified (the TI E2E forum returned HTTP 403 to every automated fetch attempt in this session) and are deliberately <strong>omitted</strong> rather than presented as fact. If you hit SPI communication issues, TI's own guidance elsewhere confirms the digital interface uses SPI Mode 1 (CPOL=0, CPHA=1) — that's directly datasheet-verified <span class="ref" title="[1]">[1]</span> — so start there before assuming a timing-margin bug.</div>
+  </div>
+</section>
+
+<!-- ── SECTION 6: Design complexity & cost ── -->
+<section id="s6">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">06</span> Design complexity &amp; cost</p>
+    <h2>What it costs you in BOM, layout, and firmware</h2>
+
+    <div class="vs-grid">
+      <div class="vs-card ti">
+        <h4>ADS1292R</h4>
+        <ul>
+          <li><strong>Two power domains</strong>: AVDD (2.7–5.25V) and DVDD (1.7–3.6V), separately supplied <span class="ref" title="[1]">[1]</span></li>
+          <li>SPI Mode 1 digital interface (CPOL=0, CPHA=1) — needs an MCU with SPI and firmware to configure the register map <span class="ref" title="[1]">[1]</span></li>
+          <li>Thermal pad on the VQFN package must be connected to AVSS — adds a layout constraint <span class="ref" title="[1]">[1]</span></li>
+          <li>32-pin TQFP (5×5mm) or VQFN (4×4mm) — real-world open-source shield needs an onboard 3.3V regulator plus logic-level translators to bridge a 5V Arduino <span class="ref" title="[10]">[10]</span></li>
+          <li>TI's own reference design (TIDA-01614) runs it on a 1-cell 3.7V Li-ion battery for a full multiparameter patient monitor with ECG at 500 SPS / 100 µV sensitivity <span class="ref" title="[8]">[8]</span></li>
+        </ul>
+      </div>
+      <div class="vs-card ad">
+        <h4>AD8232</h4>
+        <ul>
+          <li><strong>Single supply</strong>, 2.0–3.5V — one rail, no sequencing to think about <span class="ref" title="[AD1]">[AD1]</span></li>
+          <li>Analog output pin only — any MCU with an ADC input works, no digital protocol</li>
+          <li>Breadboard-friendly: SparkFun's SEN-12650 breakout is a 9-pin part with a 3.5mm electrode jack <span class="ref" title="[AD1]">[AD1]</span></li>
+          <li>Filter band is set by external RC on the board, not registers — changing it means changing components, not firmware</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Cost — bare IC pricing (verified, not board pricing)</h3>
+    <table class="tbl">
+      <thead><tr><th>Quantity</th><th>ADS1292R (TQFP, Digi-Key)</th><th>AD8232 (ADI list)</th></tr></thead>
+      <tbody>
+        <tr><td>1 unit</td><td class="warn">$15.38</td><td class="mut">Not published — distributor quote required</td></tr>
+        <tr><td>1,000 units</td><td class="warn">$9.58</td><td class="good">$2.00 (list, starting from)</td></tr>
+      </tbody>
+    </table>
+    <p class="mut" style="font-size:13px">ADS1292R: Digi-Key ADS1292RIPBSR, live pricing checked this session, 9-week manufacturer lead time, 105 units in stock <span class="ref" title="[9]">[9]</span>. AD8232: Analog Devices product page 1ku list price <span class="ref" title="[10]">[10]</span>. Both figures are bare-IC pricing only — they don't include the external ADC + extra MCU pins the AD8232 needs to actually get a digital sample, which narrows the real system-level cost gap somewhat.</p>
+
+    <div class="note">
+      <div class="lbl">KEY FINDING — status check</div>
+      <p>The ADS1292R shows <strong>ACTIVE</strong> product lifecycle status directly on ti.com — not NRND (Not Recommended for New Designs), not EOL <span class="ref" title="[7]">[7]</span>. Combined with current Digi-Key stock and TI's own 2019 reference design built around it, there's no production-status reason to avoid it for a new design as of this research session.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 7: Recommendation ── -->
+<section id="s7">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">07</span> Recommendation</p>
+    <h2>Putting it together</h2>
+    <p>Choose the <strong>ADS1292R</strong> if your device needs any of: more than one ECG lead, respiration monitoring, diagnostic-grade CMRR headroom, or you'd rather spend firmware effort than fight an 80 dB CMRR ceiling and a fixed analog filter band. Budget real engineering time for the RLD-loop/lead-off interaction and for characterizing respiration phase accuracy on your specific electrode/cable combination — those are genuine, datasheet-and-appnote-documented design tasks, not hypothetical risks <span class="ref" title="[5]">[5]</span><span class="ref" title="[6]">[6]</span>.</p>
+    <p>Choose the <strong>AD8232</strong> if you want the fastest path to a single-lead heart-rate trace, you already have a spare ADC channel and don't want to own an SPI/register-configuration stack, or the extra ~$7–13/unit (bare-IC pricing at volume) matters more than the extra 25–40 dB of CMRR and the missing respiration channel <span class="ref" title="[9]">[9]</span><span class="ref" title="[10]">[10]</span>.</p>
+    <p class="mut" style="font-size:14px">Neither part is a medical device on its own, and nothing on this page should be read as clearance for diagnostic or patient-safety-critical use — TI's own ADS1292R evaluation kit documentation states explicitly it is <em>"not for diagnostic use... not for use with a defibrillator"</em> <span class="ref" title="[SLAU384]">[SLAU384]</span>, and the same caution applies a fortiori to a bring-up board built around the bare IC.</p>
+  </div>
+</section>
+
+<details class="src">
+  <summary>References <span class="chev">▾</span></summary>
+  <div class="srcbody">
+    <ol>
+      <li id="r1">[1] Texas Instruments. "ADS1291, ADS1292, ADS1292R — Low-Power, 2-Channel, 24-Bit Analog Front-End for Biopotential Measurements" (SBAS502C, Dec 2011, rev April 2020). User-supplied PDF, read directly (pp. 1–24: Features, Specifications, Electrical Characteristics, Timing Requirements, Typical Characteristics, Noise Measurement tables, Detailed Description, Feature Description through §8.3.4.2). <a href="https://www.ti.com/lit/ds/symlink/ads1292.pdf">https://www.ti.com/lit/ds/symlink/ads1292.pdf</a></li>
+      <li id="r2">[2] Same source as [1] — Noise Measurement Tables 1–8 (§7.1), input-referred noise vs. data rate vs. PGA gain, 3V/5V, internal reference.</li>
+      <li id="r5">[5] Acharya, Venkatesh (Texas Instruments). "Improving Common-Mode Rejection Using the Right-Leg Drive Amplifier" (SBAA188, July 2011). Fetched and read directly. <a href="https://www.ti.com/lit/pdf/sbaa188">https://www.ti.com/lit/pdf/sbaa188</a> — scoped to "ADS129x family... ADS1298/96/94 and ADS1198/96/94" in its abstract; measured CMR figures (70.6→99.3 dB) taken on ADS1298EVM, not ADS1292R directly. RLD architecture and stability principles are shared across the family per [1]'s block diagram, but device-specific dB figures are extrapolated by architecture, not ADS1292R bench data.</li>
+      <li id="r6">[6] Gupta, Amit K. (Texas Instruments). "Respiration Rate Measurement Based on Impedance Pneumography" (SBAA181, February 2011). Fetched and read directly. <a href="https://www.ti.com/lit/an/sbaa181/sbaa181.pdf">https://www.ti.com/lit/an/sbaa181/sbaa181.pdf</a> — same family-scope caveat as [5]; written around ADS1298R, describes the shared AM/demod respiration architecture. ADS1292R-specific numeric specs (frequency, phase options, noise) are from [1] directly.</li>
+      <li id="r7">[7] Texas Instruments. ADS1292R product page — lifecycle status field. Fetched and confirmed "ACTIVE" this session. <a href="https://www.ti.com/product/ADS1292R">https://www.ti.com/product/ADS1292R</a></li>
+      <li id="r8">[8] Texas Instruments. "TIDA-01614: Multiparameter Front-End Reference Design for Vital Signs Patient Monitor" (Design Guide TIDUEO2A, March 2019, rev May 2019). Fetched and read directly. <a href="https://www.ti.com/tool/TIDA-01614">https://www.ti.com/tool/TIDA-01614</a></li>
+      <li id="r9">[9] Digi-Key. ADS1292RIPBSR pricing/stock page. Live pricing fetched and confirmed this session (9-week lead time, 105 in stock). <a href="https://www.digikey.com/en/products/detail/texas-instruments/ADS1292RIPBSR/3074507">https://www.digikey.com/en/products/detail/texas-instruments/ADS1292RIPBSR/3074507</a></li>
+      <li id="r10">[10] Analog Devices. AD8232 product page — 1ku list price. Fetched and confirmed this session ("Starting from $2.00"); 1-unit price not published on this page — <span class="unverified">UNVERIFIED for single-unit pricing</span>. <a href="https://www.analog.com/en/products/ad8232.html">https://www.analog.com/en/products/ad8232.html</a></li>
+      <li id="r11">[11] Anisimov, A.A.; Belov, A.V.; Sergeev, T.V.; Sannikova, E.E.; Markelov, O.A. "Evolution of Bioamplifiers: From Vacuum Tubes to Highly Integrated Analog Front-Ends." <em>Electronics</em> 2022, 11(15), 2402. DOI: <a href="https://doi.org/10.3390/electronics11152402">10.3390/electronics11152402</a>. Quote independently fetched and confirmed this session; the paper gives no supporting reasoning for its "particularly unsuccessful" characterization.</li>
+      <li id="r10gh">[GH] ProtoCentral. "ADS1292rShield_Breakout" — open-source ADS1292R Arduino shield. README fetched and confirmed this session. <a href="https://github.com/Protocentral/ADS1292rShield_Breakout">https://github.com/Protocentral/ADS1292rShield_Breakout</a></li>
+      <li id="rSLAU384">[SLAU384] Texas Instruments. "ADS1x9xECG-FE Demonstration Kit User's Guide" (SLAU384A, Dec 2011, rev April 2012). Fetched and read directly; diagnostic-use/defibrillator disclaimer and supported-device list confirmed verbatim. <a href="https://www.ti.com/lit/ug/slau384/slau384.pdf">https://www.ti.com/lit/ug/slau384/slau384.pdf</a></li>
+      <li id="rAD1">[AD1] Analog Devices. "AD8232 Single-Lead, Heart Rate Monitor Front End" datasheet — all AD8232 electrical specs, block diagram, and pin functions, as cited and verified in this site's companion page. See <a href="ad8232-ecg-dev-boards.html">AD8232 ECG Dev Boards</a> reference [4]/[5]/[6]/[7] for the underlying datasheet mirror citations.</li>
+      <li id="rADhum">[AD-hum] This site's companion page, <a href="ad8232-ecg-dev-boards.html">AD8232 ECG Dev Boards — §04 Known Limitations</a>, for the sourced mains-hum troubleshooting discussion referenced in §03 of this page.</li>
+    </ol>
+  </div>
+</details>
+
+<footer><div class="wrap"><a class="back-link" href="../index.html">← Index</a></div></footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const el = document.documentElement;
+    document.getElementById('prog').style.width =
+      (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+  });
+</script>
+</body>
+</html>
