@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 — Redirecting home</title>
+  <!-- Fallback if JS is disabled: send to home after 2s -->
+  <meta http-equiv="refresh" content="2; url=/">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #0f1117;
+      color: #e8e8e8;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 1.5rem;
+    }
+    .wrap { max-width: 420px; }
+    .code { font-family: 'Consolas', 'Courier New', monospace; font-size: 3rem; font-weight: 700; color: #6c8ebf; letter-spacing: 0.02em; }
+    h1 { font-size: 1.25rem; font-weight: 600; margin: 0.75rem 0 0.5rem; }
+    p { color: #888; font-size: 0.95rem; line-height: 1.6; }
+    a { color: #99b8e8; text-decoration: none; }
+    a:hover { color: #ffffff; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="code">404</div>
+    <h1>Page not found</h1>
+    <p>Taking you back to the <a href="/">home page</a>&hellip;</p>
+  </div>
+  <script>
+    // Dynamic redirect home; replace() so the dead URL isn't kept in history.
+    window.location.replace('/');
+  </script>
+</body>
+</html>

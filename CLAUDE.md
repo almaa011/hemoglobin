@@ -27,9 +27,10 @@ hemoglobin/
 ├── vite.config.js          ← Vite build config (bundles pages into dist/ as single-file HTML)
 ├── dist/                   ← Build output — do not edit manually
 ├── package.json
-├── research/               ← full merged research records (topic-slug.md), one per topic
 └── pages/                  ← all research pages live here
 ```
+
+**Merged research records are NOT stored in the repo.** The merged record is a transient working file written to the session **scratchpad directory** (the temp scratchpad path given in the environment), used during the workflow, and left there to be auto-cleaned. Never write it into the project folder.
 
 When the user asks to research a topic, run the full research workflow (Steps 1–8) on it. Apply the same workflow regardless of how the request is phrased.
 
@@ -87,8 +88,8 @@ Do not start writing until all three return.
 Merge all three outputs:
 - De-duplicate overlapping findings (keep the higher-authority source)
 - Where Researcher A, B, or C contradict each other, **do not silently pick a winner** — surface the conflict explicitly as a flagged item for the user
-- Save the full merged record to `research/topic-slug.md` (all findings, all sources, all flagged conflicts)
-- Report this file to the user — this is the full record they actually read
+- Save the full merged record to `<scratchpad>/topic-slug-research.md` in the session scratchpad directory (all findings, all sources, all flagged conflicts) — **never in the repo**
+- Summarize its contents and surface any flagged conflicts to the user in-conversation. Do not leave the file in the project folder; it is a transient working artifact only.
 
 ### Step 3 — Verify every citation
 
@@ -134,13 +135,20 @@ The reviewer checks against the rubric defined in the **Page-Reviewer Rubric** s
 ### Step 8 — Report to the user
 
 - Assumptions made (if Step 0 was skipped)
-- Path to merged research record (`research/topic-slug.md`)
 - Path to page (`pages/topic-slug.html`)
 - Number of verified sources (fetched and confirmed in Step 3)
 - Any conflicts surfaced between researchers
 - Any [UNVERIFIED] citations remaining and why
 - Any [NEEDS RESEARCH] placeholders that survived the recovery loop
 - One sentence summary of what the page covers
+
+### Step 9 — Commit and sync to GitHub
+
+Once the page passes review and the Step 8 report is delivered, **always** finish by committing and pushing all changes to GitHub:
+- `git add -A` then commit with a concise message describing the page/change (end the message with the `Co-Authored-By:` trailer)
+- `git push` to `origin/main`
+- This runs on `main` directly (this is a personal docs site — no branch/PR needed) and applies to any change that completes a website update, not only new pages
+- End the final report by stating the commit hash that was pushed
 
 ---
 
@@ -535,7 +543,7 @@ QUOTE: [verbatim excerpt from the source, 40 words max]
 CONFIDENCE: verified | unverified | conflicting
 ```
 
-One entry per finding. If a source supports multiple distinct claims, create one entry per claim. This format applies to all three researchers without exception — it is what gets saved to `research/topic-slug.md` before the page is written.
+One entry per finding. If a source supports multiple distinct claims, create one entry per claim. This format applies to all three researchers without exception — it is what gets saved to the transient merged record in the session scratchpad before the page is written.
 
 **Source fetch limit per researcher:**
 
@@ -543,7 +551,7 @@ Each researcher fetches and reads the most relevant 2–3 sources for their angl
 
 **Prose is written exactly once:**
 
-The main agent writes prose during page creation, working from the merged structured findings in `research/topic-slug.md`. No other step produces prose. The researcher agents, reviewer, and gap-recovery agent produce only structured output.
+The main agent writes prose during page creation, working from the merged structured findings in the scratchpad research file. No other step produces prose. The researcher agents, reviewer, and gap-recovery agent produce only structured output.
 
 ---
 
