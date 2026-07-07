@@ -150,6 +150,14 @@ Once the page passes review and the Step 8 report is delivered, **always** finis
 - This runs on `main` directly (this is a personal docs site — no branch/PR needed) and applies to any change that completes a website update, not only new pages
 - End the final report by stating the commit hash that was pushed
 
+**Cloud / web / mobile sessions:** if the session environment works on a branch and cannot push directly to `main` (typical for Claude Code on web or the mobile app), do NOT stop at an open PR. Finish the sync yourself:
+1. Push the working branch
+2. `gh pr create` (title = the commit message, body can be brief)
+3. `gh pr merge --squash --delete-branch` immediately — no review wait; this is a personal docs site
+4. If `gh` is unavailable or merge is blocked, say so explicitly in the final report and give the PR URL so the user can merge from their phone — never end the session with unmerged work sitting silently on a branch
+
+The end state in every environment is the same: `main` on GitHub contains the finished change.
+
 ---
 
 ## Page Content Rules
