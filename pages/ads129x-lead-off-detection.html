@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lead-Off Detection in TI's ADS129x Family — How It Actually Works</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+  <style>
+    :root { --accent: #5b8cff; }
+    .reg-addr { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--dim); }
+    .bitgrid { display:grid; grid-template-columns: repeat(8,1fr); gap:2px; margin: 14px 0 4px; font-family:'JetBrains Mono',monospace; font-size:11px; text-align:center; }
+    .bitgrid div { background:var(--bg2); border:1px solid var(--line); border-radius:6px; padding:8px 2px; color:var(--mut); }
+    .bitgrid .bn { color:var(--dim); font-size:10px; padding:2px; background:none; border:none; }
+    .code-block { background:#0a0810; border:1px solid var(--line); border-radius:10px; padding:14px 16px; font-family:'JetBrains Mono',monospace; font-size:12.5px; color:#c9e6c4; overflow-x:auto; line-height:1.6; }
+    .code-block .cm { color:var(--dim); }
+  </style>
+</head>
+<body>
+<div id="prog"></div>
+
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+    <div class="kicker"><span class="dot"></span> ECG / EEG AFE · ELECTRODE MONITORING</div>
+    <h1>Lead-Off Detection in TI's <span style="color:var(--accent)">ADS129x</span> Family</h1>
+    <p class="lead">A register-level walkthrough of how the ADS1298/ADS1299 biopotential front-ends detect a disconnected electrode — the DC current-injection method, the AC excitation method, the exact bit fields that configure each, and where the technique genuinely can't tell you what you want to know. Written for a hardware engineer who has never touched an ECG system before.</p>
+    <p class="mut">2026-07-07</p>
+    <div class="scrolltip"><span class="arr">↓</span> start reading</div>
+  </div>
+</header>
+
+<section id="s1">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">01</span> Why this exists</p>
+    <h2>It isn't really "lead-off" detection</h2>
+    <p>TI's own datasheet for this family opens with a clarification worth keeping in mind: <span class="ref" title="[1]">[1]</span></p>
+    <div class="aside">"Although called lead-off detection, this feature is in fact electrode-off detection."</div>
+    <p>Think of the electrode-to-skin interface as a lossy, drifting resistor in series with your signal chain — not a wire. A gelled Ag/AgCl electrode starts out at maybe a few kΩ of contact impedance. Over hours, the conductive gel dries, the mechanical bond degrades, and that impedance climbs. TI's own measured data on a subject over five hours showed a wet electrode's impedance drifting by more than 10 kΩ as the gel dried out, while a dry, unprepped electrode started worse and stayed noisy <span class="ref" title="[1]">[1]</span>. At some point that "resistor" effectively becomes an open circuit — and your ADC has no built-in way to tell "very high impedance electrode" from "actual dangling wire" unless you deliberately design a circuit to probe it.</p>
+    <p>That's the whole job of the lead-off block inside the ADS1298 / ADS1299 (and siblings: ADS1294, ADS1296, ADS1298R, ADS1299-4, ADS1299-6): inject a small, known excitation signal into each input channel and watch how the front-end responds. Two channels of a differential ECG lead — plus, in most real systems, a right-leg-drive (RLD) reference electrode that biases the patient to a defined DC operating point — all need this check <span class="ref" title="[1]">[1]</span>.</p>
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">The core idea</span>
+        <span class="panel-sub">excitation in, response out</span>
+      </div>
+      <div id="chart-concept"></div>
+      <p class="panel-cap">A known current or voltage is forced onto each input. As the patient-electrode path degrades toward an open circuit, the excitation signal dominates the input more and more — that's the signal a comparator or the ADC itself is watching for.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">02</span> Method 1</p>
+    <h2>DC lead-off: a current (or a resistor) pulling toward the rails</h2>
+    <p>The simplest and lowest-overhead approach. The ADS129x can excite each input in one of two ways, selected by the <code>VLEAD_OFF_EN</code> bit in the <code>LOFF</code> register <span class="ref" title="[2]">[2]</span>:</p>
+    <div class="spec-grid">
+      <div class="spec-card"><span class="sc" style="background:var(--accent)"></span><div class="sv">10 MΩ</div><div class="sl">internal pull-up / pull-down resistor to AVDD / AVSS</div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--good)"></span><div class="sv">6/12/18/24 nA</div><div class="sl">ADS1298 current-source options (ILEAD_OFF[1:0])</div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--warn)"></span><div class="sv">3-bit DAC</div><div class="sl">sets the comparator's threshold voltage (COMP_TH[2:0])</div></div>
+    </div>
+    <p>If the electrode is properly connected, the excitation is small enough to barely perturb the real ECG signal. As the patient-electrode impedance rises, the excitation current develops a larger and larger voltage across it (Ohm's law, nothing exotic), and that voltage pulls the input rail-ward. When the electrode is fully open, the pull-up/pull-down (or current source) has nothing to fight and drives the input straight to the supply rail <span class="ref" title="[1]">[1]</span>. A comparator watches for exactly that condition.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">DC lead-off — current-source variant</span>
+        <span class="panel-sub">simplified, one channel</span>
+      </div>
+      <div id="chart-dc"></div>
+      <p class="panel-cap">Redrawn conceptually from TI's DC lead-off current-path diagram <span class="ref" title="[1]">[1]</span>. A closed current loop through the patient is required — TI's app note stresses that "failure to properly close the circuit loop can result in a false detection of lead status because the subject and monitoring system do not share the same grounding path."</p>
+    </div>
+
+    <h3>The threshold DAC, exactly as TI specifies it</h3>
+    <p>The comparator threshold isn't a single fixed voltage — it's programmable as a percentage of the supply rail via <code>COMP_TH[2:0]</code>, and the two sides of the differential pair get mirrored thresholds around mid-supply <span class="ref" title="[2]">[2]</span>:</p>
+    <table class="tbl">
+      <thead><tr><th>COMP_TH[2:0]</th><th>Positive-side threshold</th><th>Negative-side threshold</th></tr></thead>
+      <tbody>
+        <tr><td>000</td><td>95%</td><td>5%</td></tr>
+        <tr><td>001</td><td>92.5%</td><td>7.5%</td></tr>
+        <tr><td>010</td><td>90%</td><td>10%</td></tr>
+        <tr><td>011</td><td>87.5%</td><td>12.5%</td></tr>
+        <tr><td>100</td><td>85%</td><td>15%</td></tr>
+        <tr><td>101</td><td>80%</td><td>20%</td></tr>
+        <tr><td>110</td><td>75%</td><td>25%</td></tr>
+        <tr><td>111</td><td>70%</td><td>30%</td></tr>
+      </tbody>
+    </table>
+    <p class="mut" style="font-size:13px;">Note the step size isn't uniform — 2.5%-per-code near the rails, widening to 5%-per-code toward mid-supply. That's the real table from the datasheet, not a rounded approximation <span class="ref" title="[2]">[2]</span>.</p>
+
+    <div class="callout">
+      <div class="lbl">DATASHEET QUIRK</div>
+      <p>TI's own ADS1298 datasheet text describes this as "a comparator and a <strong>4-bit</strong> DAC with levels that are set by the COMP_TH[2:0] bits" <span class="ref" title="[2]">[2]</span> — but <code>COMP_TH[2:0]</code> is a 3-bit field (8 codes), matching the 8-row table above exactly. This looks like leftover wording from an earlier revision rather than an actual 4th bit; we verified this directly against the current register map and it's genuinely a 3-bit field. Worth knowing if you're reading the datasheet prose literally.</p>
+    </div>
+
+    <h3>The cost: offset error and noise</h3>
+    <p>DC lead-off isn't free. Both excitation methods inject a small DC current through your signal-path impedance, and that shows up as an added input-referred offset. TI's app note gives the exact math and a worked example using their own eval board <span class="ref" title="[1]">[1]</span>:</p>
+    <div class="callout">
+      <div class="lbl">WORKED EXAMPLE — FROM SBAA196A</div>
+      <p>Board input impedance R<sub>in</sub> = 108.2 kΩ (32.1 kΩ series protection per channel + ~44 kΩ simulator/cable), 3 V supply:</p>
+      <p><code>V_offset = [(AVDD−AVSS) / (2·R_p + R_in)] · R_in</code> with 10 MΩ pull-up/pull-down resistors → <strong>16.14 mV</strong> of added offset.</p>
+      <p><code>V_offset = i_leadoff · R_in</code> with a 6 nA current source → <strong>650.4 µV</strong> of added offset — about 25× smaller.</p>
+      <p>This is exactly why TI recommends the smallest current-source setting (6 nA) rather than resistor pull-up/pull-down when offset matters, and it's directly measurable: TI's bench data shows the ECG baseline shifting by roughly this amount when DC lead-off is enabled, while the ECG waveform shape itself stays intact <span class="ref" title="[1]">[1]</span>.</p>
+    </div>
+    <p>Noise tells a similar story: resistor-based lead-off adds Johnson-Nyquist thermal noise (4kTZ<sub>in</sub>/R<sub>p</sub>, standard resistor noise, nothing IC-specific); current-source lead-off is dominated instead by the current source's own flicker (1/f) noise, which scales with the magnitude of the current — one more reason the smallest available current (6 nA) is the usual default <span class="ref" title="[1]">[1]</span>.</p>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">03</span> Method 2</p>
+    <h2>AC lead-off: an out-of-band tone riding on the ECG signal</h2>
+    <p>DC lead-off has a blind spot: it only sees resistance. Cable and electrode capacitance look like an open circuit to a DC excitation, so a purely capacitive fault path — increasingly common with dry-contact or non-contact capacitive electrodes — can slip past it <span class="ref" title="[1]">[1]</span><span class="ref" title="[3]">[3]</span>. AC lead-off fixes that by injecting a square-wave excitation and reading the amplitude of the response, which is sensitive to the total impedance magnitude (resistive and capacitive) at that frequency <span class="ref" title="[3]">[3]</span>.</p>
+    <p>On the ADS1298, the excitation is generated the same way as DC (pull-up/pull-down structure at the input) but toggled at a fixed relationship to the ADC's own output data rate: <strong>f<sub>DR</sub> / 4</strong>, selected by <code>FLEAD_OFF[1:0] = 01</code> <span class="ref" title="[2]">[2]</span>. Because that tone sits above the ECG band of interest, it passes through an on-chip antialiasing filter and shows up as an out-of-band component in the digitized output — separable from the real ECG signal with a digital bandpass/notch filter, so lead-off monitoring runs concurrently with normal signal acquisition rather than interrupting it <span class="ref" title="[1]">[1]</span><span class="ref" title="[2]">[2]</span>.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Excitation amplitude vs. electrode impedance</span>
+        <span class="panel-sub">shape reproduced from TI SBAA196A Fig. 9 — illustrative, not exact data points</span>
+      </div>
+      <div id="chart-ac"></div>
+      <p class="panel-cap">TI's own bench sweep (10 Ω to fully open, resistive load standing in for a degrading electrode) shows the AC excitation amplitude rising steeply as impedance approaches open circuit — from near-zero at low impedance to tens of millivolts peak-to-peak at open <span class="ref" title="[1]">[1]</span>. This monotonic relationship is what makes AC lead-off usable for graded "connection strength" tracking, not just a binary on/off flag.</p>
+    </div>
+
+    <p>Because the amplitude response is graded rather than a hard threshold trip, systems with enough digital processing headroom can track connectivity strength continuously, not just flag a binary disconnect <span class="ref" title="[1]">[1]</span>. Some designs go further and use in-phase/quadrature (I/Q) demodulation on the response to separate the resistive and capacitive parts of the electrode impedance instead of just reading a scalar magnitude <span class="ref" title="[3]">[3]</span> — useful if you specifically care about, say, gel drying (mostly resistive change) versus a lifting electrode (which changes the capacitive coupling too).</p>
+
+    <div class="warn-note">
+      <div class="lbl">WARNING — FREQUENCY PLANNING IS NOT OPTIONAL</div>
+      <p>TI's application note is explicit about the one way to break AC lead-off entirely: <em>"Careful attention is necessary to ensure that the frequency of the ac excitation signal does not overlap with either the high-frequency ECG or pacemaker signal components; otherwise, digital filtering cannot be used to isolate the ECG signal from the excitation signal."</em> <span class="ref" title="[1]">[1]</span> Pacemaker pulses in particular have fast edges with real high-frequency content — pick an f<sub>DR</sub>/4 (or fixed-frequency, on the ADS1299) setting that lands clear of both, or your bandpass separation quietly stops working and you won't necessarily notice.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">04</span> Registers</p>
+    <h2>The actual bits — LOFF, LOFF_SENS, LOFF_STAT</h2>
+    <p>Everything above is configured through one control register and read back through two status registers, all confirmed against the ADS1298 register map (SBAS459K) <span class="ref" title="[2]">[2]</span>:</p>
+
+    <h3><code>LOFF</code> — Lead-Off Control Register, address 0x04</h3>
+    <div class="bitgrid">
+      <div class="bn">7</div><div class="bn">6</div><div class="bn">5</div><div class="bn">4</div><div class="bn">3</div><div class="bn">2</div><div class="bn">1</div><div class="bn">0</div>
+      <div style="grid-column: span 3;">COMP_TH[2:0]</div>
+      <div>VLEAD_OFF_EN</div>
+      <div style="grid-column: span 2;">ILEAD_OFF[1:0]</div>
+      <div style="grid-column: span 2;">FLEAD_OFF[1:0]</div>
+    </div>
+    <table class="tbl">
+      <thead><tr><th>Field</th><th>Bits</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>COMP_TH[2:0]</td><td>7:5</td><td>comparator threshold, see table above</td></tr>
+        <tr><td>VLEAD_OFF_EN</td><td>4</td><td>0 = current-source mode · 1 = pull-up/pull-down resistor mode</td></tr>
+        <tr><td>ILEAD_OFF[1:0]</td><td>3:2</td><td>00=6 nA · 01=12 nA · 10=18 nA · 11=24 nA <span class="mut">(ADS1298)</span></td></tr>
+        <tr><td>FLEAD_OFF[1:0]</td><td>1:0</td><td>01 = AC lead-off at f<sub>DR</sub>/4 · 11 = DC lead-off on · 10 = do not use</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Enable and readback registers</h3>
+    <table class="tbl">
+      <thead><tr><th>Register</th><th class="mut">Addr</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>LOFF_SENSP / LOFF_SENSN</td><td>0x0F / 0x10</td><td>per-channel enable — one bit per channel, P-side and N-side independently</td></tr>
+        <tr><td>LOFF_FLIP</td><td>0x11</td><td>per-channel polarity flip — swaps which side (P or N) is pulled to AVDD vs AVSS</td></tr>
+        <tr><td>LOFF_STATP / LOFF_STATN</td><td>0x12 / 0x13</td><td>read-only status, one bit per channel: 0 = electrode on, 1 = electrode off — <strong>only valid if the matching LOFF_SENS bit is set</strong></td></tr>
+      </tbody>
+    </table>
+    <div class="note">
+      <div class="lbl">KEY FINDING</div>
+      <p><code>LOFF_STATP</code> and <code>LOFF_STATN</code> aren't something you have to separately poll — they're transmitted as part of the 24-bit status word at the front of every conversion readout <span class="ref" title="[2]">[2]</span>. That means lead-off status is available on every single ADC sample, for free, with no extra SPI transaction and no arbitrary polling interval to choose.</p>
+    </div>
+
+    <h3>Turning on DC lead-off — TI's own example</h3>
+    <p>Straight from the ADS1298 datasheet's application-information section <span class="ref" title="[2]">[2]</span>:</p>
+    <div class="code-block">
+WREG LOFF 0x13        <span class="cm">// comparator threshold 95%/5%, pull-up/pull-down resistor DC lead-off</span><br>
+WREG CONFIG4 0x02     <span class="cm">// turn on the DC lead-off comparators (PD_LOFF_COMP)</span><br>
+WREG LOFF_SENSP 0xFF  <span class="cm">// enable P-side lead-off sensing on all 8 channels</span><br>
+WREG LOFF_SENSN 0xFF  <span class="cm">// enable N-side lead-off sensing on all 8 channels</span>
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">05</span> The reference electrode</p>
+    <h2>RLD lead-off is a separate, gated mechanism</h2>
+    <p>The right-leg-drive (RLD) electrode biases the patient to a defined common-mode operating point and drives the right-leg-drive amplifier's negative-feedback loop — it isn't a signal-measuring channel like IN1–IN8, so it can't be checked the same way <span class="ref" title="[1]">[1]</span><span class="ref" title="[2]">[2]</span>. The ADS129x handles it with a dedicated procedure: power down the RLD amplifier, then apply the same pull-up/pull-down-resistor-or-current-source-plus-comparator trick used for the main channels, using the same <code>COMP_TH[7:5]</code> threshold bits, and read the result back in a single dedicated status bit — <code>RLD_STAT</code> in the <code>CONFIG3</code> register (0 = RLD connected, 1 = RLD not connected) <span class="ref" title="[2]">[2]</span>.</p>
+    <div class="warn-note">
+      <div class="lbl">WARNING — RLD LEAD-OFF ONLY WORKS WHILE RLD IS OFF</div>
+      <p>Quoted directly from the datasheet: <em>"The current source, or pullup or pulldown resistor method has no function when the RLD amplifier is powered on."</em> <span class="ref" title="[2]">[2]</span> In other words, you cannot continuously monitor RLD electrode connection while the RLD feedback loop is actively driving the patient — you have to momentarily disable RLD, check it, and re-enable it. Design your check-interval and your common-mode settling budget around that.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s6">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">06</span> Family differences</p>
+    <h2>ADS1298 vs ADS1299 — not identical options</h2>
+    <p>The lead-off block is broadly the same architecture across the ADS129x family, but the exact numeric options in the <code>LOFF</code> register differ between parts. Comparing the two most commonly used members directly against their register maps <span class="ref" title="[2]">[2]</span><span class="ref" title="[4]">[4]</span>:</p>
+    <table class="tbl">
+      <thead><tr><th>Field</th><th>ADS1298 (ECG)</th><th>ADS1299 (EEG)</th></tr></thead>
+      <tbody>
+        <tr><td>ILEAD_OFF current options</td><td>6 / 12 / 18 / 24 nA</td><td class="warn">6 nA / 24 nA / 6 µA / 24 µA</td></tr>
+        <tr><td>AC excitation frequency options</td><td>f<sub>DR</sub>/4 only</td><td>7.8 Hz (f<sub>CLK</sub>/2<sup>18</sup>), 31.2 Hz (f<sub>CLK</sub>/2<sup>16</sup>), or f<sub>DR</sub>/4</td></tr>
+        <tr><td>COMP_TH threshold table</td><td>95%→70% / 5%→30%</td><td>identical to ADS1298</td></tr>
+        <tr><td>Reference-electrode naming</td><td>RLD (right-leg-drive)</td><td>BIAS (same concept, EEG-oriented naming: BIAS_SENSP/N, BIAS_STAT)</td></tr>
+      </tbody>
+    </table>
+    <p>The ADS1299's current-source range is genuinely striking: its top setting (24 µA) is <strong>1,000× larger</strong> than the ADS1298's top setting (24 nA) — appropriate for EEG systems that may need to punch through much higher scalp-electrode impedances, but a setting you'd never want to leave at its default-adjacent high end on an ECG design without checking the offset-error math from Section 02 first.</p>
+  </div>
+</section>
+
+<section id="s7">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">07</span> Limitations</p>
+    <h2>What lead-off detection genuinely can't tell you</h2>
+    <div class="warn-note">
+      <div class="lbl">INHERENT LIMITATION</div>
+      <p>Both methods are threshold-based: a comparator (DC) or an amplitude reading (AC) trips when impedance crosses a programmed line. That line cannot distinguish "electrode is completely detached" from "electrode is still touching skin but its impedance has drifted above your threshold" — a poorly-gelled or aging electrode reads identically to a disconnected one once it crosses the line <span class="ref" title="[1]">[1]</span>. This isn't a defect specific to TI's implementation; it's a fundamental property of any single-threshold impedance check. If you need to distinguish "bad contact" from "no contact," you need the AC method's graded amplitude output (Section 03) rather than the DC method's binary flag, and even then you're inferring, not measuring, contact quality directly.</p>
+    </div>
+    <p>Other constraints worth carrying into a design review:</p>
+    <ul style="color:#e2d8d1;">
+      <li><strong>DC lead-off only sees resistance.</strong> Electrode and cable capacitance present as an open circuit to a DC excitation, so a fault that's mostly capacitive (common with dry or non-contact capacitive electrodes) can be invisible to the DC method specifically <span class="ref" title="[1]">[1]</span><span class="ref" title="[3]">[3]</span>.</li>
+      <li><strong>DC lead-off always costs you offset and noise</strong> — see the worked 16.14 mV vs 650.4 µV example in Section 02. There's no "free" DC lead-off setting; you're always trading detection margin against signal integrity.</li>
+      <li><strong>AC lead-off needs a closed loop for its return path</strong>, same as DC — TI's app note explicitly warns that an improperly closed current-return path (missing shared ground reference between patient and system) produces a false lead-off reading <span class="ref" title="[1]">[1]</span>.</li>
+      <li><strong>AC lead-off frequency choice is a hard constraint, not a tuning knob you can ignore</strong> — see the pacemaker/harmonic warning in Section 03.</li>
+      <li><strong>RLD lead-off is not continuous</strong> — it only functions while the RLD amplifier is powered down (Section 05).</li>
+    </ul>
+  </div>
+</section>
+
+<details class="src">
+  <summary>References <span class="chev">▾</span></summary>
+  <div class="srcbody">
+    <ol>
+      <li id="r1">[1] Calabria, Anthony. "Understanding Lead-Off Detection in ECG." Texas Instruments Application Report SBAA196A, May 2012 (revised January 2015). <a href="https://www.ti.com/lit/an/sbaa196a/sbaa196a.pdf">ti.com/lit/an/sbaa196a</a></li>
+      <li id="r2">[2] Texas Instruments. "ADS1294, ADS1294R, ADS1296, ADS1296R, ADS1298, ADS1298R" datasheet, SBAS459K, January 2010 (revised August 2015). <a href="https://www.ti.com/lit/ds/symlink/ads1298.pdf">ti.com/lit/ds/symlink/ads1298</a></li>
+      <li id="r3">[3] Smith, Alex; Andrews, Ryan (Precision ADC Applications, Texas Instruments). "Signal Chain Basics #149: How to accurately measure electrode impedance for lead-off detection in ECG systems." EDN, June 22, 2019. <a href="https://www.edn.com/signal-chain-basics-149-how-to-accurately-measure-electrode-impedance-for-lead-off-detection-in-ecg-systems/">edn.com</a></li>
+      <li id="r4">[4] Texas Instruments. "ADS1299, ADS1299-4, ADS1299-6" datasheet, SBAS499C, July 2012 (revised January 2017). <a href="https://www.ti.com/lit/ds/symlink/ads1299.pdf">ti.com/lit/ds/symlink/ads1299</a></li>
+    </ol>
+  </div>
+</details>
+
+<footer><div class="wrap"><a class="back-link" href="../index.html">← Index</a></div></footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const el = document.documentElement;
+    document.getElementById('prog').style.width =
+      (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+  });
+
+  // concept diagram: excitation in -> degrading path -> response out
+  (function(){
+    const svg = `
+    <svg viewBox="0 0 720 160" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr1" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#7e716c"/></marker>
+      </defs>
+      <rect x="20" y="60" width="120" height="44" rx="8" fill="#181219" stroke="#5b8cff" stroke-width="1.5"/>
+      <text x="80" y="78" text-anchor="middle" fill="#f2ebe6" font-family="Space Grotesk" font-size="12" font-weight="600">Excitation</text>
+      <text x="80" y="94" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="9">DC current / AC square wave</text>
+
+      <line x1="140" y1="82" x2="230" y2="82" stroke="#7e716c" stroke-width="1.5" marker-end="url(#arr1)"/>
+
+      <rect x="230" y="50" width="150" height="64" rx="8" fill="#181219" stroke="#f0a24b" stroke-width="1.5"/>
+      <text x="305" y="72" text-anchor="middle" fill="#f2ebe6" font-family="Space Grotesk" font-size="12" font-weight="600">Electrode + skin</text>
+      <text x="305" y="88" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="9">impedance drifts</text>
+      <text x="305" y="100" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="9">up over hours</text>
+
+      <line x1="380" y1="82" x2="470" y2="82" stroke="#7e716c" stroke-width="1.5" marker-end="url(#arr1)"/>
+
+      <rect x="470" y="50" width="120" height="64" rx="8" fill="#181219" stroke="#5fd0a6" stroke-width="1.5"/>
+      <text x="530" y="76" text-anchor="middle" fill="#f2ebe6" font-family="Space Grotesk" font-size="12" font-weight="600">ADC / PGA</text>
+      <text x="530" y="92" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="9">input node</text>
+
+      <line x1="590" y1="82" x2="670" y2="82" stroke="#7e716c" stroke-width="1.5" marker-end="url(#arr1)"/>
+
+      <rect x="600" y="10" width="110" height="36" rx="8" fill="#181219" stroke="#ff5a52" stroke-width="1.5"/>
+      <text x="655" y="32" text-anchor="middle" fill="#f2ebe6" font-family="Space Grotesk" font-size="11" font-weight="600">Comparator</text>
+      <line x1="655" y1="46" x2="655" y2="60" stroke="#7e716c" stroke-width="1.2"/>
+
+      <text x="655" y="140" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="9">LOFF_STATP / LOFF_STATN</text>
+    </svg>`;
+    document.getElementById('chart-concept').innerHTML = svg;
+  })();
+
+  // DC lead-off schematic
+  (function(){
+    const svg = `
+    <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg">
+      <text x="320" y="18" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="10">AVDD</text>
+      <line x1="200" y1="26" x2="200" y2="60" stroke="#7e716c" stroke-width="1.4"/>
+      <circle cx="200" cy="60" r="10" fill="none" stroke="#5b8cff" stroke-width="1.6"/>
+      <text x="200" y="64" text-anchor="middle" fill="#5b8cff" font-size="11">↓</text>
+      <text x="230" y="64" fill="#a8978f" font-family="JetBrains Mono" font-size="9">i_leadoff (6/12/18/24 nA)</text>
+      <line x1="200" y1="70" x2="200" y2="110" stroke="#7e716c" stroke-width="1.4"/>
+
+      <path d="M160,110 h180" stroke="#5fd0a6" stroke-width="1.6"/>
+      <text x="250" y="102" text-anchor="middle" fill="#5fd0a6" font-family="JetBrains Mono" font-size="9">Rin (patient + electrode + cable)</text>
+      <circle cx="200" cy="110" r="3" fill="#f2ebe6"/>
+      <circle cx="340" cy="110" r="3" fill="#f2ebe6"/>
+
+      <rect x="380" y="90" width="90" height="40" rx="6" fill="#181219" stroke="#5b8cff" stroke-width="1.4"/>
+      <text x="425" y="114" text-anchor="middle" fill="#f2ebe6" font-family="Space Grotesk" font-size="11" font-weight="600">PGA</text>
+
+      <line x1="200" y1="150" x2="200" y2="190" stroke="#7e716c" stroke-width="1.4"/>
+      <circle cx="200" cy="150" r="10" fill="none" stroke="#5b8cff" stroke-width="1.6"/>
+      <text x="200" y="154" text-anchor="middle" fill="#5b8cff" font-size="11">↑</text>
+      <text x="320" y="204" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="10">AVSS</text>
+
+      <text x="60" y="60" fill="#e2d8d1" font-family="Inter" font-size="11">Patient</text>
+      <circle cx="70" cy="90" r="14" fill="none" stroke="#e2d8d1" stroke-width="1.4"/>
+      <line x1="70" y1="104" x2="70" y2="140" stroke="#e2d8d1" stroke-width="1.4"/>
+      <line x1="70" y1="115" x2="55" y2="130" stroke="#e2d8d1" stroke-width="1.4"/>
+      <line x1="70" y1="115" x2="85" y2="130" stroke="#e2d8d1" stroke-width="1.4"/>
+      <line x1="70" y1="140" x2="58" y2="165" stroke="#e2d8d1" stroke-width="1.4"/>
+      <line x1="70" y1="140" x2="82" y2="165" stroke="#e2d8d1" stroke-width="1.4"/>
+      <path d="M70,90 C130,90 160,105 160,110" stroke="#ff5a52" stroke-width="1.4" fill="none" stroke-dasharray="4,3"/>
+      <text x="115" y="80" fill="#ff5a52" font-family="JetBrains Mono" font-size="9">current path</text>
+      <path d="M82,165 C120,175 150,150 160,120" stroke="#ff5a52" stroke-width="1.4" fill="none" stroke-dasharray="4,3"/>
+      <text x="115" y="185" fill="#ff5a52" font-family="JetBrains Mono" font-size="9">return path (2nd electrode or RLD)</text>
+    </svg>`;
+    document.getElementById('chart-dc').innerHTML = svg;
+  })();
+
+  // AC lead-off amplitude vs impedance (illustrative shape only)
+  (function(){
+    const labels = ['10Ω','20k','50k','100k','200k','500k','1M','Open'];
+    const pts = [2,4,7,14,26,44,62,96]; // illustrative monotonic shape only, not measured values
+    const W=640,H=220,padL=46,padB=30,padT=16,padR=16;
+    const plotW = W-padL-padR, plotH = H-padT-padB;
+    const maxV = 100;
+    const xs = labels.map((_,i)=> padL + i*(plotW/(labels.length-1)));
+    const ys = pts.map(v=> padT + plotH - (v/maxV)*plotH);
+    let path = xs.map((x,i)=> (i===0?'M':'L')+x.toFixed(1)+','+ys[i].toFixed(1)).join(' ');
+    let ticks = xs.map((x,i)=> `<text x="${x.toFixed(1)}" y="${H-8}" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="9">${labels[i]}</text>`).join('');
+    let dots = xs.map((x,i)=> `<circle cx="${x.toFixed(1)}" cy="${ys[i].toFixed(1)}" r="3" fill="#5b8cff"/>`).join('');
+    const svg = `
+    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}" stroke="#7e716c" stroke-width="1"/>
+      <line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#7e716c" stroke-width="1"/>
+      <text x="${padL-10}" y="${padT+8}" text-anchor="end" fill="#a8978f" font-family="JetBrains Mono" font-size="9">high</text>
+      <text x="${padL-10}" y="${H-padB}" text-anchor="end" fill="#a8978f" font-family="JetBrains Mono" font-size="9">~0</text>
+      <path d="${path}" fill="none" stroke="#5b8cff" stroke-width="2"/>
+      ${dots}
+      ${ticks}
+      <text x="${W/2}" y="14" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="9">excitation amplitude (pk-pk) →</text>
+    </svg>`;
+    document.getElementById('chart-ac').innerHTML = svg;
+  })();
+</script>
+</body>
+</html>
