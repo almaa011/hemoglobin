@@ -142,11 +142,10 @@ Never rewrite or reformat anything else in `index.html`.
 ### Step 7 — Run the `page-reviewer` agent
 
 - Pass it the file path of the page just created
-- If it returns BLOCKING issues → fix them, then run the reviewer again
-- If it returns SHOULD FIX issues → fix them
-- Only proceed to Step 8 when the reviewer returns PASS or only NICE TO HAVE items remain
+- The reviewer reports what it finds — nothing here is a hard gate. Use judgment: fix what actually matters, let the rest go
+- Move on to Step 8 when you're satisfied, not when a checklist says PASS
 
-The reviewer checks against the rubric defined in the **Page-Reviewer Rubric** section below.
+The reviewer checks against the checklist defined in the **Page-Reviewer Checklist** section below.
 
 ### Step 8 — Report to the user
 
@@ -541,28 +540,28 @@ footer { padding: 50px 0 70px; text-align: center; color: var(--dim); font-size:
 
 ---
 
-## Page-Reviewer Rubric
+## Page-Reviewer Checklist
 
-The `page-reviewer` agent checks every page against these criteria before passing it. Each issue is classified as BLOCKING, SHOULD FIX, or NICE TO HAVE.
+The `page-reviewer` agent checks every page against this list and reports what it finds. Nothing on this list is an automatic gate — the main agent reads the findings and uses judgment on what's actually worth fixing before moving on.
 
-| # | Check | Severity |
-|---|---|---|
-| 1 | Every specific fact traces to a verified finding in the merged research record | BLOCKING |
-| 2 | Every inline citation resolves to an entry in the reference list | BLOCKING |
-| 3 | Every reference list URL/DOI was fetched and confirmed to exist and support its claim | BLOCKING |
-| 4 | No values or claims interpolated from training data without a source | BLOCKING |
-| 5 | Any claim about an electrical/electronic component cites the official datasheet specifically | BLOCKING |
-| 6 | Scope matches the user's brief (no silent scope creep, no missing areas) | BLOCKING |
-| 7 | Required header block present: title, date, summary, back-to-index link | SHOULD FIX |
-| 8 | All [NEEDS RESEARCH] placeholders survived the recovery loop (not skipped) | SHOULD FIX |
-| 9 | Conflicts between researchers are surfaced to the user, not silently resolved | SHOULD FIX |
-| 10 | [UNVERIFIED] citations are labeled as such in the reference list | SHOULD FIX |
-| 11 | Inline citation markers are visually subtle — prose reads cleanly without distraction | NICE TO HAVE |
-| 12 | Diagrams present where they would reduce confusion (not mandatory, but flagged if obviously missing) | NICE TO HAVE |
-| 13 | Base Stylesheet copied verbatim — page uses canonical class names (`.eyebrow`, `.panel`, `.callout`, `.note`, `.warn-note`, `.conflict`, `.tbl`, `.spec-grid`, `.src`) not ad-hoc alternatives | SHOULD FIX |
-| 14 | Every screenshot's caption cites a reference-list entry, includes the source URL and access date | BLOCKING |
-| 15 | Every screenshot corresponds to a claim already in the merged record — none decorative or speculative | BLOCKING |
-| 16 | `.tbl`/`.spec-grid` values that came from a researcher's `TABLE:` field match it verbatim, not paraphrased or retyped from memory | BLOCKING |
+| # | Check |
+|---|---|
+| 1 | Every specific fact traces to a verified finding in the merged research record |
+| 2 | Every inline citation resolves to an entry in the reference list |
+| 3 | Every reference list URL/DOI was fetched and confirmed to exist and support its claim |
+| 4 | No values or claims interpolated from training data without a source |
+| 5 | Any claim about an electrical/electronic component cites the official datasheet specifically |
+| 6 | Scope matches the user's brief (no silent scope creep, no missing areas) |
+| 7 | Required header block present: title, date, summary, back-to-index link |
+| 8 | All [NEEDS RESEARCH] placeholders survived the recovery loop (not skipped) |
+| 9 | Conflicts between researchers are surfaced to the user, not silently resolved |
+| 10 | [UNVERIFIED] citations are labeled as such in the reference list |
+| 11 | Inline citation markers are visually subtle — prose reads cleanly without distraction |
+| 12 | Diagrams present where they would reduce confusion (not mandatory, but flagged if obviously missing) |
+| 13 | Base Stylesheet copied verbatim — page uses canonical class names (`.eyebrow`, `.panel`, `.callout`, `.note`, `.warn-note`, `.conflict`, `.tbl`, `.spec-grid`, `.src`) not ad-hoc alternatives |
+| 14 | Every screenshot's caption cites a reference-list entry, includes the source URL and access date |
+| 15 | Every screenshot corresponds to a claim already in the merged record — none decorative or speculative |
+| 16 | `.tbl`/`.spec-grid` values that came from a researcher's `TABLE:` field match it verbatim, not paraphrased or retyped from memory |
 
 ---
 
@@ -607,7 +606,7 @@ The main agent writes prose during page creation, working from the merged struct
 2. **Never fabricate sources** — if a claim can't be verified, omit it or flag it as UNVERIFIED
 3. **Never link pages to `../style.css`** — that file is for `index.html` only
 4. **Always use three parallel researcher agents before writing** — do not write from memory; do not use a single researcher
-5. **Always use the `page-reviewer` agent after writing** — do not declare done until it passes
+5. **Always use the `page-reviewer` agent after writing** — read its findings and use judgment on what to fix; nothing it reports is an automatic blocker
 6. **Use sub-agents to avoid flooding yourself** — break large tasks into delegated steps rather than trying to do everything in one shot
 7. **Any claim about an electrical or electronic component must come from the official datasheet** — the datasheet is authoritative above application notes or third-party pages; cite the datasheet specifically for that claim; note in the page whether a conclusion is datasheet-derived or general engineering knowledge
 8. **Screenshots are captured only by the main agent, only in Step 4.5, only for claims already in the merged record** — researchers may flag a `VISUAL:` candidate but never capture it themselves; never screenshot a page that isn't cited elsewhere on the page
