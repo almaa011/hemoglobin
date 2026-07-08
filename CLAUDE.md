@@ -27,7 +27,10 @@ hemoglobin/
 ├── vite.config.js          ← Vite build config (bundles pages into dist/ as single-file HTML)
 ├── dist/                   ← Build output — do not edit manually
 ├── package.json
+├── scripts/
+│   └── screenshot.mjs      ← captures a source-page screenshot for use as a page figure (Step 4.5)
 └── pages/                  ← all research pages live here
+    └── assets/<topic-slug>/  ← screenshots captured for that page (1.png, 2.png, ...)
 ```
 
 **Merged research records are NOT stored in the repo.** The merged record is a transient working file written to the session **scratchpad directory** (the temp scratchpad path given in the environment), used during the workflow, and left there to be auto-cleaned. Never write it into the project folder.
@@ -106,6 +109,19 @@ For every `[NEEDS RESEARCH: ...]` gap that would appear in the page:
 1. Dispatch one targeted re-search for that specific gap
 2. If it resolves the gap, incorporate the finding and its verified citation
 3. Only if the second pass also fails does the placeholder remain in the page
+
+### Step 4.5 — Capture flagged visuals
+
+The main agent only (never a researcher sub-agent) does this step. Researchers can flag a source as visually worth capturing (see `VISUAL:` field in Agent Configuration below), but they don't have Bash/Playwright — capture happens here, after the page's content is settled, so nothing gets captured that doesn't end up used.
+
+1. Walk the merged record for `VISUAL:` flags attached to a finding that is actually going into the page. Skip flags tied to findings that got cut or downgraded to [UNVERIFIED] in Step 3.
+2. For each one, capture it with:
+   ```bash
+   node scripts/screenshot.mjs "<source-url>" pages/assets/<topic-slug>/<n>.png [--selector "<css selector>"] [--width 1280]
+   ```
+   Prefer `--selector` to crop to just the relevant figure/table/photo rather than a full-page screenshot — keep it to what supports the claim, not a page dump.
+3. Cap at 4 screenshots per page. If more than 4 are flagged, keep only the ones that most reduce confusion (per the Visuals rule) and drop the rest.
+4. If a capture fails (dead link, paywall, selector not found), drop it silently — it's a nice-to-have, not a blocker. Do not retry more than once.
 
 ### Step 5 — Create the page file
 
@@ -214,6 +230,25 @@ Include inline SVG diagrams, charts, or tables when:
 - A table would make a set of specs dramatically easier to scan
 
 Do not add a diagram just to have one — add it when it genuinely reduces confusion.
+
+**Datasheet tables — transcribe, don't paraphrase.** When a researcher's finding includes a `TABLE:` field (a verbatim table from a datasheet or paper — register map, channel spec table, etc.), reproduce it as `.tbl` or `.spec-grid` directly from that field. Do not retype numbers from memory or from the prose `QUOTE:` — if a spec isn't in a `TABLE:` or `QUOTE:` field in the merged record, it's not verified, and the Gap-filling rule applies.
+
+**Screenshots — captured in Step 4.5, embedded like this:**
+```html
+<div class="panel">
+  <div class="panel-hd">
+    <span class="panel-title">Fig. 4 — absorption spectrum</span>
+    <span class="panel-sub">Manufacturer, 2023</span>
+  </div>
+  <img src="assets/topic-slug/1.png" alt="Describe what the figure shows">
+  <p class="panel-cap">Captured from <a href="https://...">source</a> on YYYY-MM-DD. <span class="ref" title="[3]">[3]</span></p>
+</div>
+```
+Rules:
+- Every screenshot's caption cites a reference-list entry — same citation discipline as any text claim, no exceptions
+- Only capture what supports a claim already in the merged record — never decorative, never speculative
+- Prefer a cropped shot of the specific figure/table/photo (via `--selector`) over a full-page screenshot
+- A screenshot is not a substitute for a `TABLE:` transcription — if the source has a data table, transcribe the numbers into `.tbl` as well so the values are selectable/searchable, and use the screenshot only for genuinely visual content (a plotted curve, a board photo, a scope capture)
 
 ---
 
@@ -527,6 +562,9 @@ The `page-reviewer` agent checks every page against these criteria before passin
 | 12 | Inline citation markers are visually subtle — prose reads cleanly without distraction | NICE TO HAVE |
 | 13 | Diagrams present where they would reduce confusion (not mandatory, but flagged if obviously missing) | NICE TO HAVE |
 | 14 | Base Stylesheet copied verbatim — page uses canonical class names (`.eyebrow`, `.panel`, `.callout`, `.note`, `.warn-note`, `.conflict`, `.tbl`, `.spec-grid`, `.src`) not ad-hoc alternatives | SHOULD FIX |
+| 15 | Every screenshot's caption cites a reference-list entry, includes the source URL and access date | BLOCKING |
+| 16 | Every screenshot corresponds to a claim already in the merged record — none decorative or speculative | BLOCKING |
+| 17 | `.tbl`/`.spec-grid` values that came from a researcher's `TABLE:` field match it verbatim, not paraphrased or retyped from memory | BLOCKING |
 
 ---
 
@@ -549,9 +587,11 @@ SOURCE: [URL or DOI]
 CLAIM: [one sentence — the specific fact being cited]
 QUOTE: [verbatim excerpt from the source, 40 words max]
 CONFIDENCE: verified | unverified | conflicting
+TABLE: [optional — verbatim markdown table, only when the source has a table worth reproducing exactly (register map, channel spec table). Omit this line entirely when there is no table.]
+VISUAL: [optional — one line describing a specific figure/photo/plot at this URL worth capturing as a screenshot, e.g. "Fig 4, absorption spectrum plot". Omit this line entirely when there's nothing visual worth capturing.]
 ```
 
-One entry per finding. If a source supports multiple distinct claims, create one entry per claim. This format applies to all three researchers without exception — it is what gets saved to the transient merged record in the session scratchpad before the page is written.
+One entry per finding. If a source supports multiple distinct claims, create one entry per claim. `TABLE` and `VISUAL` are the exception to "no prose" — everything else stays flat structured data. Most findings have neither; only flag a table or visual when it's genuinely better than prose (see Visuals and Step 4.5). This format applies to all three researchers without exception — it is what gets saved to the transient merged record in the session scratchpad before the page is written.
 
 **Source fetch limit per researcher:**
 
@@ -572,3 +612,4 @@ The main agent writes prose during page creation, working from the merged struct
 5. **Always use the `page-reviewer` agent after writing** — do not declare done until it passes
 6. **Use sub-agents to avoid flooding yourself** — break large tasks into delegated steps rather than trying to do everything in one shot
 7. **Any claim about an electrical or electronic component must come from the official datasheet** — the datasheet is authoritative above application notes or third-party pages; cite the datasheet specifically for that claim; note in the page whether a conclusion is datasheet-derived or general engineering knowledge
+8. **Screenshots are captured only by the main agent, only in Step 4.5, only for claims already in the merged record** — researchers may flag a `VISUAL:` candidate but never capture it themselves; never screenshot a page that isn't cited elsewhere on the page

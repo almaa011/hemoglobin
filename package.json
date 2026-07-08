@@ -8,6 +8,7 @@
     "new-page": "node scripts/new-page.js"
   },
   "devDependencies": {
+    "playwright": "^1.61.1",
     "vite": "^5.4.11",
     "vite-plugin-singlefile": "^2.0.3",
     "vite-plugin-webfont-dl": "^3.9.1"
