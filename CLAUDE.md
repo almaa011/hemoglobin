@@ -341,7 +341,6 @@ All shared styles live in `pages/base.css`. Each page links to it and adds only 
 - SVG charts: build SVG string, inject via `el.innerHTML = svg` into a `<div id="chartid">` inside `.panel`
 - Canvas charts: `<canvas id="...">` rendered via 2D context
 - Sliders: `<input type="range">` with a `<span>` label updated by `addEventListener('input', ...)`
-- No external scripts, no frameworks
 
 ---
 
@@ -554,17 +553,16 @@ The `page-reviewer` agent checks every page against these criteria before passin
 | 4 | No values or claims interpolated from training data without a source | BLOCKING |
 | 5 | Any claim about an electrical/electronic component cites the official datasheet specifically | BLOCKING |
 | 6 | Scope matches the user's brief (no silent scope creep, no missing areas) | BLOCKING |
-| 7 | Page is self-contained at runtime — links only to `base.css` (sibling in `pages/`) and Google Fonts CDN; no other external CSS or scripts | BLOCKING |
-| 8 | Required header block present: title, date, summary, back-to-index link | SHOULD FIX |
-| 9 | All [NEEDS RESEARCH] placeholders survived the recovery loop (not skipped) | SHOULD FIX |
-| 10 | Conflicts between researchers are surfaced to the user, not silently resolved | SHOULD FIX |
-| 11 | [UNVERIFIED] citations are labeled as such in the reference list | SHOULD FIX |
-| 12 | Inline citation markers are visually subtle — prose reads cleanly without distraction | NICE TO HAVE |
-| 13 | Diagrams present where they would reduce confusion (not mandatory, but flagged if obviously missing) | NICE TO HAVE |
-| 14 | Base Stylesheet copied verbatim — page uses canonical class names (`.eyebrow`, `.panel`, `.callout`, `.note`, `.warn-note`, `.conflict`, `.tbl`, `.spec-grid`, `.src`) not ad-hoc alternatives | SHOULD FIX |
-| 15 | Every screenshot's caption cites a reference-list entry, includes the source URL and access date | BLOCKING |
-| 16 | Every screenshot corresponds to a claim already in the merged record — none decorative or speculative | BLOCKING |
-| 17 | `.tbl`/`.spec-grid` values that came from a researcher's `TABLE:` field match it verbatim, not paraphrased or retyped from memory | BLOCKING |
+| 7 | Required header block present: title, date, summary, back-to-index link | SHOULD FIX |
+| 8 | All [NEEDS RESEARCH] placeholders survived the recovery loop (not skipped) | SHOULD FIX |
+| 9 | Conflicts between researchers are surfaced to the user, not silently resolved | SHOULD FIX |
+| 10 | [UNVERIFIED] citations are labeled as such in the reference list | SHOULD FIX |
+| 11 | Inline citation markers are visually subtle — prose reads cleanly without distraction | NICE TO HAVE |
+| 12 | Diagrams present where they would reduce confusion (not mandatory, but flagged if obviously missing) | NICE TO HAVE |
+| 13 | Base Stylesheet copied verbatim — page uses canonical class names (`.eyebrow`, `.panel`, `.callout`, `.note`, `.warn-note`, `.conflict`, `.tbl`, `.spec-grid`, `.src`) not ad-hoc alternatives | SHOULD FIX |
+| 14 | Every screenshot's caption cites a reference-list entry, includes the source URL and access date | BLOCKING |
+| 15 | Every screenshot corresponds to a claim already in the merged record — none decorative or speculative | BLOCKING |
+| 16 | `.tbl`/`.spec-grid` values that came from a researcher's `TABLE:` field match it verbatim, not paraphrased or retyped from memory | BLOCKING |
 
 ---
 
