@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Electrode-Skin Impedance Basics — Why ECG/EEG Lead Impedance Is So High</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+  <style>
+    :root { --accent: #6fd3ff; }
+  </style>
+</head>
+<body>
+<div id="prog"></div>
+
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+    <div class="kicker"><span class="dot"></span> ECG / EEG AFE · ELECTRODE BASICS</div>
+    <h1>Why Electrode Impedance Is So <span style="color:var(--accent)">High</span> — And So Unpredictable</h1>
+    <p class="lead">"Lead impedance" isn't a wire resistance — it's the impedance of the electrode-skin contact itself, and it's dominated by a dead layer of skin cells and an electrochemical double layer, not by copper. This page builds the electrical model from scratch: why it's high, why it varies by orders of magnitude between people and electrode types, and why your analog front-end has to be designed around that uncertainty rather than a fixed number. Written for zero prior electrode/biology knowledge.</p>
+    <p class="mut">2026-07-08</p>
+    <div class="scrolltip"><span class="arr">↓</span> start reading</div>
+  </div>
+</header>
+
+<section id="s1">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">01</span> The short answer</p>
+    <h2>It's not a wire. It's a leaky capacitor sitting on a bad insulator.</h2>
+    <p>When a datasheet or a monitor complains about "lead impedance" or "electrode impedance," it isn't describing the gel, the snap connector, or the lead wire — those are typically well under an ohm. It's describing the impedance of the interface between the metal electrode and your skin: part electrochemistry (the electrode itself), part biology (the skin underneath it). Both contribute, and both are far leakier and more variable than anything in your signal chain.</p>
+    <div class="spec-grid">
+      <div class="spec-card"><span class="sc" style="background:var(--accent)"></span><div class="sv">~10 kΩ</div><div class="sl">typical conventional (gelled, wet Ag/AgCl) electrode <span class="ref" title="[7]">[7]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--bad)"></span><div class="sv">~10 MΩ</div><div class="sl">typical dry electrode — 100-1000× higher <span class="ref" title="[7]">[7]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--warn)"></span><div class="sv">&gt;10⁵ Ω</div><div class="sl">impedance of the stratum corneum alone <span class="ref" title="[8]">[8]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--good)"></span><div class="sv">≥2.5 MΩ</div><div class="sl">minimum ECG amplifier input impedance required by IEC 60601-2-25 <span class="ref" title="[14]">[14]</span></div></div>
+    </div>
+    <div class="conflict">
+      <div class="lbl">CONFLICT — there is no single "correct" number</div>
+      <p style="margin:0">Ask five sources for "the" impedance of a wet Ag/AgCl electrode and you'll get five different answers: as low as ~0.24-0.86 kΩ in one controlled study <span class="ref" title="[10]">[10]</span>, ~5 kΩ for well-prepped skin in one manufacturer's reference article <span class="ref" title="[1]">[1]</span>, ~10 kΩ quoted as the "conventional" figure elsewhere <span class="ref" title="[7]">[7]</span>, and up to 500 kΩ for poorly-prepped skin from the same manufacturer article <span class="ref" title="[1]">[1]</span> — while a peer-reviewed comparison of dry-electrode fabrication methods measured a "commercial wet" reference electrode at 0.15 MΩ at 10 Hz on real skin <span class="ref" title="[5]">[5]</span>. None of these are wrong. They differ because skin prep, measurement frequency, electrode age, and the individual person being measured each swing the number by an order of magnitude or more — the rest of this page explains why.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">02</span> The electrode side</p>
+    <h2>The electrode-electrolyte interface is a real, messy circuit</h2>
+    <p>Touch a bare metal electrode to skin (or to any electrolyte) and you don't get a simple resistive contact. Ions in the electrolyte pile up against the metal surface, forming a charge separation only angstroms wide — the <strong>electrical double layer</strong>. Two charges separated by an insulating gap is, electrically, a capacitor. On top of that, if the electrode metal can actually exchange electrons with the electrolyte (a real electrochemical reaction, not just charge stacking), there's a parallel resistive leakage path too. The engineering model for this — the <strong>Randles circuit</strong> — has looked essentially the same since it was worked out from AC polarography experiments last century, evolving from the simpler Helmholtz double-layer picture through refinements by Warburg and Fricke that made the resistive and capacitive terms explicitly frequency-dependent rather than fixed values <span class="ref" title="[2]">[2]</span>.</p>
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">The Randles equivalent circuit</span>
+        <span class="panel-sub">electrode / electrolyte interface</span>
+      </div>
+      <div id="chart-randles"></div>
+      <p class="panel-cap">Rs is the bulk resistance of the electrolyte/tissue path between electrodes — ordinary, frequency-independent resistance. The interface itself is Cdl (double-layer capacitance) in parallel with a branch of Rct (charge-transfer resistance) in series with the Warburg element W, which models how fast ions can diffuse up to the electrode surface to react. <span class="ref" title="[3]">[3]</span></p>
+    </div>
+    <p>Silver/silver-chloride (Ag/AgCl) is the standard electrode metal for exactly this reason: the reaction AgCl(s) + e⁻ ⇌ Ag(s) + Cl⁻ is reversible and needs very little driving voltage to run in either direction — a standard half-cell potential of +0.222 V, +0.197 V vs. the standard hydrogen electrode in practice <span class="ref" title="[4]">[4]</span>, commonly rounded to "about 220 mV" in electrode literature <span class="ref" title="[1]">[1]</span>. Because that reaction runs so easily, Rct stays low and Ag/AgCl electrodes are "nonpolarized" — current flows freely across the interface instead of just charging up the double-layer capacitor <span class="ref" title="[1]">[1]</span>. Gold-and-paste electrodes (common in EEG) don't have as reversible a reaction, so Rct is higher and measured impedance is correspondingly higher than Ag/AgCl under the same conditions <span class="ref" title="[1]">[1]</span>.</p>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">03</span> The skin side</p>
+    <h2>Skin is the dominant resistor, and it's a bad one</h2>
+    <p>Even a perfect electrode still has to contend with what's underneath it. The outermost skin layer, the <strong>stratum corneum</strong>, is a sheet of dead, keratin-filled cells with essentially no free ions to carry current — its impedance alone is quoted at greater than 10⁵ Ω, and it's roughly 10-40 μm thick, varying by body region and by individual <span class="ref" title="[8]">[8]</span>. That single dead layer is why skin, not the electrode metal, usually sets the floor on how low you can push contact impedance.</p>
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Two paths through the skin</span>
+        <span class="panel-sub">stratum corneum barrier vs. sweat-duct shunt</span>
+      </div>
+      <div id="chart-skin"></div>
+      <p class="panel-cap">Current can cross the stratum corneum directly (high impedance) or take a shortcut through a sweat duct, which is filled with ionic sweat and effectively bypasses the dead-cell barrier <span class="ref" title="[9]">[9]</span>. Because duct density varies enormously by location — measured as high as ~530 glands/cm² on the finger versus ~16 glands/cm² on the upper lip <span class="ref" title="[9]">[9]</span> — the number of low-impedance shunt paths under any given electrode is basically a matter of where you put it and who you put it on.</p>
+    </div>
+    <p>This is also why electrode placement measurably changes impedance on its own, independent of electrode type: thoracic placement (thinner, more hydrated, sweat-gland-dense skin) yields roughly 2.5× lower skin-to-electrode impedance than placing the same electrode on a limb <span class="ref" title="[1]">[1]</span>.</p>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">04</span> Wet vs. dry</p>
+    <h2>Gel doesn't just improve contact — it's doing most of the work</h2>
+    <p>Conductive gel does two things electrically: it fills in microscopic gaps between electrode and skin (more contact area, lower Rs), and it hydrates the stratum corneum, which measurably softens that dead-cell barrier and lowers its impedance. Take the gel away — a "dry" electrode pressed straight onto skin — and both effects disappear. Independent measurements consistently show dry electrodes at 100-1000× the impedance of wet ones, sometimes more:</p>
+    <table class="tbl">
+      <thead><tr><th>Electrode type</th><th>Impedance at 10 Hz (skin)</th><th>Impedance at 100 Hz (skin)</th></tr></thead>
+      <tbody>
+        <tr><td>Commercial wet Ag/AgCl</td><td>0.15 MΩ</td><td>—</td></tr>
+        <tr><td>Dry — ink-printed</td><td>4.0 MΩ</td><td>0.89 MΩ</td></tr>
+        <tr><td>Dry — bleach-treated</td><td>6.2 MΩ</td><td>1.7 MΩ</td></tr>
+        <tr><td>Dry — electroplated</td><td>6.5 MΩ</td><td>1.9 MΩ</td></tr>
+      </tbody>
+    </table>
+    <p class="mut" style="font-size:13px;margin-top:-8px">Table values transcribed verbatim from a peer-reviewed comparison of dry-electrode fabrication methods <span class="ref" title="[5]">[5]</span>.</p>
+    <p>A separate rat-skin study measured dry-electrode impedance exceeding wet-electrode impedance by roughly 50% in relative terms and reaching around 5 orders of magnitude difference at 1 Hz, attributing the gap specifically to an added charge-transfer resistance at the dry interface — i.e., a much smaller, much less reversible Rct in the Randles model above <span class="ref" title="[6]">[6]</span>. A manufacturer design note summarizes the practical headline version of the same result: roughly 10 kΩ for conventional wet electrodes versus roughly 10 MΩ for dry electrodes, a 100-1000× gap that directly attenuates the biopotential signal unless the front-end input impedance is high enough to not load it down <span class="ref" title="[7]">[7]</span>.</p>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">05</span> What moves the number</p>
+    <h2>Impedance isn't static — it drifts, and not always the direction you'd guess</h2>
+    <p>Even holding electrode type and placement constant, contact impedance keeps changing after you apply the electrode. One controlled study tracked gel electrodes over 50 minutes and found impedance <em>dropping</em> immediately after application — down 13.2% by the 10-minute mark and still down 9.0% at 15 minutes relative to the initial value — as the gel penetrates and hydrates the stratum corneum. Only after that does it drift back up, and gently: an average 2.9% increase from the 15-minute value out to 50 minutes <span class="ref" title="[10]">[10]</span>.</p>
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Gel electrode impedance over time</span>
+        <span class="panel-sub">relative to impedance at application, n=8 subjects</span>
+      </div>
+      <div id="chart-time"></div>
+      <p class="panel-cap">Two-phase behavior: a fast drop as gel hydrates the skin, then a slow, mild climb. This directly contradicts the common assumption that electrode impedance simply rises monotonically as "the gel dries out" <span class="ref" title="[10]">[10]</span>.</p>
+    </div>
+    <p>The same study also measured how much individuals differ from each other under identical procedure: impedance ranged from 0.24 to 0.86 kΩ across just 8 subjects <span class="ref" title="[10]">[10]</span> — a more-than-3× spread with electrode type, skin prep, and placement all held fixed. Frequency matters too: the whole Randles model above is frequency-dependent by construction, and the wet-vs-dry table in Section 04 already shows roughly a 2-4× impedance drop between 10 Hz and 100 Hz for the same electrode. Motion, by contrast, turns out to matter less than intuition suggests for the frequencies a typical ECG/EEG front-end actually uses: one study found motion-induced impedance fluctuation stayed below 2% at most frequencies, and that impedance correlates best with applied motion only above roughly 17 kHz (11 kHz for resistance alone) — far above the sub-500 Hz band any clinical ECG or EMG signal chain actually samples <span class="ref" title="[11]">[11]</span>.</p>
+  </div>
+</section>
+
+<section id="s6">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">06</span> Why your AFE has to care</p>
+    <h2>Design for the impedance you don't know, not the one you measured once</h2>
+    <p>Because electrode-skin impedance can legitimately land anywhere from under a kilohm to tens of megohms depending on prep, placement, electrode type, and time, a biopotential analog front-end can't assume a fixed source impedance the way you might for a sensor with a datasheet-specified output impedance. Two concrete design consequences:</p>
+    <p><strong>Input impedance has to be specified and tested, not assumed.</strong> IEC 60601-2-25 requires ECG amplifiers to present at least 2.5 MΩ of input impedance, verified by driving the input through a 620 kΩ ‖ 4.7 nF test network at two frequencies (0.67 Hz and 40 Hz) and confirming the signal doesn't attenuate by more than 20% <span class="ref" title="[14]">[14]</span>. That test network is explicitly modeling a worst-case electrode-skin contact, not a real component. A front-end like TI's ADS1292R meets this with a 200 pA input bias current and 120 dB CMRR <span class="ref" title="[15]">[15]</span> — bias current matters here because even picoamps flowing through a multi-megohm dry-electrode impedance creates a real DC offset (Ohm's law again, just at a scale most signal chains never worry about).</p>
+    <p><strong>You need to measure the impedance itself, not just tolerate it.</strong> This is what "lead-off detection" actually is: either a DC method that monitors the voltage shift caused by a known small current through the (unknown) electrode impedance, or an AC method that injects a small continuous AC signal to supervise contact integrity in real time <span class="ref" title="[12]">[12]</span>. Rising impedance degrades signal-to-noise and can look like an artifact well before the electrode is fully disconnected. But even this measurement isn't as clean as it sounds: the DC offset from the lead-off excitation current adds onto whatever DC offset is already in the signal chain, and if the return current path isn't the one you think it is — for example, sneaking back through a right-leg-drive amplifier instead of the intended second electrode — the "impedance" you calculate won't be the electrode impedance you actually care about <span class="ref" title="[13]">[13]</span>.</p>
+  </div>
+</section>
+
+<details class="src">
+  <summary>References <span class="chev">▾</span></summary>
+  <div class="srcbody">
+    <ol>
+      <li id="r1">[1] Analog Devices. "Biopotential Electrode Sensors in ECG/EEG/EMG Systems." <a href="https://www.analog.com/en/resources/technical-articles/biopotential-electrode-sensors-ecg-eeg-emg.html">analog.com</a></li>
+      <li id="r2">[2] Historical review, electrode-electrolyte interface impedance models (Helmholtz, Warburg, Fricke). <a href="https://pubmed.ncbi.nlm.nih.gov/9124725/">pubmed.ncbi.nlm.nih.gov/9124725</a></li>
+      <li id="r3">[3] "Randles circuit." Wikipedia — used as an accessible general reference for the standard electrode-interface equivalent-circuit topology (Rs, Rct, Cdl, Warburg element); not tied to a specific product. <a href="https://en.wikipedia.org/wiki/Randles_circuit">en.wikipedia.org/wiki/Randles_circuit</a></li>
+      <li id="r4">[4] "Reference Electrodes" — Ag/AgCl half-cell reaction and potential. Analytical Sciences Digital Library / LibreTexts. <a href="https://chem.libretexts.org/Bookshelves/Analytical_Chemistry/Supplemental_Modules_(Analytical_Chemistry)/Analytical_Sciences_Digital_Library/Courseware/Analytical_Electrochemistry:_Potentiometry/03_Potentiometric_Theory/04_Reference_Electrodes">chem.libretexts.org</a></li>
+      <li id="r5">[5] Peer-reviewed comparison of dry ECG/EEG electrode fabrication methods (ink, bleach, electroplating) vs. commercial wet electrode, impedance spectroscopy on skin. <a href="https://www.frontiersin.org/journals/electronics/articles/10.3389/felec.2021.700363/full">frontiersin.org</a></li>
+      <li id="r6">[6] Dry vs. wet/semidry electrode impedance comparison on rat skin. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9088920/">pmc.ncbi.nlm.nih.gov/PMC9088920</a></li>
+      <li id="r7">[7] Analog Devices. "High-Impedance and Low-Noise Op Amps Enable Dry Electrodes in Medical Systems." <a href="https://www.analog.com/en/resources/design-notes/highimpedance-and-lownoise-op-amps-enable-dry-electrodes-in-medical-systems.html">analog.com</a></li>
+      <li id="r8">[8] Skin electrical properties review — stratum corneum impedance and thickness. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6023082/">pmc.ncbi.nlm.nih.gov/PMC6023082</a></li>
+      <li id="r9">[9] "Regional variations in transepidermal water loss, eccrine sweat gland density, sweat secretion rates and electrolyte composition in resting and exercising humans." <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3710196/">pmc.ncbi.nlm.nih.gov/PMC3710196</a></li>
+      <li id="r10">[10] Gel electrode-skin impedance over time and inter-subject variability, n=8. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10610867/">pmc.ncbi.nlm.nih.gov/PMC10610867</a></li>
+      <li id="r11">[11] Motion artifact vs. electrode-skin impedance, frequency dependence. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4242479/">pmc.ncbi.nlm.nih.gov/PMC4242479</a></li>
+      <li id="r12">[12] Texas Instruments. "Understanding Lead-Off Detection in ECG" (SBAA196). <a href="https://www.ti.com/lit/pdf/sbaa196">ti.com/lit/pdf/sbaa196</a></li>
+      <li id="r13">[13] "Signal Chain Basics #149: How to accurately measure electrode impedance for lead-off detection in ECG systems." EDN / Planet Analog. <a href="https://www.edn.com/signal-chain-basics-149-how-to-accurately-measure-electrode-impedance-for-lead-off-detection-in-ecg-systems/">edn.com</a></li>
+      <li id="r14">[14] IEC 60601-2-25 ECG amplifier input impedance requirement, summarized. <a href="https://www.medteq.net/iec-60601225-201124103-input-impedance">medteq.net</a></li>
+      <li id="r15">[15] Texas Instruments. ADS1292R product page — input bias current, noise, CMRR, integrated lead-off detection. <a href="https://www.ti.com/product/ADS1292R">ti.com/product/ADS1292R</a></li>
+    </ol>
+  </div>
+</details>
+
+<footer><div class="wrap"><a class="back-link" href="../index.html">← Index</a></div></footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const el = document.documentElement;
+    document.getElementById('prog').style.width =
+      (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+  });
+
+  // Randles equivalent circuit
+  (function(){
+    const svg = `
+    <svg viewBox="0 0 680 220" xmlns="http://www.w3.org/2000/svg">
+      <text x="40" y="118" text-anchor="middle" fill="#e2d8d1" font-family="Inter" font-size="11">Electrode</text>
+      <line x1="40" y1="128" x2="40" y2="150" stroke="#7e716c" stroke-width="1.4"/>
+
+      <line x1="40" y1="150" x2="90" y2="150" stroke="#7e716c" stroke-width="1.4"/>
+      <rect x="90" y="132" width="70" height="36" rx="6" fill="#181219" stroke="#6fd3ff" stroke-width="1.6"/>
+      <text x="125" y="154" text-anchor="middle" fill="#f2ebe6" font-family="JetBrains Mono" font-size="13" font-weight="600">Rs</text>
+      <line x1="160" y1="150" x2="210" y2="150" stroke="#7e716c" stroke-width="1.4"/>
+      <circle cx="210" cy="150" r="3" fill="#f2ebe6"/>
+
+      <line x1="210" y1="150" x2="210" y2="60" stroke="#7e716c" stroke-width="1.4"/>
+      <line x1="210" y1="60" x2="260" y2="60" stroke="#7e716c" stroke-width="1.4"/>
+      <rect x="260" y="42" width="80" height="36" rx="6" fill="#181219" stroke="#5fd0a6" stroke-width="1.6"/>
+      <text x="300" y="64" text-anchor="middle" fill="#f2ebe6" font-family="JetBrains Mono" font-size="13" font-weight="600">Cdl</text>
+      <line x1="340" y1="60" x2="470" y2="60" stroke="#7e716c" stroke-width="1.4"/>
+
+      <line x1="210" y1="150" x2="210" y2="190" stroke="#7e716c" stroke-width="1.4"/>
+      <line x1="210" y1="190" x2="260" y2="190" stroke="#7e716c" stroke-width="1.4"/>
+      <rect x="260" y="172" width="80" height="36" rx="6" fill="#181219" stroke="#f0a24b" stroke-width="1.6"/>
+      <text x="300" y="194" text-anchor="middle" fill="#f2ebe6" font-family="JetBrains Mono" font-size="13" font-weight="600">Rct</text>
+      <line x1="340" y1="190" x2="390" y2="190" stroke="#7e716c" stroke-width="1.4"/>
+      <rect x="390" y="172" width="80" height="36" rx="6" fill="#181219" stroke="#f0a24b" stroke-width="1.6"/>
+      <text x="430" y="188" text-anchor="middle" fill="#f2ebe6" font-family="JetBrains Mono" font-size="13" font-weight="600">W</text>
+      <text x="430" y="202" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="8">Warburg</text>
+      <line x1="470" y1="190" x2="500" y2="190" stroke="#7e716c" stroke-width="1.4"/>
+      <line x1="500" y1="190" x2="500" y2="60" stroke="#7e716c" stroke-width="1.4"/>
+      <line x1="470" y1="60" x2="500" y2="60" stroke="#7e716c" stroke-width="1.4"/>
+      <circle cx="500" cy="150" r="3" fill="#f2ebe6"/>
+      <line x1="500" y1="150" x2="620" y2="150" stroke="#7e716c" stroke-width="1.4"/>
+      <text x="640" y="118" text-anchor="middle" fill="#e2d8d1" font-family="Inter" font-size="11">Bulk tissue /</text>
+      <text x="640" y="132" text-anchor="middle" fill="#e2d8d1" font-family="Inter" font-size="11">2nd electrode</text>
+      <line x1="620" y1="150" x2="620" y2="140" stroke="#7e716c" stroke-width="1.4"/>
+
+      <text x="125" y="120" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="9">bulk / spreading resistance</text>
+      <text x="300" y="30" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="9">double-layer capacitance</text>
+      <text x="365" y="220" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="9">charge-transfer resistance + diffusion (Faradaic path)</text>
+    </svg>`;
+    document.getElementById('chart-randles').innerHTML = svg;
+  })();
+
+  // Skin cross-section: stratum corneum barrier vs sweat duct shunt
+  (function(){
+    const svg = `
+    <svg viewBox="0 0 680 220" xmlns="http://www.w3.org/2000/svg">
+      <rect x="40" y="20" width="600" height="26" rx="4" fill="#181219" stroke="#6fd3ff" stroke-width="1.4"/>
+      <text x="340" y="38" text-anchor="middle" fill="#f2ebe6" font-family="Space Grotesk" font-size="12" font-weight="600">Electrode + gel</text>
+
+      <rect x="40" y="56" width="600" height="60" rx="4" fill="#231a26" stroke="#ff5a52" stroke-width="1.4"/>
+      <text x="60" y="80" fill="#f2ebe6" font-family="Space Grotesk" font-size="12" font-weight="600">Stratum corneum</text>
+      <text x="60" y="98" fill="#a8978f" font-family="JetBrains Mono" font-size="10">dead cells, &gt;10⁵ Ω, ~10-40 μm thick</text>
+
+      <rect x="40" y="126" width="600" height="60" rx="4" fill="#14261f" stroke="#5fd0a6" stroke-width="1.4"/>
+      <text x="60" y="150" fill="#f2ebe6" font-family="Space Grotesk" font-size="12" font-weight="600">Viable epidermis / dermis</text>
+      <text x="60" y="168" fill="#a8978f" font-family="JetBrains Mono" font-size="10">ionic, conductive, low impedance</text>
+
+      <line x1="480" y1="50" x2="480" y2="182" stroke="#7e716c" stroke-width="10" stroke-dasharray="1,7" stroke-linecap="round"/>
+      <path d="M465,50 L465,86 Q480,96 480,116 L480,182" fill="none" stroke="#f0a24b" stroke-width="3" stroke-linecap="round"/>
+      <text x="510" y="66" fill="#f0a24b" font-family="JetBrains Mono" font-size="9">sweat duct</text>
+      <text x="510" y="78" fill="#f0a24b" font-family="JetBrains Mono" font-size="9">(low-Z shunt)</text>
+
+      <line x1="560" y1="50" x2="560" y2="182" stroke="#ff5a52" stroke-width="3" stroke-linecap="round" stroke-dasharray="2,4"/>
+
+      <text x="480" y="205" text-anchor="middle" fill="#f0a24b" font-family="JetBrains Mono" font-size="9">shunt path — low Z</text>
+      <text x="560" y="205" text-anchor="middle" fill="#ff5a52" font-family="JetBrains Mono" font-size="9">direct path — high Z</text>
+    </svg>`;
+    document.getElementById('chart-skin').innerHTML = svg;
+  })();
+
+  // Gel electrode impedance over time
+  (function(){
+    const pts = [
+      {t:0, v:100, label:'0 min', sub:'application'},
+      {t:10, v:86.77, label:'10 min', sub:'-13.2%'},
+      {t:15, v:90.98, label:'15 min', sub:'-9.0%'},
+      {t:50, v:90.98*1.029, label:'50 min', sub:'+2.9% avg'}
+    ];
+    const w=680,h=200,pad=50;
+    const xmax=50, ymin=80, ymax=105;
+    const x = t => pad + (t/xmax) * (w-2*pad);
+    const y = v => (h-pad) - ((v-ymin)/(ymax-ymin)) * (h-2*pad);
+    const line = pts.map(p => `${x(p.t)},${y(p.v)}`).join(' ');
+    let dots = '', labels = '';
+    pts.forEach(p => {
+      dots += `<circle cx="${x(p.t)}" cy="${y(p.v)}" r="4" fill="#6fd3ff"/>`;
+      labels += `<text x="${x(p.t)}" y="${y(p.v)-14}" text-anchor="middle" fill="#e2d8d1" font-family="JetBrains Mono" font-size="10">${p.label}</text>`;
+      labels += `<text x="${x(p.t)}" y="${y(p.v)-2}" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="9">${p.sub}</text>`;
+    });
+    const svg = `
+    <svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+      <line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="#7e716c" stroke-width="1.2"/>
+      <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${h-pad}" stroke="#7e716c" stroke-width="1.2"/>
+      <text x="${w/2}" y="${h-14}" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="10">time (minutes)</text>
+      <text x="16" y="${h/2}" text-anchor="middle" fill="#a8978f" font-family="JetBrains Mono" font-size="10" transform="rotate(-90,16,${h/2})">relative impedance (%)</text>
+      <polyline points="${line}" fill="none" stroke="#6fd3ff" stroke-width="2"/>
+      ${dots}
+      ${labels}
+    </svg>`;
+    document.getElementById('chart-time').innerHTML = svg;
+  })();
+</script>
+</body>
+</html>
