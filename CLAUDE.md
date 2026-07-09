@@ -167,14 +167,25 @@ The end state in every environment is the same: `main` on GitHub contains the fi
 2. **Date** — YYYY-MM-DD
 3. **Summary** — 2–4 sentences: what the page covers and why it matters to someone building hardware
 4. **Back to index** — `<a href="../index.html">← Index</a>`
+5. **TL;DR panel** — immediately after the hero, a `.note` box giving the whole page's conclusion in 3–5 sentences max, before any detail. The reader should be able to stop after this box and already have the answer; everything after is the "why" and the "how deep."
 
 ### Writing style
-- Audience: hardware engineer who knows op-amps, ADCs, SPI/I2C, signal chains — but has zero medical background
+- Audience: hardware engineer who knows op-amps, ADCs, SPI/I2C, signal chains — but has zero medical background, and has a short attention span — assume they may only read the bolded/boxed content and skim the rest
 - Translate every biological or medical concept into physics or electronics terms
 - Use analogies to circuits and signal chains wherever they help
 - No vague hand-waving — include actual numbers (wavelengths, extinction coefficients, SNR figures, voltage levels, etc.)
 - Flag explicitly when something is uncertain, proprietary, or unverified
 - When a conclusion is datasheet-derived, note it as such. When it is general engineering knowledge (not tied to a specific source), say so.
+
+### Readability rules — every page must pass this, no exceptions
+These exist because dense prose loses the reader even when the content is accurate. Structure for skimming first, depth second:
+- **Paragraphs: 2–3 sentences max.** If a paragraph needs a 4th sentence, split it or convert to bullets.
+- **One idea per paragraph.** Don't chain an explanation, a caveat, and a number all in one block of prose.
+- **Every section opens with a one-line bolded takeaway** before the supporting detail — the reader should get the point from the bold text alone, then read on only if they want the mechanism.
+- **Bullets and tables over prose** whenever a section lists 3+ items, steps, failure modes, or comparisons — do not narrate a list in paragraph form.
+- **One dense technical paragraph → one plain-English sentence before it**, translating what it means in practice, not just what it says.
+- **Bold the single most important number or conclusion** in any paragraph that contains one — don't make the reader hunt for it in a wall of numbers.
+- Every major section (not just the top of the page) should be skimmable on its own: a reader jumping straight to section 4 shouldn't need section 1–3 to get the gist.
 
 ### Citations — inline markers and reference list
 
@@ -527,6 +538,9 @@ The `page-reviewer` agent checks every page against these criteria before passin
 | 12 | Inline citation markers are visually subtle — prose reads cleanly without distraction | NICE TO HAVE |
 | 13 | Diagrams present where they would reduce confusion (not mandatory, but flagged if obviously missing) | NICE TO HAVE |
 | 14 | Base Stylesheet copied verbatim — page uses canonical class names (`.eyebrow`, `.panel`, `.callout`, `.note`, `.warn-note`, `.conflict`, `.tbl`, `.spec-grid`, `.src`) not ad-hoc alternatives | SHOULD FIX |
+| 15 | TL;DR `.note` panel present immediately after the hero, giving the page's conclusion in 3–5 sentences before any detail | BLOCKING |
+| 16 | No paragraph exceeds ~3 sentences; multi-item lists are rendered as bullets/tables, not narrated in prose | BLOCKING |
+| 17 | Each major section opens with a bolded one-line takeaway before its supporting detail | SHOULD FIX |
 
 ---
 
