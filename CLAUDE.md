@@ -311,13 +311,88 @@ All shared styles live in `pages/base.css`. Each page links to it and adds only 
 | Inline citation marker | `<span class="ref" title="[1]">[1]</span>` |
 | Reference list | `<details class="src"><summary>References <span class="chev">▾</span></summary><div class="srcbody"><ol>…</ol></div></details>` |
 
+### Extended component library (v2) — reach for these before inventing markup
+
+All of the following live in `base.css` already. Their color tints are derived from the page's `--accent` via `color-mix()`, so they adopt each page's accent automatically. Use them; don't re-implement equivalents inline.
+
+| Element | When to use | Markup |
+|---|---|---|
+| Status pill / verdict tag | Inline pass/fail/caution labels in prose, tables, panel headers | `<span class="pill good">PASS</span>` — variants: `good`, `warn`, `bad`, `info`; add `plain` to drop the leading dot |
+| Tooltip / glossary term | Translate a bio/medical term to electronics inline without breaking the sentence; also for hover-preview of a citation | `<span class="tip" tabindex="0" data-tip="plain-English explanation">jargon term</span>` — `data-tip` works on **any** element (e.g. add it to a `.ref`) |
+| Numbered steps | A signal chain, calibration procedure, or any ordered process | `<ol class="steps"><li><span class="step-t">Title</span> body…</li></ol>` |
+| Key–value readout | A compact spec sheet / register dump where a table is overkill | `<dl class="kv"><dt>Key</dt><dd>Value</dd>…</dl>` |
+| Big single-stat hero | Lead a section with one headline number | `<div class="stat-hero"><span class="big">92%</span><span class="cap">what it means</span></div>` |
+| A-vs-B verdict cards | Head-to-head part/approach comparison; mark the winner | `<div class="vs"><div class="vs-card win"><div class="vs-h"><span class="vs-name">Part A</span><span class="pill good">winner</span></div><ul>…</ul></div><div class="vs-card">…</div></div>` |
+| Timeline | Teardown sequence, protocol timing, historical progression | `<div class="timeline"><div class="tl-item"><div class="tl-when">t0</div><div class="tl-what">Event</div><p>…</p></div></div>` |
+| Copyable code block | Register writes, formulas, config the reader will paste | `<div class="code-block"><div class="cb-hd"><span>label</span><button class="copy-btn">copy</button></div><pre><code>…</code></pre></div>` (copy wired by page-helpers JS) |
+| Tabs | Switch between equivalent views (e.g. SPI vs I²C, datasheet vs measured) | `<div class="tabs"><div class="tab-btns"><button class="tab-btn active" data-tab="a">A</button><button class="tab-btn" data-tab="b">B</button></div><div class="tab-panel active" id="a">…</div><div class="tab-panel" id="b">…</div></div>` (wired by page-helpers JS) |
+| Figure + numbered caption | Wrap an SVG/diagram with a "Fig. N" caption | `<figure class="figure"><div id="chart"></div><figcaption><b>Fig. 1</b> caption…</figcaption></figure>` |
+| Inline meter | Mini comparison bar inside a table cell or list | `<span class="meter"><span class="track"><span class="fill good" style="width:80%"></span></span>80%</span>` |
+| Section-nav rail | Fixed scroll-spy dots (auto-hidden under 1180px); one anchor per `<section>` | `<nav class="toc-rail"><a href="#s1" data-label="Intro"></a>…</nav>` (active state wired by page-helpers JS) |
+| Back-to-top button | Appears after scrolling; place once near end of `<body>` | `<a href="#" class="to-top" aria-label="Back to top">↑</a>` (wired by page-helpers JS) |
+
 ### JavaScript rules
 - All JS inline in one `<script>` block at the bottom of `<body>`
 - Always include the scroll-progress bar snippet shown in the skeleton (targets `#prog`)
+- If the page uses the section-nav rail, back-to-top, tabs, or copy buttons, include the **shared page-helpers snippet** below — it wires all four defensively (each activates only if its elements exist)
 - SVG charts: build SVG string, inject via `el.innerHTML = svg` into a `<div id="chartid">` inside `.panel`
 - Canvas charts: `<canvas id="...">` rendered via 2D context
 - Sliders: `<input type="range">` with a `<span>` label updated by `addEventListener('input', ...)`
+- Tooltips (`.tip` / `[data-tip]`) are pure CSS — no JS needed
 - No external scripts, no frameworks
+
+#### Shared page-helpers snippet
+
+Paste once at the bottom of the page's single `<script>` block (after the scroll-progress snippet). Every piece is a no-op when its target elements are absent, so it is safe to include wholesale.
+
+```js
+/* back-to-top: show after one viewport of scroll */
+(function(){
+  const btn = document.querySelector('.to-top');
+  if (!btn) return;
+  const onScroll = () => btn.classList.toggle('show', window.scrollY > window.innerHeight);
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  btn.addEventListener('click', e => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+})();
+
+/* scroll-spy: highlight the .toc-rail dot for the section in view */
+(function(){
+  const links = [...document.querySelectorAll('.toc-rail a')];
+  if (!links.length || !('IntersectionObserver' in window)) return;
+  const byId = Object.fromEntries(links.map(a => [a.getAttribute('href').slice(1), a]));
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (en.isIntersecting) {
+        links.forEach(a => a.classList.remove('active'));
+        (byId[en.target.id] || {}).classList?.add('active');
+      }
+    });
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  Object.keys(byId).forEach(id => { const el = document.getElementById(id); if (el) obs.observe(el); });
+})();
+
+/* tabs: click a .tab-btn to reveal the matching .tab-panel (scoped per .tabs group) */
+document.querySelectorAll('.tabs').forEach(group => {
+  group.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      group.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      group.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      group.querySelector('#' + btn.dataset.tab)?.classList.add('active');
+    });
+  });
+});
+
+/* copy buttons: copy the sibling <pre> text, flash confirmation */
+document.querySelectorAll('.code-block .copy-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const code = btn.closest('.code-block').querySelector('pre')?.innerText ?? '';
+    try { await navigator.clipboard.writeText(code); } catch (e) {}
+    const old = btn.textContent; btn.textContent = 'copied'; btn.classList.add('done');
+    setTimeout(() => { btn.textContent = old; btn.classList.remove('done'); }, 1400);
+  });
+});
+```
 
 ---
 
