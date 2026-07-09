@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electrode Impedance for ECG & EEG — Why Low Here, High There</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+  :root {
+    --accent: #4fd1c5;  /* teal — electrode/impedance theme */
+    --lowz:   #5fd0a6;  /* good: low electrode-skin impedance */
+    --highz:  #5b8cff;  /* good: high amplifier input impedance */
+  }
+  .kicker .dot { background:var(--accent); box-shadow:0 0 10px var(--accent); }
+  #prog { background: linear-gradient(90deg, var(--accent), var(--highz)); }
+</style>
+</head>
+<body>
+<div id="prog"></div>
+
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+    <div class="kicker"><span class="dot"></span> BIOPOTENTIAL SENSING · ELECTRODES</div>
+    <h1>Electrode <span style="color:var(--accent)">impedance</span>,<br>explained for a newbie.</h1>
+    <p class="lead">EEG and ECG both pick up tiny voltages from the body through metal electrodes stuck on skin. "Impedance" shows up twice in that chain, and confusingly, you want it <b>low</b> in one place and <b>high</b> in another. This page untangles which is which, why it matters, and what real numbers look like.</p>
+    <p class="mut">2026-07-09</p>
+    <div class="scrolltip"><span class="arr">↓</span> start reading</div>
+  </div>
+</header>
+
+<section id="s0">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">—</span> The whole page in one box</p>
+    <div class="note">
+      <div class="lbl">KEY FINDING</div>
+      <p><b>There are two impedances in this circuit, and they need opposite treatment.</b> The electrode-to-skin contact is a messy, leaky junction you want as electrically "quiet" as possible — low impedance, ideally a few kΩ or less. The amplifier that reads the signal needs the opposite: input impedance so high (MΩ to GΩ) that it barely draws any current at all.</p>
+      <p>Think of it as a voltage divider: skin-electrode impedance is a resistor in series with your signal, amplifier input impedance is a resistor to ground. <b>If the amplifier's resistor isn't vastly bigger than the electrode's, your signal gets divided away before you ever see it.</b> Modern chips make the amplifier side so high-impedance (often &gt;1 GΩ) that this loss is negligible even with dry, poorly-prepped electrodes — which is why consumer EEG/ECG devices with dry pads can work at all.</p>
+        <p>The catch: high electrode impedance doesn't just risk signal loss — it also makes the signal noisier and more sensitive to hum, motion, and imbalance between electrodes. So "low is good, and modern amps forgive high" is true, but not a free pass.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s1">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">01</span> First, what "impedance" even means here</p>
+    <h2>Impedance = resistance that also depends on frequency</h2>
+    <p><b>Impedance is just resistance's more complicated cousin — resistance that changes with signal frequency, measured in the same unit (ohms, Ω).</b> A plain resistor has the same resistance whether the signal is DC or wiggling at 1 kHz. The electrode-skin junction does not behave that way — it acts partly resistive and partly capacitive, so its opposition to current flow changes depending on how fast the signal is moving.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">The electrode-skin interface, modeled as a circuit</span>
+        <span class="panel-sub">simplified Randles-type model</span>
+      </div>
+      <div id="randles-diagram"></div>
+      <p class="panel-cap"><b>Three things happen where metal meets skin.</b> A small DC battery-like voltage appears (the half-cell potential) from the metal reacting with the skin's moisture. A capacitor-like layer forms right at the surface (double-layer capacitance). And a resistive path exists both through that layer and through the tissue itself. All three combine into "electrode impedance."<span class="ref" title="[1]">[1]</span></p>
+    </div>
+
+    <h3>Where each piece comes from</h3>
+    <ul>
+      <li><b>Half-cell potential</b> — every metal touching an electrolyte (your sweat/skin) develops a small, steady voltage, just like a tiny battery. For silver/silver-chloride (Ag/AgCl) — the standard clinical electrode metal — this is about <b>199 mV</b>, and importantly it's stable and low compared to other metals.<span class="ref" title="[2]">[2]</span></li>
+      <li><b>Double-layer capacitance</b> — ions from your skin line up against the metal surface like a tiny capacitor. Typical value: <b>20–60 µF per cm²</b> of electrode area.<span class="ref" title="[1]">[1]</span></li>
+      <li><b>Charge-transfer & Warburg terms</b> — resistive/diffusion effects that make the impedance <em>drop as frequency rises</em> (ions don't have to travel as far per cycle at high frequency).<span class="ref" title="[1]">[1]</span></li>
+    </ul>
+
+    <div class="callout">
+      <div class="lbl">Why Ag/AgCl and not bare steel or gold?</div>
+      <p>Ag/AgCl is "nonpolarizable" — current can pass through the metal-skin junction via a real chemical reaction (Ag ⇌ AgCl + e⁻) instead of just charging up like a capacitor. That gives it a low, stable half-cell potential and low interface impedance, which is why it's the default for clinical ECG/EEG electrodes despite dry metal or gold pins being simpler to manufacture.<span class="ref" title="[2]">[2]</span></p>
+    </div>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">02</span> The two impedances that matter</p>
+    <h2>Source impedance (electrode) vs. load impedance (amplifier)</h2>
+    <p><b>Your body's signal has to pass through the electrode impedance before it reaches the amplifier — and the amplifier's own input impedance decides how much of that signal survives the trip.</b> This is a plain voltage divider, the same one you'd analyze for any two-resistor circuit.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Signal chain as a voltage divider</span>
+        <span class="panel-sub">Z<sub>electrode</sub> in series, Z<sub>amp</sub> to reference</span>
+      </div>
+      <div id="divider-diagram"></div>
+      <p class="panel-cap">The body's signal source sees Z<sub>electrode</sub> in series, then Z<sub>amp</sub> as the path to reference. Only the fraction Z<sub>amp</sub> / (Z<sub>amp</sub> + Z<sub>electrode</sub>) of the original signal reaches the amplifier's input. Make Z<sub>amp</sub> huge relative to Z<sub>electrode</sub>, and that fraction rounds up to ~100%.</p>
+    </div>
+
+    <div class="callout">
+      <div class="lbl">General engineering knowledge — not from a specific source</div>
+      <p>This voltage-divider math is standard circuit theory, not a domain-specific research finding — no citation needed, just Ohm's law applied to two impedances in series.</p>
+    </div>
+
+    <h3>Worked numbers: how much signal survives</h3>
+    <table class="tbl">
+      <thead><tr><th>Z<sub>electrode</sub></th><th>Z<sub>amp</sub></th><th>Ratio</th><th>Signal preserved</th></tr></thead>
+      <tbody>
+        <tr><td>10 kΩ</td><td>10 kΩ</td><td>1:1</td><td class="bad">50%</td></tr>
+        <tr><td>10 kΩ</td><td>10 MΩ</td><td>1:1000</td><td class="warn">~99.9%</td></tr>
+        <tr><td>500 kΩ (dry, unprepped)</td><td>1 GΩ</td><td>1:2000</td><td class="good">~99.95%</td></tr>
+        <tr><td>2 MΩ (dry metal electrode)</td><td>1 GΩ</td><td>1:500</td><td class="good">~99.8%</td></tr>
+      </tbody>
+    </table>
+    <p class="mut" style="font-size:13px">Illustrative arithmetic from the voltage-divider relationship above, using measured impedance ranges cited elsewhere on this page.</p>
+
+    <p><b>This is the whole reason dry electrodes work at all.</b> Even a electrode-skin impedance in the megohm range loses almost nothing once the amplifier's input impedance is in the gigaohm range or higher — the ratio, not the absolute electrode number, is what decides signal loss.</p>
+
+    <h3>The second problem: mismatch breaks noise rejection</h3>
+    <p>Biopotential amplifiers reject "common-mode" noise (mains hum, EMI) by subtracting two electrode inputs that should see identical interference.<span class="ref" title="[3]">[3]</span> <b>If the two electrodes have different impedances, that interference no longer cancels — part of it turns into a fake differential signal the amplifier can't tell from real biosignal.</b><span class="ref" title="[3]">[3]</span></p>
+
+    <div class="warn-note">
+      <div class="lbl">WARNING</div>
+      <p>Matched-but-high beats mismatched-but-low. Two electrodes at 500 kΩ each are generally safer for noise rejection than one at 2 kΩ and one at 50 kΩ — the mismatch, not the absolute value, is what wrecks common-mode rejection.<span class="ref" title="[3]">[3]</span></p>
+    </div>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">03</span> Real numbers</p>
+    <h2>What impedance actually looks like in practice</h2>
+    <p><b>Wet gelled Ag/AgCl electrodes sit in the low-kΩ range; dry electrodes can be 100–1000× higher.</b> Standards exist for the wet/prepped case; dry electrodes are only usable because amplifier input impedance has gotten so extreme.</p>
+
+    <div class="spec-grid">
+      <div class="spec-card"><span class="sc" style="background:var(--lowz)"></span><div class="sv">&lt;2 kΩ</div><div class="sl">ANSI/AAMI ECG electrode standard, tested at 10 Hz<span class="ref" title="[4]">[4]</span><span class="ref" title="[5]">[5]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--lowz)"></span><div class="sv">100 Ω–10 kΩ</div><div class="sl">Clinical EEG acceptable range; &lt;5 kΩ recommended; &lt;100 Ω flags a short<span class="ref" title="[6]">[6]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--dim)"></span><div class="sv">~5 kΩ → 500 kΩ</div><div class="sl">ECG electrode impedance @10Hz, well-prepped vs. no prep at all<span class="ref" title="[7]">[7]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--dim)"></span><div class="sv">0.3–2.7 MΩ</div><div class="sl">Typical dry EEG/ECG electrode impedance range across studies<span class="ref" title="[8]">[8]</span><span class="ref" title="[9]">[9]</span><span class="ref" title="[10]">[10]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--highz)"></span><div class="sv">&gt;1 GΩ</div><div class="sl">Typical modern biopotential AFE input impedance (e.g. TI AFE4960)<span class="ref" title="[11]">[11]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--highz)"></span><div class="sv">&gt;1 PΩ</div><div class="sl">Electrometer-grade input impedance achievable with parts like the INA116<span class="ref" title="[12]">[12]</span></div></div>
+    </div>
+
+    <div class="conflict">
+      <div class="lbl">CONFLICT</div>
+      <p><b>"Acceptable" impedance isn't one number — sources disagree by up to 7×.</b> The ratified ANSI/AAMI ECG standard is &lt;2 kΩ.<span class="ref" title="[4]">[4]</span> A commercial electrode-prep guide cites a looser 15 kΩ ceiling as "normal."<span class="ref" title="[13]">[13]</span> EEG guidance separately allows up to 10 kΩ.<span class="ref" title="[6]">[6]</span> Ratified standards and peer-reviewed sources are given precedence on this page; the 15 kΩ figure is flagged as a secondary/commercial source, not a standard.</p>
+    </div>
+
+    <div class="conflict">
+      <div class="lbl">CONFLICT</div>
+      <p><b>Two studies of "dry electrode" impedance disagree by roughly 500×.</b> One reports dry electrodes at ~5.15 kΩ·cm² (area-normalized);<span class="ref" title="[7]">[7]</span> another measured dry stainless-steel/titanium electrodes in vivo at 2.0–2.7 MΩ·cm² at 10 Hz.<span class="ref" title="[8]">[8]</span> Neither source specifies enough measurement conditions (contact pressure, exact frequency, surface finish) to reconcile the gap — flagged here rather than silently resolved.</p>
+    </div>
+
+    <h3>Wet vs. dry, side by side</h3>
+    <table class="tbl">
+      <thead><tr><th>Electrode type</th><th>Typical impedance</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Wet Ag/AgCl, prepped skin</td><td class="good">~5 kΩ</td><td>Gel + abrasion minimizes both resistive and capacitive terms<span class="ref" title="[7]">[7]</span></td></tr>
+        <tr><td>Wet Ag/AgCl, no skin prep</td><td class="bad">50–500 kΩ</td><td>Dead skin (stratum corneum) dominates the resistive path<span class="ref" title="[7]">[7]</span></td></tr>
+        <tr><td>Dry metal EEG electrode</td><td class="bad">0.3–2.7 MΩ</td><td>No gel to fill air gaps or hydrate the interface<span class="ref" title="[8]">[8]</span><span class="ref" title="[9]">[9]</span></td></tr>
+        <tr><td>Dry ear-canal electrode</td><td class="bad">0.2–1.2 MΩ (freq-dependent)</td><td>Small contact area, no gel, curved fit<span class="ref" title="[10]">[10]</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>It changes over time, too</h3>
+    <p><b>Fresh gel first gets better, then gets worse.</b> In the first ~15 minutes after application, impedance typically drops and stabilizes as the gel settles and hydrates the skin — one study measured a ~13% drop by minute 10, then only ~3% variation after minute 15.<span class="ref" title="[14]">[14]</span></p>
+    <p>Hours later, the opposite trend takes over: as gel dries out, impedance climbs back up — one study measured a rise from ~5 kΩ to ~15 kΩ over 5 hours.<span class="ref" title="[15]">[15]</span> No single study tracked both phases together, so this two-phase story is this page's synthesis of two separate measurements, not one continuous curve.</p>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">04</span> What goes wrong</p>
+    <h2>High electrode impedance isn't "free" even with a great amplifier</h2>
+    <p><b>A high-impedance amplifier fixes signal attenuation, but it doesn't fix noise.</b> Three separate failure modes get worse as electrode impedance rises, independent of the voltage-divider math.</p>
+
+    <table class="tbl">
+      <thead><tr><th>Failure mode</th><th>What happens</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td>Noisier signal</td><td>High electrode impedance directly increases susceptibility to mains hum (50/60 Hz) and general EMI pickup via capacitive coupling.<span class="ref" title="[16]">[16]</span></td><td>Active/buffered electrodes; shielding</td></tr>
+        <tr><td>Fewer usable trials (EEG research)</td><td>Recovering a clean ERP signal at high impedance can require <b>~3× more averaged trials</b> (35 vs. 12) to hit the same statistical power, and the effect worsens in warm/humid rooms.<span class="ref" title="[17]">[17]</span></td><td>Skin prep; lower ambient humidity</td></tr>
+        <tr><td>Motion artifact</td><td>Movement physically disturbs the ion layer at the electrode-skin interface, changing impedance dynamically and injecting a spurious low-frequency voltage — not just wire wiggle.<span class="ref" title="[18]">[18]</span></td><td>Mechanical strain relief; adhesive electrodes; motion-reference channel</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <div class="lbl">Common misconception, worth naming directly</div>
+      <p>"High impedance electrodes are bad" is often stated without saying <em>which</em> impedance. It's electrode-skin impedance that should be low; amplifier input impedance should be high. Conflating the two is one of the most common points of confusion in beginner explanations of this topic.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">05</span> How engineers fix it</p>
+    <h2>Buffer at the electrode, measure impedance in real time</h2>
+    <p><b>The two production techniques that make dry, high-impedance electrodes practical: active (buffered) electrodes, and continuous impedance monitoring built into the AFE chip.</b></p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Active electrode: buffering right at the skin</span>
+        <span class="panel-sub">unity-gain op-amp at the contact point</span>
+      </div>
+      <div id="active-diagram"></div>
+      <p class="panel-cap">A unity-gain buffer sits physically at the electrode. It presents a very high impedance to the skin (so the divider math above stays favorable) and a very low impedance — under 1 Ω — out to the cable.<span class="ref" title="[19]">[19]</span> Interference picked up by the cable now fights a near-zero-ohm source instead of a hundred-kilohm one, which is why active electrodes resist hum and motion far better than passive ones.<span class="ref" title="[19]">[19]</span></p>
+    </div>
+
+    <p>One real design: a spring-loaded dry EEG electrode with an on-electrode buffer measured <b>1.131 µV<sub>RMS</sub></b> noise and a ~147.5% improvement in effective impedance across the 0.5–50 Hz EEG band compared to the unbuffered case.<span class="ref" title="[20]">[20]</span></p>
+
+    <h3>Lead-off / impedance-check circuits in real ICs</h3>
+    <p>Modern AFE chips (e.g. TI's ADS129x family, AFE4960) build impedance measurement directly into the chip, so firmware can flag a bad or detached electrode before the user notices garbage data.<span class="ref" title="[21]">[21]</span></p>
+    <ul>
+      <li><b>DC lead-off detection</b> — monitors small DC offset shifts on each electrode. Simple, low signal impact, but adds its own offset error.<span class="ref" title="[21]">[21]</span></li>
+      <li><b>AC lead-off / impedance measurement</b> — injects a small AC excitation current and measures the resulting voltage to compute real impedance continuously, even mid-recording. Needs more digital processing to separate from the real signal.<span class="ref" title="[21]">[21]</span><span class="ref" title="[11]">[11]</span></li>
+    </ul>
+
+    <div class="note">
+      <div class="lbl">KEY FINDING</div>
+      <p>If you're specifying a biopotential AFE for a new design: look for input impedance in the <b>≥1 GΩ</b> range as a baseline (matches TI AFE4960 and similar parts<span class="ref" title="[11]">[11]</span>), and prefer a part with built-in AC impedance/lead-off measurement so you can catch bad contacts in firmware instead of guessing from noisy data.</p>
+    </div>
+  </div>
+</section>
+
+<details class="src">
+  <summary>References <span class="chev">▾</span></summary>
+  <div class="srcbody">
+    <ol>
+      <li id="r1">[1] "Basics of Electrochemical Impedance Spectroscopy." Gamry Instruments. <a href="https://www.gamry.com/application-notes/EIS/basics-of-electrochemical-impedance-spectroscopy/">https://www.gamry.com/application-notes/EIS/basics-of-electrochemical-impedance-spectroscopy/</a></li>
+      <li id="r2">[2] "Wearable Dry and Semi-Dry Electrodes for Biopotential Recording." Frontiers in Electronics, 2021. <a href="https://www.frontiersin.org/journals/electronics/articles/10.3389/felec.2021.700363/full">https://www.frontiersin.org/journals/electronics/articles/10.3389/felec.2021.700363/full</a></li>
+      <li id="r3">[3] "Common Mode Rejection Ratio." BioSemi. <a href="https://www.biosemi.com/publications/artikel3.htm">https://www.biosemi.com/publications/artikel3.htm</a></li>
+      <li id="r4">[4] "Textile-Based ECG Electrodes." Frontiers in Electronics, 2021 (ANSI/AAMI &lt;2kΩ compliance). <a href="https://www.frontiersin.org/journals/electronics/articles/10.3389/felec.2021.685264/full">https://www.frontiersin.org/journals/electronics/articles/10.3389/felec.2021.685264/full</a></li>
+      <li id="r5">[5] "Skin-Electrode Contact Impedance" (FDA 10 Hz reference frequency). PMC9656728. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9656728/">https://pmc.ncbi.nlm.nih.gov/articles/PMC9656728/</a></li>
+      <li id="r6">[6] "Dependence of EEG Signal Quality on Electrode Impedance." PMC6603518. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6603518/">https://pmc.ncbi.nlm.nih.gov/articles/PMC6603518/</a></li>
+      <li id="r7">[7] "Biopotential Electrode Sensors for ECG, EEG, EMG." Analog Devices. <a href="https://www.analog.com/en/resources/technical-articles/biopotential-electrode-sensors-ecg-eeg-emg.html">https://www.analog.com/en/resources/technical-articles/biopotential-electrode-sensors-ecg-eeg-emg.html</a></li>
+      <li id="r8">[8] "In Vivo Impedance of Dry Electrode Materials for EEG." MDPI Sensors 22(21):8510. <a href="https://www.mdpi.com/1424-8220/22/21/8510">https://www.mdpi.com/1424-8220/22/21/8510</a></li>
+      <li id="r9">[9] "EEG Electrode Impedance — Why It Matters." Neurosity. <a href="https://neurosity.co/guides/electrode-impedance-eeg-why-matters">https://neurosity.co/guides/electrode-impedance-eeg-why-matters</a></li>
+      <li id="r10">[10] "Impedance Spectra of Dry and Wet Ear-EEG Electrodes." PubMed 26736963. <a href="https://pubmed.ncbi.nlm.nih.gov/26736963/">https://pubmed.ncbi.nlm.nih.gov/26736963/</a></li>
+      <li id="r11">[11] "AFE4960 Product Page." Texas Instruments. <a href="https://www.ti.com/product/AFE4960">https://www.ti.com/product/AFE4960</a></li>
+      <li id="r12">[12] "Ultra-High Input Impedance Bioamplifier Using INA116." PMC3598091. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3598091/">https://pmc.ncbi.nlm.nih.gov/articles/PMC3598091/</a></li>
+      <li id="r13">[13] — UNVERIFIED (secondary/commercial source, not independently fetched-and-confirmed in this research) — "ECG Skin Prep Complete Guide," Med-Linket, cited for the 15 kΩ "acceptable" ECG ceiling and unprepped-skin range of 50–200 kΩ. <a href="https://med-linket-corp.com/blogs/ecg-electrodes/ecg-skin-prep-complete-guide">https://med-linket-corp.com/blogs/ecg-electrodes/ecg-skin-prep-complete-guide</a></li>
+      <li id="r14">[14] "Long-Term Electrode-Skin Impedance Variation." MDPI Sensors 23(20):8582. <a href="https://www.mdpi.com/1424-8220/23/20/8582">https://www.mdpi.com/1424-8220/23/20/8582</a></li>
+      <li id="r15">[15] "Wet and Dry Electrodes for EEG." Sapien Labs. <a href="https://sapienlabs.org/wet-and-dry-electrodes-for-eeg/">https://sapienlabs.org/wet-and-dry-electrodes-for-eeg/</a></li>
+      <li id="r16">[16] "Reason Behind the Low Impedance Specification for EMG/EEG Contact Electrodes." ResearchGate discussion. <a href="https://www.researchgate.net/post/What_is_the_reason_behind_the_low_impedance_specification_for_the_contact_electrodes_of_an_EMG_EEG_device">https://www.researchgate.net/post/What_is_the_reason_behind_the_low_impedance_specification_for_the_contact_electrodes_of_an_EMG_EEG_device</a></li>
+      <li id="r17">[17] "Effect of Electrode Impedance on Data Quality and Statistical Significance in ERP Recordings." PMC2902592. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2902592/">https://pmc.ncbi.nlm.nih.gov/articles/PMC2902592/</a></li>
+      <li id="r18">[18] "Motion Artifact Mechanisms at the Electrode-Skin Interface." PMC11479364. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11479364/">https://pmc.ncbi.nlm.nih.gov/articles/PMC11479364/</a></li>
+      <li id="r19">[19] "Shielding vs. Active Electrodes." BioSemi FAQ. <a href="https://www.biosemi.com/faq/shielding%20vs%20active%20electrodes.htm">https://www.biosemi.com/faq/shielding%20vs%20active%20electrodes.htm</a></li>
+      <li id="r20">[20] "Two-Wired Active Spring-Loaded Dry Electrodes for EEG." MDPI Sensors 19(20):4572. <a href="https://www.mdpi.com/1424-8220/19/20/4572">https://www.mdpi.com/1424-8220/19/20/4572</a></li>
+      <li id="r21">[21] "Lead-Off Detection Techniques." Texas Instruments, SBAA196. <a href="https://www.ti.com/lit/pdf/sbaa196">https://www.ti.com/lit/pdf/sbaa196</a></li>
+    </ol>
+  </div>
+</details>
+
+<footer><div class="wrap"><a class="back-link" href="../index.html">← Index</a></div></footer>
+
+<script>
+window.addEventListener('scroll', () => {
+  const el = document.documentElement;
+  document.getElementById('prog').style.width =
+    (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+});
+
+// ── Randles-type electrode-skin equivalent circuit ──
+(function () {
+  const W = 600, H = 200;
+  const svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    <text x="30" y="30" fill="#a8978f" font-size="12" font-family="JetBrains Mono,monospace">skin surface</text>
+    <line x1="10" y1="40" x2="${W-10}" y2="40" stroke="rgba(255,255,255,.15)" stroke-dasharray="4,3"/>
+
+    <!-- half-cell potential battery -->
+    <line x1="60" y1="55" x2="60" y2="90" stroke="#f0a24b" stroke-width="2"/>
+    <line x1="45" y1="70" x2="75" y2="70" stroke="#f0a24b" stroke-width="3"/>
+    <line x1="50" y1="80" x2="70" y2="80" stroke="#f0a24b" stroke-width="1.5"/>
+    <text x="60" y="105" text-anchor="middle" fill="#f0a24b" font-size="11" font-family="JetBrains Mono,monospace">E_half-cell</text>
+    <text x="60" y="118" text-anchor="middle" fill="#7e716c" font-size="10" font-family="JetBrains Mono,monospace">~199 mV (Ag/AgCl)</text>
+
+    <!-- Rs -->
+    <line x1="60" y1="55" x2="160" y2="55" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/>
+    <rect x="120" y="45" width="40" height="20" fill="none" stroke="#5fd0a6" stroke-width="1.5"/>
+    <text x="140" y="35" text-anchor="middle" fill="#5fd0a6" font-size="11" font-family="JetBrains Mono,monospace">Rs</text>
+
+    <!-- parallel Cdl / Rct -->
+    <line x1="160" y1="55" x2="220" y2="55" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/>
+    <line x1="220" y1="30" x2="220" y2="90" stroke="rgba(255,255,255,.2)"/>
+    <rect x="230" y="20" width="40" height="18" fill="none" stroke="#5b8cff" stroke-width="1.5"/>
+    <text x="250" y="15" text-anchor="middle" fill="#5b8cff" font-size="10.5" font-family="JetBrains Mono,monospace">Cdl</text>
+    <rect x="230" y="72" width="40" height="18" fill="none" stroke="#ff5a52" stroke-width="1.5"/>
+    <text x="250" y="105" text-anchor="middle" fill="#ff5a52" font-size="10.5" font-family="JetBrains Mono,monospace">Rct + Warburg</text>
+    <line x1="220" y1="30" x2="230" y2="30" stroke="rgba(255,255,255,.2)"/>
+    <line x1="270" y1="30" x2="290" y2="30" stroke="rgba(255,255,255,.2)"/>
+    <line x1="220" y1="90" x2="230" y2="90" stroke="rgba(255,255,255,.2)"/>
+    <line x1="270" y1="90" x2="290" y2="90" stroke="rgba(255,255,255,.2)"/>
+    <line x1="290" y1="30" x2="290" y2="90" stroke="rgba(255,255,255,.2)"/>
+    <line x1="290" y1="55" x2="340" y2="55" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/>
+
+    <!-- amplifier box -->
+    <rect x="345" y="30" width="120" height="50" rx="8" fill="rgba(255,255,255,.03)" stroke="var(--highz)" stroke-width="1.5"/>
+    <text x="405" y="52" text-anchor="middle" fill="#5b8cff" font-size="12.5" font-family="Space Grotesk,sans-serif" font-weight="600">Amplifier</text>
+    <text x="405" y="68" text-anchor="middle" fill="#7e716c" font-size="10" font-family="JetBrains Mono,monospace">Zin &gt; 1 GΩ</text>
+
+    <text x="200" y="150" text-anchor="middle" fill="#7e716c" font-size="11" font-family="JetBrains Mono,monospace">electrode-skin interface (all three elements = "electrode impedance")</text>
+  </svg>`;
+  document.getElementById('randles-diagram').innerHTML = svg;
+})();
+
+// ── Voltage divider diagram ──
+(function () {
+  const W = 600, H = 190;
+  const svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    <text x="60" y="25" text-anchor="middle" fill="#a8978f" font-size="11" font-family="JetBrains Mono,monospace">body signal</text>
+    <circle cx="60" cy="55" r="18" fill="none" stroke="#e2d8d1" stroke-width="1.5"/>
+    <text x="60" y="60" text-anchor="middle" fill="#e2d8d1" font-size="14" font-family="JetBrains Mono,monospace">~</text>
+
+    <line x1="78" y1="55" x2="140" y2="55" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/>
+    <rect x="140" y="45" width="70" height="20" fill="none" stroke="#5fd0a6" stroke-width="1.5"/>
+    <text x="175" y="35" text-anchor="middle" fill="#5fd0a6" font-size="12" font-family="JetBrains Mono,monospace">Z_electrode</text>
+    <line x1="210" y1="55" x2="300" y2="55" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/>
+
+    <circle cx="300" cy="55" r="4" fill="#f5b942"/>
+    <text x="300" y="90" text-anchor="middle" fill="#f5b942" font-size="11" font-family="JetBrains Mono,monospace">tap point</text>
+    <text x="300" y="103" text-anchor="middle" fill="#7e716c" font-size="10" font-family="JetBrains Mono,monospace">(amp input pin)</text>
+
+    <line x1="300" y1="55" x2="300" y2="140" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/>
+    <rect x="280" y="140" width="40" height="30" fill="none" stroke="#5b8cff" stroke-width="1.5"/>
+    <text x="345" y="158" fill="#5b8cff" font-size="12" font-family="JetBrains Mono,monospace">Z_amp</text>
+    <line x1="300" y1="170" x2="300" y2="185" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/>
+    <line x1="285" y1="185" x2="315" y2="185" stroke="rgba(255,255,255,.4)" stroke-width="1.5"/>
+    <line x1="290" y1="190" x2="310" y2="190" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/>
+    <text x="300" y="205" text-anchor="middle" fill="#7e716c" font-size="10" font-family="JetBrains Mono,monospace">reference</text>
+
+    <text x="440" y="55" fill="#e2d8d1" font-size="12" font-family="JetBrains Mono,monospace">V_out = V_in × Z_amp / (Z_amp + Z_electrode)</text>
+  </svg>`;
+  document.getElementById('divider-diagram').innerHTML = svg;
+})();
+
+// ── Active electrode diagram ──
+(function () {
+  const W = 600, H = 150;
+  const svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="60" width="${W}" height="90" fill="rgba(255,90,82,.04)"/>
+    <line x1="0" y1="60" x2="${W}" y2="60" stroke="rgba(255,255,255,.12)"/>
+    <text x="10" y="78" fill="#7e716c" font-size="10.5" font-family="JetBrains Mono,monospace">skin</text>
+
+    <rect x="60" y="30" width="60" height="24" rx="5" fill="rgba(95,208,166,.12)" stroke="#5fd0a6" stroke-width="1.5"/>
+    <text x="90" y="46" text-anchor="middle" fill="#5fd0a6" font-size="11" font-family="JetBrains Mono,monospace" font-weight="600">electrode</text>
+
+    <line x1="120" y1="42" x2="180" y2="42" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/>
+    <path d="M180,25 L180,60 M180,25 L210,42 L180,60" fill="none" stroke="#4fd1c5" stroke-width="2"/>
+    <text x="195" y="18" text-anchor="middle" fill="#4fd1c5" font-size="11" font-family="Space Grotesk,sans-serif" font-weight="600">buffer (×1)</text>
+    <text x="195" y="80" text-anchor="middle" fill="#7e716c" font-size="9.5" font-family="JetBrains Mono,monospace">Zin: huge</text>
+
+    <line x1="210" y1="42" x2="420" y2="42" stroke="#4fd1c5" stroke-width="2.5"/>
+    <text x="315" y="30" text-anchor="middle" fill="#4fd1c5" font-size="10.5" font-family="JetBrains Mono,monospace">cable, Zout &lt; 1 Ω</text>
+
+    <rect x="420" y="30" width="90" height="24" rx="5" fill="rgba(91,140,255,.1)" stroke="#5b8cff" stroke-width="1.5"/>
+    <text x="465" y="46" text-anchor="middle" fill="#5b8cff" font-size="11" font-family="JetBrains Mono,monospace" font-weight="600">AFE / ADC</text>
+  </svg>`;
+  document.getElementById('active-diagram').innerHTML = svg;
+})();
+</script>
+</body>
+</html>
