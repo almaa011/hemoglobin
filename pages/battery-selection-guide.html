@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Choosing a Rechargeable Battery for a Wearable/Biomedical Device</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+  :root { --accent: #a78bfa; /* lithium violet */ }
+  .barlbl { font-family: 'JetBrains Mono', monospace; font-size: 12px; fill: var(--mut); }
+  .barval { font-family: 'JetBrains Mono', monospace; font-size: 12px; fill: var(--ink); font-weight: 600; }
+  .bartrack { fill: rgba(255,255,255,.06); }
+</style>
+</head>
+<body>
+<div id="prog"></div>
+
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+    <div class="kicker"><span class="dot"></span> POWER · BATTERY SELECTION</div>
+    <h1>Choosing a Rechargeable Battery <span style="color:var(--accent)">for a Wearable/Biomedical Device</span></h1>
+    <p class="lead">A framework for picking the right cell chemistry, capacity, and charge circuit for a wrist-worn, patch, or handheld biomedical device — plus the battery-basics math (C-rate, cycle life, internal resistance) you need to read a cell datasheet correctly. Rechargeable chemistries only: Li-ion, LiPo, LiFePO4, NiMH.</p>
+    <p class="mut">2026-07-11</p>
+    <div class="scrolltip"><span class="arr">↓</span> start reading</div>
+  </div>
+</header>
+
+<section id="s0">
+  <div class="wrap">
+    <div class="note">
+      <div class="lbl">TL;DR</div>
+      <p><strong>For most wrist-worn or patch biomedical electronics, a small Li-ion/LiPo pouch cell (3.6–3.7V nominal, 4.2V full charge) is the default choice</strong> — it has the best energy density of the common rechargeable chemistries (up to ~250 Wh/kg) <span class="ref" title="[8]">[8]</span>, and the ecosystem of fuel-gauge ICs, linear chargers, and protection circuitry around it is mature and cheap.</p>
+      <p><strong>Reach for LiFePO4 only when safety margin matters more than size</strong> — it trades ~30–40% energy density <span class="ref" title="[8]">[8]</span> for a thermal-runaway onset roughly 60°C higher than standard Li-ion (~270°C vs ~210°C) <span class="ref" title="[24]">[24]</span> and 2–3x the cycle life at a given charge voltage <span class="ref" title="[7]">[7]</span>. NiMH is rarely the right call for new designs today — lower energy density (60–120 Wh/kg) and higher self-discharge (1–5%/day) than Li-ion, though it remains relevant for AA/AAA-compatible or 1.2V-per-cell legacy designs <span class="ref" title="[9]">[9]</span>.</p>
+      <p><strong>The single biggest lever you control is charge voltage.</strong> Charging to 4.20V/cell gives the most capacity but only 300–500 cycles; dropping to 4.10V/cell roughly doubles cycle life to 600–1,000 cycles at the cost of some runtime <span class="ref" title="[2]">[2]</span> — most fuel-gauge/charger ICs let you set this in firmware.</p>
+      <p>For skin-contact wearables specifically, <strong>thermal budget is a bigger practical constraint than most datasheets suggest</strong>: the commonly cited "45°C device-safe" limit is derived from Li-ion's safe operating range, not human skin tolerance — actual burn threshold for 8-hour continuous contact is only 43°C <span class="ref" title="[25]">[25]</span>.</p>
+      <p>If the device ships anywhere by air, note that as of <strong>January 1, 2026 all lithium batteries — even pre-installed in the device — are increasingly constrained to ≤30% state of charge (SOC — the battery-industry shorthand for "percent full") for air transport</strong>, a rule that now also applies to batteries packaged with devices <span class="ref" title="[32]">[32]</span>.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s1">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">01</span> Battery basics</p>
+    <h2>Chemistry is the first decision — everything else follows from it</h2>
+    <p><strong>Four rechargeable chemistries cover nearly all wearable/biomedical designs: Li-ion (LCO/NMC), LiPo, LiFePO4, and NiMH.</strong> Li-ion and LiPo share almost identical electrochemistry and voltage behavior — LiPo just uses a polymer/gel electrolyte in a flexible pouch instead of a rigid can, which is why it dominates thin wearable form factors.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <div class="panel-title">Energy density by chemistry</div>
+        <div class="panel-sub">Wh/kg, verified ranges</div>
+      </div>
+      <div id="energychart"></div>
+      <p class="panel-cap">Standard Li-ion/NMC cells top out around <strong>150–220 Wh/kg</strong>, with the ceiling for commercial Li-ion cells generally cited near <strong>250 Wh/kg</strong> <span class="ref" title="[8]">[8]</span>. LiFePO4 trades roughly a third of that density (90–160 Wh/kg) for safety margin <span class="ref" title="[8]">[8]</span>. NiMH trails both at 60–120 Wh/kg <span class="ref" title="[9]">[9]</span>.</p>
+    </div>
+
+    <table class="tbl">
+      <tr><th>Chemistry</th><th>Nominal V</th><th>Full charge V</th><th>Cutoff V</th><th>Energy density</th><th>Typical cycle life</th></tr>
+      <tr><td>Li-ion (LCO/generic)</td><td>3.6–3.7V</td><td>4.2V</td><td>3.0–2.8V</td><td class="good">up to 250 Wh/kg</td><td>300–500 @ 4.2V charge</td></tr>
+      <tr><td>Li-ion (NMC)</td><td>3.6–3.7V</td><td>4.2V</td><td>3.0–2.8V</td><td class="good">150–220 Wh/kg</td><td>300–500 @ 4.2V charge</td></tr>
+      <tr><td>LiPo</td><td>3.7V</td><td>4.2V</td><td>~3.0V</td><td class="good">comparable to Li-ion</td><td>comparable to Li-ion</td></tr>
+      <tr><td>LiFePO4</td><td>3.2V</td><td>3.6V</td><td>2.5V</td><td class="warn">90–160 Wh/kg</td><td class="good">2–3x Li-ion at same voltage headroom</td></tr>
+      <tr><td>NiMH</td><td>1.2V</td><td>—</td><td>—</td><td class="bad">60–120 Wh/kg</td><td>500–800 (consumer), 1,200–2,000 (industrial)</td></tr>
+    </table>
+    <p class="mut" style="font-size:13px">Voltage/energy figures <span class="ref" title="[4]">[4]</span><span class="ref" title="[7]">[7]</span><span class="ref" title="[8]">[8]</span>; NiMH figures <span class="ref" title="[9]">[9]</span>; cycle-life vs charge-voltage relationship <span class="ref" title="[2]">[2]</span>.</p>
+
+    <div class="callout">
+      <div class="lbl">Rule of thumb</div>
+      <p>Every <strong>0.10V you shave off the peak charge voltage roughly doubles cycle life</strong>, at the cost of proportionally less capacity per charge <span class="ref" title="[2]">[2]</span>. This is a firmware-level knob on most fuel-gauge/charger ICs (see §4) — it's often the cheapest "different battery" you can buy without changing hardware.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">02</span> Battery basics</p>
+    <h2>The specs that actually determine runtime and safety margin</h2>
+    <p><strong>Capacity (mAh) alone doesn't tell you runtime — you also need C-rate, internal resistance, and self-discharge.</strong> These interact, and datasheets often quote the most flattering number rather than the one that matches your actual use case.</p>
+
+    <h3>C-rate: capacity depends on how fast you pull it out</h3>
+    <p><strong>1C means "discharge the full rated capacity in one hour."</strong> A 200mAh cell at 1C delivers 200mA for an hour; at 2C it would (nominally) deliver 400mA for 30 minutes <span class="ref" title="[1]">[1]</span>.</p>
+    <p>Discharging faster than rated pulls usable capacity down — not just runtime, but total mAh delivered. <strong>At 2C, a cell typically yields only ~95% of its rated capacity; at 0.5C it can exceed 100%</strong> because internal losses that turn energy into heat scale with current <span class="ref" title="[1]">[1]</span>. Watch the current draw of your PPG (photoplethysmography — the optical pulse sensor's) LED drive or radio TX burst against this — a cell rated generously at a slow test rate can under-deliver in a bursty duty cycle.</p>
+    <p>Standard "Energy Cell" Li-ion is typically protection-limited to 1C discharge; "Power Cell" variants of the same chemistry are built for up to 10C <span class="ref" title="[1]">[1]</span> — relevant if your design has short, high-current bursts (e.g. a haptic motor or RF power amplifier).</p>
+
+    <h3>Cycle life, depth of discharge, and what "end of life" means</h3>
+    <p><strong>One cycle = one full charge-discharge; "end of life" is industry-standard defined as 70–80% of original capacity remaining (State of Health)</strong> <span class="ref" title="[3]">[3]</span>. Depth of Discharge (DOD) is how much of the rated capacity you actually use per cycle — pulling 80 of 100Ah before recharging is 80% DOD <span class="ref" title="[3]">[3]</span>.</p>
+
+    <h3>Internal resistance and self-discharge</h3>
+    <div class="spec-grid">
+      <div class="spec-card"><span class="sc" style="background:var(--accent)"></span><div class="sv">10–50 mΩ</div><div class="sl">typical Li-ion internal resistance; 18650-class cells run 20–80 mΩ <span class="ref" title="[5]">[5]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--good)"></span><div class="sv">2–20 mΩ</div><div class="sl">LiFePO4 internal resistance — roughly 50% lower than standard Li-ion <span class="ref" title="[5]">[5]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--warn)"></span><div class="sv">0.5–1%/°C</div><div class="sl">how much internal resistance shifts per degree — measure near 25°C for comparable numbers <span class="ref" title="[5]">[5]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--mut)"></span><div class="sv">1–5%/month</div><div class="sl">Li-ion self-discharge at ambient storage — NiMH standard cells lose 1–5% <em>per day</em> <span class="ref" title="[6]">[6]</span><span class="ref" title="[9]">[9]</span></div></div>
+    </div>
+    <p><strong>Internal resistance directly costs you voltage headroom under load</strong> — a higher-resistance cell sags more under a current pulse, which matters if your AFE/analog front-end has a tight supply-voltage floor. If you're storing devices for long periods (retail shelf, clinical trial kit assembly), <strong>store at ~50% state of charge</strong> to minimize self-discharge losses, not full charge <span class="ref" title="[6]">[6]</span>.</p>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">03</span> Selection framework</p>
+    <h2>A decision order for picking the actual part</h2>
+    <p><strong>Work through these in order — each one eliminates options before you get to part numbers.</strong> Skipping ahead to "which mAh cell" before nailing down form factor and duty cycle is the most common way teams end up re-spinning a design.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <div class="panel-title">Selection order, at a glance</div>
+        <div class="panel-sub">each step narrows the next</div>
+      </div>
+      <div id="flowchart"></div>
+      <p class="panel-cap">Full detail on what each step determines is in the table below.</p>
+    </div>
+
+    <table class="tbl">
+      <tr><th>Step</th><th>Question</th><th>What it determines</th></tr>
+      <tr><td>1. Form factor</td><td>What volume/thickness/curvature is available?</td><td>Coin cell vs. pouch vs. cylindrical; rigid Li-ion can vs. flexible LiPo pouch</td></tr>
+      <tr><td>2. Runtime budget</td><td>Target hours/days of operation at your measured average current draw?</td><td>Capacity (mAh) needed — measure actual average current, don't estimate from datasheets alone</td></tr>
+      <tr><td>3. Peak current</td><td>What's your worst-case instantaneous draw (LED drive, radio TX, motor)?</td><td>Required C-rate — undersized C-rate cells sag or trip protection under load <span class="ref" title="[1]">[1]</span></td></tr>
+      <tr><td>4. Thermal/skin budget</td><td>Is this in continuous skin contact? For how long per session?</td><td>Charge rate limits, chemistry choice (LiFePO4 vs Li-ion), enclosure thermal design (see §6)</td></tr>
+      <tr><td>5. Charge method</td><td>USB wired, wireless/inductive, dock/cradle?</td><td>Charger IC selection, thermal budget during charge (wireless charging dissipates more heat, §4)</td></tr>
+      <tr><td>6. Cycle-life target</td><td>Expected product lifetime in charge cycles?</td><td>Charge-voltage ceiling — trade capacity for cycle life via the 0.10V rule (§1)</td></tr>
+      <tr><td>7. Certification scope</td><td>Consumer, or does it need medical-device safety certification?</td><td>Which standards apply — IEC 62133, UL 2054/1642, ANSI/AAMI ES 60601-1 (§7)</td></tr>
+      <tr><td>8. Shipping/logistics</td><td>Air freight anywhere in the supply chain?</td><td>UN 38.3 testing and state-of-charge shipping limits (§7)</td></tr>
+    </table>
+
+    <div class="note">
+      <div class="lbl">Key finding</div>
+      <p>Steps 3 and 4 are the ones teams most often shortcut — and they're exactly the ones a peer-reviewed thermal study and an electronics-cooling trade publication flag as the least forgiving. A cell sized correctly for average current can still misbehave under peak current <span class="ref" title="[1]">[1]</span>, and a device thermally "safe" by battery standards can still be too hot for 8-hour skin contact <span class="ref" title="[25]">[25]</span> (see §6).</p>
+    </div>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">04</span> Implementation</p>
+    <h2>Charging, fuel gauging, and protection circuitry</h2>
+    <p><strong>A bare cell is not a battery pack — you need a fuel gauge, a charger IC, and protection circuitry around it before it's usable.</strong> This is where most of the actual BOM and firmware work lives.</p>
+
+    <h3>Fuel gauge ICs</h3>
+    <p>Fuel gauges track remaining charge so firmware can report a % battery figure and trigger low-battery behavior. <strong>TI's BQ27427 is a representative example</strong>: supports 100–8,000 mAh cells via TI's "Impedance Track" algorithm, I2C at 400 kHz, three selectable cell profiles (4.2V/4.35V/4.4V), a tiny 9-ball 1.62×1.58mm package with a 7mΩ integrated sense resistor, 50µA active / 9µA sleep current draw, rated −40 to 85°C <span class="ref" title="[11]">[11]</span>.</p>
+
+    <h3>Charger ICs</h3>
+    <p><strong>Charger ICs fall into two families: simple linear chargers and switch-mode/buck chargers with power-path management.</strong> TI's BQ25120 is a linear-charger-plus-buck-regulator example built for exactly this class of device: 5–300mA configurable charge current, 0.5%-accurate battery voltage regulation adjustable 3.6–4.65V in 10mV steps over I2C (this is your knob for the cycle-life-vs-capacity tradeoff from §1), a buck converter that stays efficient down to 10µA loads, 700nA quiescent current, and 5V USB input tolerant to 20V line transients <span class="ref" title="[13]">[13]</span>.</p>
+
+    <h3>Protection circuitry</h3>
+    <p><strong>A Protection Circuit Module (PCM) sits between the cell and the rest of the system, enforcing hard voltage/current limits independent of firmware.</strong> Typical wearable LiPo protection circuits implement overvoltage-charge protection, undervoltage-discharge protection, short-circuit protection, and overcurrent protection, going to an open-circuit state if any threshold is exceeded <span class="ref" title="[14]">[14]</span>. Treat this as a second, dumb, always-on layer beneath your smart fuel-gauge/charger IC — not a replacement for it.</p>
+
+    <h3>Connectors</h3>
+    <p><strong>JST-PH (2.0mm pitch) is the de facto standard connector for small single-cell (1S) LiPo packs</strong> — 2A per contact / 100V rating (comfortably above the ~1C charge current of most small packs), AWG24-32 wire, 30mΩ max contact resistance, PA66 nylon UL94V-0 housing with tin-plated brass contacts, rated −25 to 85°C <span class="ref" title="[13]">[13]</span>.</p>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">05</span> Real-world reference points</p>
+    <h2>What actual wrist-worn products ship with</h2>
+    <p><strong>Consumer smartwatch batteries cluster tightly around 250–600 mAh</strong>, which is a useful sanity check for your own capacity target.</p>
+    <table class="tbl">
+      <tr><th>Device / class</th><th>Capacity</th><th>Notes</th></tr>
+      <tr><td>Apple Watch Series 7, 41mm</td><td>1.094 Wh</td><td>iFixit teardown measurement <span class="ref" title="[15]">[15]</span></td></tr>
+      <tr><td>Apple Watch Series 7, 45mm</td><td>1.189 Wh (309 mAh)</td><td>iFixit teardown measurement <span class="ref" title="[15]">[15]</span></td></tr>
+      <tr><td>Garmin Fenix 6X</td><td>~424 mAh / 2182 mWh</td><td class="mut">community-reported figure, not a manufacturer datasheet — treat as indicative only <span class="ref" title="[17]">[17]</span></td></tr>
+      <tr><td>Standard smartwatch class</td><td>250–500 mAh</td><td rowspan="1">Industry survey figures <span class="ref" title="[16]">[16]</span></td></tr>
+      <tr><td>Premium smartwatch class</td><td>500–600 mAh</td><td>Industry survey figures <span class="ref" title="[16]">[16]</span></td></tr>
+      <tr><td>Rugged/sport smartwatch class</td><td>600–1,000 mAh</td><td>Industry survey figures <span class="ref" title="[16]">[16]</span></td></tr>
+    </table>
+    <p class="mut" style="font-size:13px">All operate in the standard 3.7–4.2V Li-ion/LiPo range <span class="ref" title="[16]">[16]</span>; the widely-repeated 20–80% charge-window practice for extending pack lifespan follows directly from the cycle-life-vs-voltage relationship in §1 <span class="ref" title="[16]">[16]</span>.</p>
+  </div>
+</section>
+
+<section id="s6">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">06</span> Failure modes</p>
+    <h2>Where battery-selection guidance oversimplifies</h2>
+    <p><strong>Three places where the common shorthand doesn't survive contact with the primary literature.</strong> These are the findings our adversarial research pass specifically surfaced.</p>
+
+    <h3>Thermal runaway isn't one failure mode — it's (at least) two paths with different signatures</h3>
+    <p>A peer-reviewed thermal-abuse study on Li-ion cells found <strong>overcharge-triggered runaway and overheat-triggered runaway behave differently</strong>: overcharge above the 4.2V cutoff drives lithium dendrites through the separator (~800 seconds in) and peaks at 411°C cathode temperature; pure overheating past ~120°C peaks hotter, at 516°C <span class="ref" title="[20]">[20]</span>.</p>
+    <p>Below full runaway, there's a cascade of quieter failures worth knowing: <strong>separator pore closure at ~80°C, SEI decomposition at ~120°C, electrolyte decomposition above ~130°C, cathode oxygen release above ~200°C</strong> <span class="ref" title="[20]">[20]</span> — each one degrades the cell further even if it never reaches ignition.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <div class="panel-title">Thermal failure cascade</div>
+        <div class="panel-sub">Li-ion cell, °C, peer-reviewed <span class="ref" title="[20]">[20]</span></div>
+      </div>
+      <div id="thermalcascade"></div>
+      <p class="panel-cap">The two runaway peaks (411°C overcharge-path, 516°C overheat-path) are not the same event reaching different temperatures — they're two distinct failure chains that happen to share the same intermediate decomposition steps below ~200°C.</p>
+    </div>
+
+    <div class="conflict">
+      <div class="lbl">Nuance — "LiFePO4 doesn't overheat or explode"</div>
+      <p>This marketing-style claim, common in wearable-medtech blog content, overstates what the underlying chemistry actually buys you. Verified data shows LiFePO4's thermal-runaway onset is genuinely higher than NMC's (<strong>~270°C vs ~210°C</strong>) and it doesn't release oxygen during decomposition, which reduces fire-propagation risk <span class="ref" title="[24]">[24]</span> — but it is a higher safety margin, not immunity. Size the safety margin accordingly rather than treating LiFePO4 as fail-safe.</p>
+    </div>
+
+    <div class="conflict">
+      <div class="lbl">Conflict — cycle-life numbers depend heavily on cell format, and marketing figures often don't say which</div>
+      <p>One source reports real-world cycle life of 3,000–5,000 cycles at 20–80% DOD for LiFePO4, dropping to ~800 cycles under 2C fast charge, with degradation 3x faster at 45°C vs 25°C <span class="ref" title="[21]">[21]</span> — but that source's context (electric vehicles, energy storage stations) suggests large-format cells, not small wearable pouch cells. Battery University's cycle-life data for standard small Li-ion cells (300–500 cycles at 4.2V charge, §1) is an order of magnitude lower <span class="ref" title="[2]">[2]</span>. <strong>Don't apply EV/ESS-class cycle-life marketing numbers to a small wearable cell</strong> — ask the specific cell's manufacturer for cycle data at your actual charge voltage and DOD.</p>
+    </div>
+
+    <h3>The state-of-charge window you cycle in matters more than "keep it in the middle"</h3>
+    <p>A peer-reviewed study found <strong>cycling within a 65–85% SOC window produced more active-lithium loss than cycling in either 45–65% or 75–95% windows</strong> <span class="ref" title="[22]">[22]</span> — the opposite of the intuitive "avoid the extremes, stay in the middle" heuristic. The mechanism is mechanical: graphite particles undergo maximum surface dilation transitioning through that specific range.</p>
+
+    <h3>LiPo swelling is a chemistry-compromise signal, not a cosmetic issue</h3>
+    <p><strong>Swelling comes from electrolyte decomposing into gas</strong>, commonly from overvoltage charging <span class="ref" title="[23]">[23]</span>. Even minor swelling doesn't always mean imminent failure, but it does indicate the internal chemistry is compromised — professional assessment or replacement is the safe response, not "keep using it until it gets worse" <span class="ref" title="[23]">[23]</span>.</p>
+
+    <div class="conflict">
+      <div class="lbl">Conflict — "45°C is device-safe" vs. actual skin-burn thresholds</div>
+      <p>An electronics-cooling industry article states wearable device skin temperature is "generally accepted" to have a ~45°C maximum, derived from Li-ion's 0–45°C safe operating range <span class="ref" title="[18]">[18]</span>. A separate peer-reviewed-adjacent source on wearable/implantable thermal challenges gives actual human burn thresholds by contact duration: <strong>&lt;48°C for &gt;10-minute contact, but only 43°C for 8-hour continuous contact</strong>; comfort requires &lt;39°C <span class="ref" title="[25]">[25]</span>. A device sitting at the "battery-safe" 45°C limit is already above the 8-hour burn threshold — battery safety and skin safety are not the same budget, and a continuously-worn device needs to design to the tighter one.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s7">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">07</span> Standards</p>
+    <h2>Safety and transport certification you'll actually run into</h2>
+    <p><strong>Cell-level and pack-level certification are separate, and pack certification usually requires cell certification first.</strong> For medical-adjacent wearables, expect to touch four to six of these depending on target market and whether it's a "medical device" or "consumer wellness" classification.</p>
+
+    <table class="tbl">
+      <tr><th>Standard</th><th>Scope</th><th>Key requirement</th></tr>
+      <tr><td>IEC 62133-2</td><td>Rechargeable Li cell/battery safety</td><td>13 kN ± 1 kN crush test <span class="ref" title="[28]">[28]</span>; 80 mΩ ± 20 mΩ external short at 20°C for 24h or until temp decays 20% <span class="ref" title="[28]">[28]</span>; thermal abuse to 130±2°C, 10 min hold <span class="ref" title="[29]">[29]</span>; overcharge at 1.4x voltage (single cell ≤6V) or 1.2x (multi-cell series) <span class="ref" title="[30]">[30]</span></td></tr>
+      <tr><td>UL 1642</td><td>Lithium cell level (component)</td><td>Short-circuit, overcharge, forced-discharge (electrical); crush, impact, shock, vibration (mechanical); heating, temp cycling, low-pressure altitude (environmental) <span class="ref" title="[27]">[27]</span></td></tr>
+      <tr><td>UL 2054</td><td>Battery pack / system, all chemistries</td><td>Requires UL 1642-approved cells inside <span class="ref" title="[33]">[33]</span>; adds Single Fault Condition testing — protection MOSFET/IC intentionally shorted to verify fail-safe backup (thermal fuse/PTC) <span class="ref" title="[34]">[34]</span></td></tr>
+      <tr><td>UN 38.3</td><td>Transport (air/sea/road)</td><td>8 tests T.1–T.8: altitude (11.6 kPa, ≥6h), thermal cycling (−40 to 75°C), vibration, shock, external short (55°C, &lt;0.1Ω), impact/crush, overcharge (2x V and I), forced discharge <span class="ref" title="[31]">[31]</span></td></tr>
+      <tr><td>ANSI/AAMI ES 60601-1</td><td>Medical electrical equipment</td><td>General electrical safety requirements, applies at the finished-device level <span class="ref" title="[10]">[10]</span></td></tr>
+      <tr><td>IEC 60086-4</td><td>Primary lithium battery safety</td><td>Relevant if the design also has a primary (non-rechargeable) lithium backup cell <span class="ref" title="[10]">[10]</span></td></tr>
+    </table>
+
+    <div class="warn-note">
+      <div class="lbl">Warning — shipping rule changed in 2026</div>
+      <p>As of <strong>January 1, 2026, lithium batteries packaged together with a device (not just shipped standalone) must also be charged to ≤30% state of charge for air transport</strong> — previously this 30%-SOC rule applied mainly to standalone cells/batteries. Only batteries already installed and running inside their end device retain an exemption to ship at higher charge <span class="ref" title="[32]">[32]</span>. If your logistics chain ships partially-assembled units by air, check which category you fall into now — this is a live regulatory change, not background context.</p>
+    </div>
+  </div>
+</section>
+
+<details class="src">
+  <summary>References <span class="chev">▾</span></summary>
+  <div class="srcbody">
+    <ol>
+      <li id="r1">[1] Battery University. "BU-402: What is C-Rate?" <a href="https://www.batteryuniversity.com/article/bu-402-what-is-c-rate/">batteryuniversity.com/article/bu-402-what-is-c-rate</a></li>
+      <li id="r2">[2] Battery University. "BU-808: How to Prolong Lithium-based Batteries." <a href="https://www.batteryuniversity.com/article/bu-808-how-to-prolong-lithium-based-batteries/">batteryuniversity.com/article/bu-808-how-to-prolong-lithium-based-batteries</a></li>
+      <li id="r3">[3] Sunlit Energy. "Battery Cycle Standards Explained." <a href="https://sunlithenergy.com/battery-cycle-standards-explained/">sunlithenergy.com/battery-cycle-standards-explained</a></li>
+      <li id="r4">[4] UFine Battery. "Lithium-Ion Battery Voltage Chart." <a href="https://www.ufinebattery.com/blog/lithium-ion-battery-voltage-chart/">ufinebattery.com/blog/lithium-ion-battery-voltage-chart</a></li>
+      <li id="r5">[5] UFine Battery. "Lithium-Ion Battery Internal Resistance." <a href="https://www.ufinebattery.com/blog/lithium-ion-battery-internal-resistance/">ufinebattery.com/blog/lithium-ion-battery-internal-resistance</a></li>
+      <li id="r6">[6] EL-CELL. "What Is the Self-Discharge Rate of a Lithium-Ion Battery?" <a href="https://www.el-cell.com/what-is-the-self-discharge-rate-of-a-lithium-ion-battery/">el-cell.com/what-is-the-self-discharge-rate-of-a-lithium-ion-battery</a></li>
+      <li id="r7">[7] EBL Official. "Lithium-Ion Battery Cell Voltage." <a href="https://www.eblofficial.com/blogs/battery-101/lithium-ion-battery-cell-voltage">eblofficial.com/blogs/battery-101/lithium-ion-battery-cell-voltage</a></li>
+      <li id="r8">[8] Large Battery. "Lithium-Ion Battery Weight & Energy Density in Modern Devices." <a href="https://www.large-battery.com/blog/lithium-ion-battery-weight-energy-density-modern-devices/">large-battery.com/blog/lithium-ion-battery-weight-energy-density-modern-devices</a></li>
+      <li id="r9">[9] UFine Battery. "What Are Nickel-Metal Hydride (NiMH) Batteries?" <a href="https://www.ufinebattery.com/blog/what-are-nickel-metal-hydride-batteries/">ufinebattery.com/blog/what-are-nickel-metal-hydride-batteries</a></li>
+      <li id="r10">[10] Large Battery. "Battery Requirements for Medical Devices: Safety & Reliability." <a href="https://www.large-battery.com/blog/battery-requirements-medical-devices-safety-reliability/">large-battery.com/blog/battery-requirements-medical-devices-safety-reliability</a> — standards list confirmed; specific UL 2054 test breakdown and temperature-degradation figures on this page could not be independently confirmed and are not used as sourced from here.</li>
+      <li id="r11">[11] Texas Instruments. "BQ27427 Fuel Gauge" product page. <a href="https://www.ti.com/product/BQ27427">ti.com/product/BQ27427</a></li>
+      <li id="r12">[12] — UNVERIFIED — IEC 62133 publication/revision history (2002, 2012, 2017 revisions) could not be confirmed; original source (incompliancemag.com) returned empty content on repeated fetch. Not used in the page.</li>
+      <li id="r13">[13] Texas Instruments. "BQ25120 Charger/PMIC" product page (specs); Keszoox. "JST PH Connector Complete Guide" (connector specs). <a href="https://www.ti.com/product/BQ25120">ti.com/product/BQ25120</a> / <a href="https://keszoox.com/blogs/news/jst-ph-connector-complete-guide">keszoox.com/blogs/news/jst-ph-connector-complete-guide</a></li>
+      <li id="r14">[14] Grepow. "Overcurrent Charging Protection for Wearable Devices' Batteries." <a href="https://www.grepow.com/blog/overcurrent-charging-protection-for-wearable-devices-batteries.html">grepow.com/blog/overcurrent-charging-protection-for-wearable-devices-batteries.html</a></li>
+      <li id="r15">[15] MacRumors (iFixit teardown data). "Apple Watch Series 7 Teardown Reveals Slightly Bigger Battery." <a href="https://www.macrumors.com/2021/10/21/apple-watch-series-7-teardown-ifixit/">macrumors.com/2021/10/21/apple-watch-series-7-teardown-ifixit</a></li>
+      <li id="r16">[16] UFine Battery. "Smart Watch Battery: Everything You Need to Know." <a href="https://www.ufinebattery.com/blog/smart-watch-battery-everything-you-need-to-know">ufinebattery.com/blog/smart-watch-battery-everything-you-need-to-know</a></li>
+      <li id="r17">[17] Garmin Forums (community post, not a manufacturer datasheet). "What's Battery Capacity in mAh for Fenix 6X/6/6S." <a href="https://forums.garmin.com/outdoor-recreation/outdoor-recreation/f/fenix-6-series/212794/what-s-battery-capacity-in-mah-for-fenix-6x-6-6s">forums.garmin.com — Fenix 6X thread</a></li>
+      <li id="r18">[18] Electronics Cooling. "Inductive Wireless Charging — Now a Thermal Design Problem" (2017). <a href="https://www.electronics-cooling.com/2017/01/inductive-wireless-charging-now-thermal-design-problem/">electronics-cooling.com/2017/01/inductive-wireless-charging-now-thermal-design-problem</a></li>
+      <li id="r19">[19] Medium / MosChip. "Thermal Management in Miniaturized Wearable Hardware." <a href="https://medium.com/@moschiptech/thermal-management-in-miniaturized-wearable-hardware-003209c91ea4">medium.com/@moschiptech/thermal-management-in-miniaturized-wearable-hardware</a></li>
+      <li id="r20">[20] Peer-reviewed. MDPI <em>Batteries</em> journal, thermal runaway mechanism study. <a href="https://www.mdpi.com/2313-0105/11/7/242">mdpi.com/2313-0105/11/7/242</a></li>
+      <li id="r21">[21] SmartPropel. "Lithium Battery Cycle Life of 8,000–10,000 Cycles: The Gap Between Ideal and Reality." <a href="https://www.smartpropel.com/lithium-battery-cycle-life-of-8000-10000-cycles-the-gap-between-ideal-and-reality/">smartpropel.com — cycle life gap article</a> — note: article context (EV, energy storage stations) suggests large-format cells; see conflict flag in §6.</li>
+      <li id="r22">[22] Peer-reviewed. MDPI <em>Sustainability</em> journal, SOC-window degradation study. <a href="https://www.mdpi.com/2071-1050/11/23/6697">mdpi.com/2071-1050/11/23/6697</a></li>
+      <li id="r23">[23] Himax Electronics. "Swollen LiPo Battery: Causes, Risks, and Safe Solutions." <a href="https://www.himaxelectronics.com/swollen-lipo-battery-causes-risks-and-safe-solutions/">himaxelectronics.com/swollen-lipo-battery-causes-risks-and-safe-solutions</a></li>
+      <li id="r24">[24] Anern Store. "LiFePO4 vs Lithium — Fire Safety." <a href="https://www.anernstore.com/blogs/diy-solar-guides/lifepo4-vs-lithium-fire-safety">anernstore.com/blogs/diy-solar-guides/lifepo4-vs-lithium-fire-safety</a> — thermal runaway onset temperatures confirmed; specific peak-temperature figures (620°C/800°C) could not be confirmed on this page and are not used.</li>
+      <li id="r25">[25] Electronics Cooling. "Thermal Challenges with Wearable and Implantable Electronic Devices in Healthcare" (2023). <a href="https://www.electronics-cooling.com/2023/09/thermal-challenges-with-wearable-and-implantable-electronic-devices-in-healthcare/">electronics-cooling.com/2023/09/thermal-challenges-with-wearable-and-implantable-electronic-devices-in-healthcare</a></li>
+      <li id="r26">[26] Hoolike. "LiFePO4 Batteries in Wearable Tech." <a href="https://hoolike.com/blogs/blog/lifepo4-batteries-in-wearable-tech-powering-the-future-of-healthcare-devices">hoolike.com — LiFePO4 wearable tech article</a> — note: this source describes "reduced risk of overheating," not immunity; see §6 nuance box.</li>
+      <li id="r27">[27] Sunlit Energy. "UL 1642 Certification Guide." <a href="https://sunlithenergy.com/ul-1642-certification/">sunlithenergy.com/ul-1642-certification</a></li>
+      <li id="r28">[28] EverExceed. "Lithium Battery Safety Testing Standard, Part 1" (IEC 62133-2). <a href="https://www.everexceed.com/blog/lithium-battery-safety-testing-standard-part-1_b297">everexceed.com/blog/lithium-battery-safety-testing-standard-part-1</a></li>
+      <li id="r29">[29] Guangdong ESTL Technology (testing lab). IEC 62133-2 thermal abuse test parameters. <a href="https://en.gdestl.com/515.html">en.gdestl.com/515.html</a></li>
+      <li id="r30">[30] JJR Lab. "Lithium Battery IEC/EN 62133 Testing Requirements." <a href="https://www.jjrlab.com/news/lithium-battery-iec-en-62133-testing-requirements.html">jjrlab.com — IEC 62133 testing requirements</a></li>
+      <li id="r31">[31] VRI GmbH Knowledge Base. "UN 38.3." <a href="https://www.vri-gmbh.de/en/vri-knowledge-base/standards-and-regulations/un-383">vri-gmbh.de/en/vri-knowledge-base/standards-and-regulations/un-383</a></li>
+      <li id="r32">[32] Jauch. "UN 38.3 — New Regulations for the Air Transport of Lithium Batteries from 2026." <a href="https://www.jauch.com/blog/en/un-38-3-new-regulations-for-the-air-transport-of-lithium-batteries-from-2026/">jauch.com — UN 38.3 2026 regulation update</a></li>
+      <li id="r33">[33] VRI GmbH Knowledge Base. "UL 2054." <a href="https://www.vri-gmbh.de/en/vri-knowledge-base/standards-and-regulations/ul-2054">vri-gmbh.de/en/vri-knowledge-base/standards-and-regulations/ul-2054</a></li>
+      <li id="r34">[34] Guangdong ESTL Technology (testing lab). UL 2054 Single Fault Condition test. <a href="https://en.gdestl.com/790.html">en.gdestl.com/790.html</a></li>
+    </ol>
+  </div>
+</details>
+
+<footer><div class="wrap"><a class="back-link" href="../index.html">← Index</a></div></footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const el = document.documentElement;
+    document.getElementById('prog').style.width =
+      (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+  });
+
+  (function(){
+    const data = [
+      { label: 'Li-ion (generic ceiling)', lo: 250, hi: 250, color: 'var(--accent)' },
+      { label: 'NMC Li-ion', lo: 150, hi: 220, color: 'var(--good)' },
+      { label: 'LiFePO4', lo: 90, hi: 160, color: 'var(--warn)' },
+      { label: 'NiMH', lo: 60, hi: 120, color: 'var(--bad)' }
+    ];
+    const w = 640, rowH = 46, padL = 150, padR = 60, chartW = w - padL - padR;
+    const maxV = 260;
+    const h = data.length * rowH + 20;
+    let svg = `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
+    data.forEach((d, i) => {
+      const y = i * rowH + 20;
+      const x1 = padL + (d.lo / maxV) * chartW;
+      const x2 = padL + (d.hi / maxV) * chartW;
+      svg += `<text x="${padL - 12}" y="${y + 5}" text-anchor="end" class="barlbl">${d.label}</text>`;
+      svg += `<rect x="${padL}" y="${y - 8}" width="${chartW}" height="16" rx="8" class="bartrack"/>`;
+      svg += `<rect x="${x1}" y="${y - 8}" width="${Math.max(x2 - x1, 4)}" height="16" rx="8" fill="${d.color}"/>`;
+      svg += `<text x="${x2 + 10}" y="${y + 5}" class="barval">${d.lo === d.hi ? d.lo : d.lo + '–' + d.hi} Wh/kg</text>`;
+    });
+    svg += `</svg>`;
+    document.getElementById('energychart').innerHTML = svg;
+  })();
+
+  (function(){
+    const steps = [
+      'Form factor', 'Runtime budget', 'Peak current', 'Thermal / skin budget',
+      'Charge method', 'Cycle-life target', 'Certification scope', 'Shipping / logistics'
+    ];
+    const w = 640, boxH = 34, gap = 12, rowH = boxH + gap, padTop = 10;
+    const h = steps.length * rowH + padTop;
+    let svg = `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
+    steps.forEach((label, i) => {
+      const y = padTop + i * rowH;
+      svg += `<rect x="0" y="${y}" width="${w}" height="${boxH}" rx="8" class="bartrack" stroke="var(--line)" stroke-width="1"/>`;
+      svg += `<circle cx="24" cy="${y + boxH/2}" r="11" fill="var(--accent)"/>`;
+      svg += `<text x="24" y="${y + boxH/2 + 4}" text-anchor="middle" class="barval" fill="var(--bg)" style="font-size:11px">${i+1}</text>`;
+      svg += `<text x="46" y="${y + boxH/2 + 4}" class="barlbl" style="fill:var(--ink);font-size:13px">${label}</text>`;
+      if (i < steps.length - 1) {
+        svg += `<line x1="24" y1="${y + boxH}" x2="24" y2="${y + boxH + gap}" stroke="var(--dim)" stroke-width="2"/>`;
+      }
+    });
+    svg += `</svg>`;
+    document.getElementById('flowchart').innerHTML = svg;
+  })();
+
+  (function(){
+    // Evenly-spaced ordinal positions (not a true linear temperature scale) —
+    // the source values cluster tightly at the low end, so ordinal spacing
+    // keeps every label legible while each point still shows its real °C value.
+    const w = 720, h = 180, padL = 40, padR = 40, axisY = 96;
+    const chartW = w - padL - padR;
+    const marks = [
+      { t: 80,  label: 'Separator\npore closure',        color: 'var(--mut)',  above: false },
+      { t: 120, label: 'SEI\ndecomposition',              color: 'var(--warn)', above: true  },
+      { t: 130, label: 'Electrolyte\ndecomposition',      color: 'var(--warn)', above: false },
+      { t: 200, label: 'Cathode O₂\nrelease',             color: 'var(--bad)',  above: true  },
+      { t: 411, label: 'Overcharge-path\nrunaway peak',   color: 'var(--bad)',  above: false },
+      { t: 516, label: 'Overheat-path\nrunaway peak',     color: 'var(--bad)',  above: true  }
+    ];
+    const step = chartW / (marks.length - 1);
+    let svg = `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
+    svg += `<line x1="${padL}" y1="${axisY}" x2="${w - padR}" y2="${axisY}" stroke="var(--line)" stroke-width="2"/>`;
+    svg += `<text x="${padL}" y="${h - 6}" class="barlbl" style="font-size:10px">increasing severity →</text>`;
+    marks.forEach((m, i) => {
+      const mx = padL + i * step;
+      const lines = m.label.split('\n');
+      svg += `<line x1="${mx}" y1="${axisY - 6}" x2="${mx}" y2="${axisY + 6}" stroke="${m.color}" stroke-width="2"/>`;
+      svg += `<circle cx="${mx}" cy="${axisY}" r="4" fill="${m.color}"/>`;
+      if (m.above) {
+        const numY = axisY - 16;
+        const descBottomY = numY - 16;
+        svg += `<text x="${mx}" y="${numY}" text-anchor="middle" class="barval" style="font-size:11px">${m.t}°C</text>`;
+        lines.forEach((ln, li) => {
+          const y = descBottomY - (lines.length - 1 - li) * 12;
+          svg += `<text x="${mx}" y="${y}" text-anchor="middle" class="barlbl" style="font-size:10px">${ln}</text>`;
+        });
+      } else {
+        const numY = axisY + 26;
+        const descTopY = numY + 16;
+        svg += `<text x="${mx}" y="${numY}" text-anchor="middle" class="barval" style="font-size:11px">${m.t}°C</text>`;
+        lines.forEach((ln, li) => {
+          svg += `<text x="${mx}" y="${descTopY + li * 12}" text-anchor="middle" class="barlbl" style="font-size:10px">${ln}</text>`;
+        });
+      }
+    });
+    svg += `</svg>`;
+    document.getElementById('thermalcascade').innerHTML = svg;
+  })();
+</script>
+</body>
+</html>
