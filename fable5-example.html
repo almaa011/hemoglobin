@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Example Report — Widget Interface Timing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pages/base.css">
+<style>
+  :root { --accent: #5b8cff; }
+</style>
+</head>
+<body>
+<div id="prog"></div>
+
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <a class="back-link" href="index.html">← Index</a>
+    <div class="kicker"><span class="dot"></span> EXAMPLE · TEMPLATE ONLY</div>
+    <h1>Widget Interface <span style="color:var(--accent)">Timing Report</span></h1>
+    <p class="lead">This is a dummy example page demonstrating the required structure, component classes, and writing style for reports on this site. All facts below are placeholder values — do not treat them as real.</p>
+    <p class="mut">2026-07-11</p>
+    <div class="scrolltip"><span class="arr">↓</span> start reading</div>
+  </div>
+</header>
+
+<section id="s1">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">00</span> TL;DR</p>
+    <div class="note">
+      <div class="lbl">KEY FINDING</div>
+      <p><strong>This section is the whole page in miniature.</strong> A reader should be able to stop here and already have the answer. State the conclusion first, in plain language, with the single most important number bolded. Everything after this box is supporting detail — the "why" and the "how deep."</p>
+    </div>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">01</span> Interface Overview</p>
+    <h2>Signal chain at a glance</h2>
+    <p><strong>The widget bus runs at 10 MHz with a 3.3V logic level.</strong> Keep paragraphs to 2–3 sentences — if a fourth sentence is needed, split it or convert to bullets instead.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Example signal path</span>
+        <span class="panel-sub">placeholder diagram</span>
+      </div>
+      <div id="chart1"></div>
+      <p class="panel-cap">Diagrams go inside a <code>.panel</code>, built as an SVG string and injected via <code>innerHTML</code>. Use one when a signal chain or data flow is easier to follow visually than to describe in prose.</p>
+    </div>
+
+    <p>Use bullets whenever a section lists three or more items, steps, or comparisons — don't narrate a list in prose:</p>
+    <ul>
+      <li>Clock line: 10 MHz nominal <span class="ref" title="[1]">[1]</span></li>
+      <li>Data width: 8 bits per frame <span class="ref" title="[1]">[1]</span></li>
+      <li>Max cable length: 2 m before signal degradation <span class="ref" title="[2]">[2]</span></li>
+    </ul>
+
+    <div class="callout">
+      <div class="lbl">FORMULA / CALLOUT</div>
+      <p>Use this box for a derived formula or a rule-of-thumb worth calling out on its own. <code>t_setup = 1 / f_clk</code> is a placeholder example.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">02</span> Spec Comparison</p>
+    <h2>Reading a spec table</h2>
+    <p><strong>Tables beat prose once you're comparing three or more numbers.</strong> Use <code>.good</code>/<code>.warn</code>/<code>.bad</code> on cells to make pass/fail scanning instant.</p>
+
+    <table class="tbl">
+      <tr><th>Parameter</th><th>Min</th><th>Typ</th><th>Max</th><th>Status</th></tr>
+      <tr><td>Clock freq</td><td>8 MHz</td><td>10 MHz</td><td>12 MHz</td><td class="good">OK</td></tr>
+      <tr><td>Setup time</td><td>50 ns</td><td>80 ns</td><td>100 ns</td><td class="warn">Marginal</td></tr>
+      <tr><td>Cable loss</td><td>—</td><td>0.3 dB/m</td><td>0.6 dB/m</td><td class="bad">Exceeded</td></tr>
+    </table>
+
+    <div class="spec-grid">
+      <div class="spec-card"><span class="sc" style="background:var(--good)"></span><div class="sv">10 MHz</div><div class="sl">nominal clock</div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--warn)"></span><div class="sv">80 ns</div><div class="sl">typical setup time</div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--bad)"></span><div class="sv">2 m</div><div class="sl">max cable length</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">03</span> Caveats and Conflicts</p>
+    <h2>Flagging uncertainty and disagreement</h2>
+    <p><strong>Not every finding is clean — say so explicitly.</strong> Use these boxes rather than burying a caveat in a sentence.</p>
+
+    <div class="warn-note">
+      <div class="lbl">WARNING</div>
+      <p>Use this box for a hard limit or failure mode a reader must not miss — e.g. exceeding max cable length causes intermittent bit errors above 8 MHz.</p>
+    </div>
+
+    <div class="conflict">
+      <div class="lbl">CONFLICT</div>
+      <p>Use this box when two sources disagree and you are not silently picking a winner — e.g. Source A lists max cable length as 2 m, Source B as 3 m under different shielding assumptions. Surface it, don't resolve it silently.</p>
+    </div>
+
+    <div class="aside">
+      A pull-quote aside is for a short verbatim excerpt worth setting apart from the surrounding prose — used sparingly.
+    </div>
+  </div>
+</section>
+
+<details class="src">
+  <summary>References <span class="chev">▾</span></summary>
+  <div class="srcbody">
+    <ol>
+      <li id="r1">[1] Example Corp. "Widget Bus Interface Datasheet." 2025. <a href="#">https://example.com/widget-datasheet</a></li>
+      <li id="r2">[2] Example Corp. "Widget Bus Application Note AN-42." 2025. <a href="#">https://example.com/widget-an42</a></li>
+    </ol>
+  </div>
+</details>
+
+<footer><div class="wrap"><a class="back-link" href="index.html">← Index</a></div></footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const el = document.documentElement;
+    document.getElementById('prog').style.width =
+      (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+  });
+
+  document.getElementById('chart1').innerHTML = `
+    <svg viewBox="0 0 600 160">
+      <rect x="20" y="60" width="160" height="40" rx="6" fill="#181219" stroke="rgba(255,255,255,.09)"/>
+      <text x="100" y="85" fill="#e2d8d1" font-size="13" text-anchor="middle" font-family="Space Grotesk">Source</text>
+      <line x1="180" y1="80" x2="260" y2="80" stroke="#5b8cff" stroke-width="2"/>
+      <polygon points="260,74 274,80 260,86" fill="#5b8cff"/>
+      <rect x="280" y="60" width="160" height="40" rx="6" fill="#181219" stroke="rgba(255,255,255,.09)"/>
+      <text x="360" y="85" fill="#e2d8d1" font-size="13" text-anchor="middle" font-family="Space Grotesk">Bus (10 MHz)</text>
+      <line x1="440" y1="80" x2="520" y2="80" stroke="#5b8cff" stroke-width="2"/>
+      <polygon points="520,74 534,80 520,86" fill="#5b8cff"/>
+      <text x="560" y="85" fill="#e2d8d1" font-size="13" font-family="Space Grotesk">Sink</text>
+    </svg>
+  `;
+</script>
+</body>
+</html>
