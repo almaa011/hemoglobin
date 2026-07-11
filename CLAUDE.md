@@ -167,7 +167,7 @@ The end state in every environment is the same: `main` on GitHub contains the fi
 2. **Date** — YYYY-MM-DD
 3. **Summary** — 2–4 sentences: what the page covers and why it matters to someone building hardware
 4. **Back to index** — `<a href="../index.html">← Index</a>`
-5. **TL;DR panel** — immediately after the hero, a `.note` box giving the whole page's conclusion in 3–5 sentences max, before any detail. The reader should be able to stop after this box and already have the answer; everything after is the "why" and the "how deep."
+5. **TL;DR panel** — immediately after the hero, a `.note` box giving the whole page's conclusion in 3–5 sentences max, before any detail. The reader should be able to stop after this box and already have the answer; everything after is the "why" and the "how deep." Its `.lbl` reads **`TL;DR`** (a page-level verdict), which distinguishes it from the in-body `.note` boxes whose `.lbl` reads `KEY FINDING` (a section-level finding). Same component, two labels — do not label the TL;DR box `KEY FINDING`.
 
 ### Writing style
 - Audience: hardware engineer who knows op-amps, ADCs, SPI/I2C, signal chains — but has zero medical background, and has a short attention span — assume they may only read the bolded/boxed content and skim the rest
@@ -195,14 +195,18 @@ Every specific factual claim is marked inline with a low-visual-weight tag so th
 <span class="ref" title="[1]">[1]</span>
 ```
 
-Style this tag so it is visually subtle — small, muted color, no underline — readable as prose but findable when scanning. The actual reference list stays only at the bottom, inside the collapsible block:
+Style this tag so it is visually subtle — small, muted color, no underline — readable as prose but findable when scanning. The `.ref` marker is intentionally **inert** (not a link): the base CSS gives it `cursor: default`, and it exists for visual reference only, so a reader is not meant to click through to the entry. Keep the `title="[N]"` attribute matching the visible `[N]`.
+
+The actual reference list stays only at the bottom, inside the collapsible block. Use the canonical `.src`/`.srcbody` markup below — **do not** use a bare `<details>` with `<ol class="refs">` (those classes are not defined in the base stylesheet and would render unstyled):
 
 ```html
-<details>
-  <summary>References</summary>
-  <ol class="refs">
-    <li id="r1">[1] Author(s). "Title." Source, Year. <a href="...">URL or DOI</a></li>
-  </ol>
+<details class="src">
+  <summary>References <span class="chev">▾</span></summary>
+  <div class="srcbody">
+    <ol>
+      <li id="r1">[1] Author(s). "Title." Source, Year. <a href="...">URL or DOI</a></li>
+    </ol>
+  </div>
 </details>
 ```
 
@@ -245,6 +249,8 @@ All shared styles live in `pages/base.css`. Each page links to it and adds only 
 </style>
 ```
 
+**Choosing `--accent`:** it must stay legible against the dark `--bg` (`#0c0a0d`) — aim for roughly the brightness of the default `#5b8cff` or lighter (a WCAG contrast ratio ≥ 4.5:1 against the background). Do **not** pick a red or amber hue: those collide with the semantic status colors `--good` / `--warn` / `--bad`, so a reader can't tell an accent from a warning.
+
 ### Page skeleton
 
 ```html
@@ -262,6 +268,17 @@ All shared styles live in `pages/base.css`. Each page links to it and adds only 
     <div class="scrolltip"><span class="arr">↓</span> start reading</div>
   </div>
 </header>
+
+<!-- TL;DR panel — required, immediately after the hero, before section 01 -->
+<section id="s0">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">00</span> TL;DR</p>
+    <div class="note">
+      <div class="lbl">TL;DR</div>
+      <p>Whole-page conclusion in 3–5 sentences, before any detail.</p>
+    </div>
+  </div>
+</section>
 
 <section id="s1">
   <div class="wrap">
@@ -287,13 +304,16 @@ All shared styles live in `pages/base.css`. Each page links to it and adds only 
 <script>
   window.addEventListener('scroll', () => {
     const el = document.documentElement;
+    const max = el.scrollHeight - el.clientHeight;
     document.getElementById('prog').style.width =
-      (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+      (max > 0 ? el.scrollTop / max * 100 : 0) + '%';
   });
   /* page-specific chart / SVG code below */
 </script>
 </body>
 ```
+
+**Eyebrow numbering:** numbers are zero-padded two-digit and sequential. The TL;DR panel is `00`; the first content section is `01`; every subsequent section increments by one with no gaps.
 
 ### Component class names — use exactly these, no alternatives
 
@@ -302,11 +322,12 @@ All shared styles live in `pages/base.css`. Each page links to it and adds only 
 | Section eyebrow | `<p class="eyebrow"><span class="n">01</span> Label</p>` |
 | Dark card / diagram panel | `<div class="panel">` — inside use `.panel-hd`, `.panel-title`, `.panel-sub`, `.panel-cap` |
 | Amber callout / formula box | `<div class="callout"><div class="lbl">LABEL</div>…</div>` |
-| Key finding (blue) | `<div class="note"><div class="lbl">KEY FINDING</div>…</div>` |
+| TL;DR panel (blue) | `<div class="note"><div class="lbl">TL;DR</div>…</div>` — page-level, once, right after the hero |
+| Key finding (blue) | `<div class="note"><div class="lbl">KEY FINDING</div>…</div>` — same component, in-body, section-level |
 | Warning / hard limit (red) | `<div class="warn-note"><div class="lbl">WARNING</div>…</div>` |
 | Researcher conflict flag | `<div class="conflict"><div class="lbl">CONFLICT</div>…</div>` |
 | Pull-quote aside | `<div class="aside">…</div>` |
-| Data table | `<table class="tbl">` — use `.good`, `.bad`, `.warn` on cells |
+| Data table | `<table class="tbl"><thead><tr><th>…</thead><tbody>…</tbody></table>` — always use `<thead>`/`<tbody>`; use `.good`, `.bad`, `.warn` on cells |
 | Spec / metric card grid | `<div class="spec-grid"><div class="spec-card"><span class="sc" style="background:COLOR"></span><div class="sv">VALUE</div><div class="sl">label</div></div></div>` |
 | Inline citation marker | `<span class="ref" title="[1]">[1]</span>` |
 | Reference list | `<details class="src"><summary>References <span class="chev">▾</span></summary><div class="srcbody"><ol>…</ol></div></details>` |
