@@ -9,6 +9,11 @@
   NOTE: this file lives at the repo root, so it links pages/base.css and index.html.
   Real pages live in pages/ and must use href="base.css" and href="../index.html"
   exactly as shown in FABLE5.md.
+
+  Sections 03–04 are an INTERACTIVE COMPONENT GALLERY: copyable patterns
+  (slider, bitfield, tabs, copy button, fold, hover chart, canvas, sortable
+  table) that stay within the rules — one inline script block, no external
+  scripts, page-unique classes only.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,6 +22,46 @@
 <style>
   /* Page-specific overrides ONLY — never redefine base.css classes here. */
   :root { --accent: #5b8cff; }
+
+  /* ── gallery-only components (unique classes, not in base.css) ── */
+
+  /* slider calculator row */
+  .ctl-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 14px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--mut); }
+  .ctl-row input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
+  .ctl-val { color: var(--ink); font-weight: 600; min-width: 56px; text-align: right; }
+  .readout { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--ink); }
+
+  /* clickable register bitfield */
+  .bits { display: flex; gap: 6px; margin: 14px 0; flex-wrap: wrap; }
+  .bit { width: 46px; height: 48px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg2); color: var(--mut); font-family: 'JetBrains Mono', monospace; font-size: 14px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; user-select: none; }
+  .bit .bn { font-size: 9px; color: var(--dim); letter-spacing: .04em; }
+  .bit.on { background: rgba(91,140,255,.16); border-color: var(--accent); color: var(--ink); }
+
+  /* tab switcher */
+  .tabbar { display: flex; gap: 8px; margin: 16px 0 0; }
+  .tabbar button { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 8px 8px 0 0; border: 1px solid var(--line); border-bottom: none; background: transparent; color: var(--mut); cursor: pointer; }
+  .tabbar button.act { background: var(--panel); color: var(--ink); border-color: var(--accent); }
+  .tabpane { border: 1px solid var(--line); border-radius: 0 10px 10px 10px; padding: 4px 16px; background: var(--panel); }
+  .tabpane[hidden] { display: none; }
+
+  /* code block with copy button */
+  .codebox { position: relative; background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 14px 46px 14px 16px; margin: 16px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--mut); overflow-x: auto; white-space: pre; }
+  .copy-btn { position: absolute; top: 8px; right: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--mut); cursor: pointer; }
+  .copy-btn:hover { color: var(--ink); border-color: var(--accent); }
+
+  /* collapsible deep-dive */
+  .fold { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); margin: 16px 0; }
+  .fold summary { cursor: pointer; padding: 12px 16px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 14px; list-style: none; }
+  .fold summary::-webkit-details-marker { display: none; }
+  .fold summary::before { content: '▸ '; color: var(--accent); }
+  .fold[open] summary::before { content: '▾ '; }
+  .fold .fold-body { padding: 0 16px 14px; color: var(--mut); font-size: 14px; }
+
+  /* chart hover tooltip + sortable table headers */
+  .chart-wrap { position: relative; }
+  .chart-tip { position: absolute; pointer-events: none; background: var(--bg2); border: 1px solid var(--accent); border-radius: 6px; padding: 4px 9px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink); transform: translate(-50%, -130%); white-space: nowrap; opacity: 0; transition: opacity .12s; z-index: 5; }
+  .tbl th.sortable { cursor: pointer; user-select: none; }
+  .tbl th.sortable:hover { color: var(--ink); }
 </style>
 </head>
 <body>
@@ -29,7 +74,7 @@
     <a class="back-link" href="index.html">← Index</a>
     <div class="kicker"><span class="dot"></span> EXAMPLE · TEMPLATE ONLY</div>
     <h1>Widget Interface <span style="color:var(--accent)">Timing Report</span></h1>
-    <p class="lead">A dummy page demonstrating every required component and readability rule for reports on this site. Every number below is a placeholder — do not treat any of it as real. Copy the structure, not the content.</p>
+    <p class="lead">A dummy page demonstrating every required component, readability rule, and interactive widget pattern for reports on this site. Every number below is a placeholder — do not treat any of it as real. Copy the structure, not the content.</p>
     <p class="mut">2026-07-11</p>
     <div class="scrolltip"><span class="arr">↓</span> start reading</div>
   </div>
@@ -116,9 +161,117 @@
   </div>
 </section>
 
+<!-- ══ INTERACTIVE WIDGET GALLERY — copyable patterns for report pages.
+     Rules kept: all JS in the single bottom script block, no external deps,
+     unique classes defined in this page's <style> only. ══ -->
 <section id="s3">
   <div class="wrap">
-    <p class="eyebrow"><span class="n">03</span> Caveats and Conflicts</p>
+    <p class="eyebrow"><span class="n">03</span> Interactive Widgets</p>
+    <h2>Let the reader turn the knobs</h2>
+    <p><strong>Use an interactive widget when the answer depends on a parameter the reader controls.</strong> A slider that recomputes a number beats a table of twenty precomputed rows.</p>
+
+    <!-- WIDGET: slider calculator — <input type="range"> + live-updated spans (per FABLE5 JS rules) -->
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Cable loss calculator</span>
+        <span class="panel-sub">slider · live readout (placeholder math)</span>
+      </div>
+      <div class="ctl-row">
+        <span>cable length</span>
+        <input type="range" id="lenRange" min="0.5" max="5" step="0.1" value="1.5" aria-label="Cable length in metres">
+        <span class="ctl-val" id="lenVal">1.5 m</span>
+      </div>
+      <p class="readout">estimated loss: <strong id="lossVal">0.45 dB</strong> · <span id="lossStat">within spec</span></p>
+      <p class="panel-cap">Pattern: one <code>input</code> listener recomputes the derived value and flips the status color at the spec limit. Good for any "X vs. limit" relationship.</p>
+    </div>
+
+    <!-- WIDGET: clickable register bitfield — very useful for datasheet register pages -->
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Register bitfield — CTRL0 (placeholder)</span>
+        <span class="panel-sub">click bits to toggle</span>
+      </div>
+      <div class="bits" id="bits"></div>
+      <p class="readout">value: <strong id="bitval">0x00</strong></p>
+      <p class="panel-cap">Pattern: bits render from a name array, clicks toggle state, the hex readout recomputes. Ideal for register-map pages where the reader wants to compose a config value.</p>
+    </div>
+
+    <!-- WIDGET: tab switcher — compare modes without doubling page length -->
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Mode comparison</span>
+        <span class="panel-sub">tabs · same footprint, two contents</span>
+      </div>
+      <div class="tabbar" role="tablist">
+        <button class="act" data-tab="t1" role="tab" aria-selected="true">Fast mode</button>
+        <button data-tab="t2" role="tab" aria-selected="false">Low-power mode</button>
+      </div>
+      <div class="tabpane" id="t1" role="tabpanel"><p>Placeholder: 12 MHz clock, 4 mA drive, full swing. Use tabs when two configurations share a structure and the reader compares them one at a time.</p></div>
+      <div class="tabpane" id="t2" role="tabpanel" hidden><p>Placeholder: 2 MHz clock, 0.8 mA drive, reduced swing. Don't use tabs for content the reader must see side-by-side — that's a table.</p></div>
+      <p class="panel-cap">Tabs hide content from skimmers — keep anything load-bearing (limits, warnings) outside them.</p>
+    </div>
+
+    <!-- WIDGET: copy-to-clipboard code block — for commands/configs the reader will paste -->
+    <div class="codebox"><button class="copy-btn" id="copyBtn" aria-label="Copy command">copy</button><code id="cmdcode">widgetctl --bus 0 --clock 10M --width 8   # placeholder command</code></div>
+
+    <!-- WIDGET: collapsible deep-dive — depth without breaking skimmability -->
+    <details class="fold">
+      <summary>Deep dive: where the 20 ns margin number comes from (placeholder)</summary>
+      <div class="fold-body">
+        <p>Put derivations, register dumps, and long secondary detail in a fold. The section's takeaway must stand without opening it — a fold is for the reader who wants the "how deep," never for the conclusion itself.</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ══ LIVE CHARTS & TABLES — data-driven SVG with hover tooltips, canvas 2D,
+     and a click-to-sort table. All placeholder data. ══ -->
+<section id="s4">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">04</span> Live Charts &amp; Tables</p>
+    <h2>Charts the reader can interrogate</h2>
+    <p><strong>Hover tooltips turn a chart from an illustration into a data source.</strong> Build the SVG from a data array so values live in one place, then attach listeners to the points.</p>
+
+    <!-- WIDGET: SVG line chart with hover tooltips — data array → SVG string → listeners -->
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Bit-error rate vs. cable length</span>
+        <span class="panel-sub">hover the points (placeholder data)</span>
+      </div>
+      <div class="chart-wrap" id="chart2"><div class="chart-tip" id="tip2"></div></div>
+      <p class="panel-cap">Pattern: one <code>DATA</code> array drives point positions, labels, and tooltips — change the data, everything follows.</p>
+    </div>
+
+    <!-- WIDGET: canvas 2D waveform — per FABLE5 JS rules; static render, no animation loop -->
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Eye-diagram sketch</span>
+        <span class="panel-sub">canvas 2D (placeholder waveform)</span>
+      </div>
+      <canvas id="wave" width="600" height="180" style="width:100%;height:auto" aria-label="Placeholder waveform with threshold band"></canvas>
+      <p class="panel-cap">Use canvas over SVG when drawing many strokes (waveforms, noise, scatter clouds). Render once — no animation loops, respecting reduced-motion readers.</p>
+    </div>
+
+    <!-- WIDGET: sortable table — click a header to re-order; numeric-aware -->
+    <h3>Click-to-sort measurement table</h3>
+    <p>Sorting helps once a table passes ~5 rows and readers hunt for the worst case rather than reading in order.</p>
+    <table class="tbl" id="sorttbl">
+      <thead>
+        <tr><th class="sortable" data-col="0">Sample ↕</th><th class="sortable" data-col="1">Length (m) ↕</th><th class="sortable" data-col="2">Loss (dB) ↕</th><th class="sortable" data-col="3">Errors/min ↕</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>unit-A</td><td>1.0</td><td>0.31</td><td>0</td></tr>
+        <tr><td>unit-B</td><td>2.0</td><td>0.62</td><td>2</td></tr>
+        <tr><td>unit-C</td><td>3.5</td><td>1.12</td><td>41</td></tr>
+        <tr><td>unit-D</td><td>1.5</td><td>0.44</td><td>0</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">05</span> Caveats and Conflicts</p>
     <h2>Flagging uncertainty and disagreement</h2>
     <p><strong>Not every finding is clean — say so in a box, never buried mid-sentence.</strong> Each box below has one distinct job.</p>
 
@@ -153,7 +306,7 @@
 <footer><div class="wrap"><a class="back-link" href="index.html">← Index</a></div></footer>
 
 <!-- ══ ONE inline script block at the bottom: scroll-progress snippet first (verbatim,
-     required on every page), then page-specific chart/SVG code. No external scripts. ══ -->
+     required on every page), then page-specific widget/chart code. No external scripts. ══ -->
 <script>
   window.addEventListener('scroll', () => {
     const el = document.documentElement;
@@ -161,6 +314,7 @@
       (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
   });
 
+  /* ── 01: signal-path diagram (SVG string → innerHTML) ── */
   document.getElementById('chart1').innerHTML = `
     <svg viewBox="0 0 600 160" role="img" aria-label="Placeholder signal path: source to bus to sink">
       <rect x="20" y="60" width="160" height="40" rx="6" fill="#181219" stroke="rgba(255,255,255,.09)"/>
@@ -171,9 +325,124 @@
       <text x="360" y="85" fill="#e2d8d1" font-size="13" text-anchor="middle" font-family="Space Grotesk">Bus (10 MHz)</text>
       <line x1="440" y1="80" x2="520" y2="80" stroke="#5b8cff" stroke-width="2"/>
       <polygon points="520,74 534,80 520,86" fill="#5b8cff"/>
-      <text x="560" y="85" fill="#e2d8d1" font-size="13" text-anchor="middle" font-family="Space Grotesk">Sink</text>
+      <text x="560" y="85" fill="#e2d8d1" font-size="13" font-family="Space Grotesk">Sink</text>
     </svg>
   `;
+
+  /* ── 03: slider calculator — placeholder: loss = length × 0.3 dB/m, limit 0.6 dB ── */
+  const lenRange = document.getElementById('lenRange');
+  const updLoss = () => {
+    const m = parseFloat(lenRange.value);
+    const loss = m * 0.3;
+    document.getElementById('lenVal').textContent = m.toFixed(1) + ' m';
+    document.getElementById('lossVal').textContent = loss.toFixed(2) + ' dB';
+    const stat = document.getElementById('lossStat');
+    if (loss <= 0.6)      { stat.textContent = 'within spec';   stat.style.color = 'var(--good)'; }
+    else if (loss <= 0.9) { stat.textContent = 'marginal';      stat.style.color = 'var(--warn)'; }
+    else                  { stat.textContent = 'exceeds spec';  stat.style.color = 'var(--bad)';  }
+  };
+  lenRange.addEventListener('input', updLoss);
+  updLoss();
+
+  /* ── 03: register bitfield — names indexed bit7…bit0, click toggles, hex recomputes ── */
+  const BITNAMES = ['EN','IRQ','FST','LPB','CK1','CK0','PA1','PA0'];   // placeholder
+  const bitsEl = document.getElementById('bits');
+  BITNAMES.forEach((name, i) => {
+    const b = document.createElement('button');
+    b.className = 'bit'; b.type = 'button';
+    b.innerHTML = (7 - i) + '<span class="bn">' + name + '</span>';
+    b.addEventListener('click', () => { b.classList.toggle('on'); updBits(); });
+    bitsEl.appendChild(b);
+  });
+  function updBits() {
+    let v = 0;
+    bitsEl.querySelectorAll('.bit').forEach((b, i) => { if (b.classList.contains('on')) v |= 1 << (7 - i); });
+    document.getElementById('bitval').textContent =
+      '0x' + v.toString(16).toUpperCase().padStart(2, '0') + ' · 0b' + v.toString(2).padStart(8, '0');
+  }
+  updBits();
+
+  /* ── 03: tabs ── */
+  document.querySelectorAll('.tabbar button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tabbar button').forEach(b => { b.classList.remove('act'); b.setAttribute('aria-selected', 'false'); });
+      document.querySelectorAll('.tabpane').forEach(p => p.hidden = true);
+      btn.classList.add('act'); btn.setAttribute('aria-selected', 'true');
+      document.getElementById(btn.dataset.tab).hidden = false;
+    });
+  });
+
+  /* ── 03: copy button ── */
+  document.getElementById('copyBtn').addEventListener('click', async (e) => {
+    try { await navigator.clipboard.writeText(document.getElementById('cmdcode').textContent); } catch {}
+    e.target.textContent = 'copied ✓';
+    setTimeout(() => { e.target.textContent = 'copy'; }, 1400);
+  });
+
+  /* ── 04: SVG line chart with hover tooltips — one data array drives everything ── */
+  const DATA = [   // placeholder measurements: [length m, errors/min]
+    [0.5, 0], [1.0, 0], [1.5, 0], [2.0, 2], [2.5, 8], [3.0, 19], [3.5, 41], [4.0, 77]
+  ];
+  const W = 600, H = 200, PAD = 38;
+  const xOf = v => PAD + (v - 0.5) / 3.5 * (W - 2 * PAD);
+  const yOf = v => H - PAD - (v / 80) * (H - 2 * PAD);
+  let path = DATA.map((d, i) => (i ? 'L' : 'M') + xOf(d[0]).toFixed(1) + ',' + yOf(d[1]).toFixed(1)).join(' ');
+  let svg2 = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Placeholder chart: errors per minute versus cable length">
+    <line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" stroke="rgba(255,255,255,.15)"/>
+    <line x1="${PAD}" y1="${PAD}" x2="${PAD}" y2="${H-PAD}" stroke="rgba(255,255,255,.15)"/>
+    <line x1="${xOf(2)}" y1="${PAD}" x2="${xOf(2)}" y2="${H-PAD}" stroke="#f0a24b" stroke-dasharray="4 4"/>
+    <text x="${xOf(2)+5}" y="${PAD+12}" fill="#f0a24b" font-size="10" font-family="JetBrains Mono">2 m spec limit</text>
+    <path d="${path}" fill="none" stroke="#5b8cff" stroke-width="2"/>
+    ${DATA.map(d => `<circle cx="${xOf(d[0]).toFixed(1)}" cy="${yOf(d[1]).toFixed(1)}" r="5" fill="#0c0a0d" stroke="#5b8cff" stroke-width="2" data-m="${d[0]}" data-e="${d[1]}" style="cursor:crosshair"/>`).join('')}
+    <text x="${W/2}" y="${H-8}" fill="#7e716c" font-size="10" text-anchor="middle" font-family="JetBrains Mono">cable length (m)</text>
+    <text x="12" y="${H/2}" fill="#7e716c" font-size="10" text-anchor="middle" font-family="JetBrains Mono" transform="rotate(-90 12 ${H/2})">errors/min</text>
+  </svg>`;
+  const wrap2 = document.getElementById('chart2');
+  wrap2.insertAdjacentHTML('beforeend', svg2);
+  const tip2 = document.getElementById('tip2');
+  wrap2.querySelectorAll('circle[data-m]').forEach(c => {
+    c.addEventListener('mouseenter', () => {
+      const cr = c.getBoundingClientRect(), wr = wrap2.getBoundingClientRect();
+      tip2.style.left = (cr.left - wr.left + cr.width / 2) + 'px';
+      tip2.style.top  = (cr.top  - wr.top) + 'px';
+      tip2.textContent = c.dataset.m + ' m → ' + c.dataset.e + ' err/min';
+      tip2.style.opacity = 1;
+    });
+    c.addEventListener('mouseleave', () => { tip2.style.opacity = 0; });
+  });
+
+  /* ── 04: canvas waveform — static render, no animation loop ── */
+  const cv = document.getElementById('wave'), ctx = cv.getContext('2d');
+  ctx.fillStyle = '#100d11'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.strokeStyle = 'rgba(240,162,75,.35)';                       // threshold band
+  ctx.setLineDash([4, 4]);
+  [70, 110].forEach(y => { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cv.width, y); ctx.stroke(); });
+  ctx.setLineDash([]);
+  for (let t = 0; t < 24; t++) {                                   // overlaid placeholder traces
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(91,140,255,' + (0.05 + 0.03 * Math.random()) + ')';
+    for (let x = 0; x <= cv.width; x += 4) {
+      const y = 90 + 60 * Math.tanh(3 * Math.sin(x / 48 + t)) + (Math.random() - 0.5) * 14;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  /* ── 04: sortable table — numeric-aware, toggles asc/desc ── */
+  document.querySelectorAll('#sorttbl th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = +th.dataset.col, tb = document.querySelector('#sorttbl tbody');
+      const asc = th.dataset.dir !== 'asc';
+      document.querySelectorAll('#sorttbl th').forEach(h => delete h.dataset.dir);
+      th.dataset.dir = asc ? 'asc' : 'desc';
+      [...tb.rows].sort((a, b) => {
+        const x = a.cells[col].textContent, y = b.cells[col].textContent;
+        const nx = parseFloat(x), ny = parseFloat(y);
+        const cmp = isNaN(nx) || isNaN(ny) ? x.localeCompare(y) : nx - ny;
+        return asc ? cmp : -cmp;
+      }).forEach(r => tb.appendChild(r));
+    });
+  });
 </script>
 </body>
 </html>

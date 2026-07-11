@@ -1,6 +1,6 @@
 # FABLE5 Template Review Report
 
-Date: 2026-07-11
+Date: 2026-07-11 (updated same day with the interactive component gallery, §5)
 Scope: `fable5-example.html` (improved in place) and `FABLE5.md` (reviewed, not modified).
 All content in the example remains generic placeholder material — no real specs were invented or presented as sourced.
 
@@ -94,8 +94,30 @@ CI runs `lint:pages` as blocking and `lint:links` + `pa11y` as advisory. The Cla
 
 ---
 
-## 4. Summary
+## 4. Interactive component gallery (second pass)
 
-- `fable5-example.html` now demonstrates every FABLE5.md rule (including the previously missing plain-English-lead-in, in-paragraph bolded number, in-body KEY FINDING, prose citations, and `h3`), is annotated as a self-teaching template, and documents its own root-vs-`pages/` path deviation. All content remains placeholder.
+Sections 03–04 of `fable5-example.html` now form a gallery of interactive widgets that report-writing agents can copy directly. Every one stays inside FABLE5's constraints: all JS in the single bottom `<script>` block, zero external scripts, and only page-unique classes defined in the page's own `<style>` block (nothing in `base.css` is redefined). All data is placeholder. Each pattern was verified working in headless Chromium (slider recompute, bit toggling → hex readout, tab switching, tooltip content, both sort directions, canvas pixel output).
+
+| Widget | Pattern | When an agent should use it |
+|---|---|---|
+| **Slider calculator** (`.ctl-row`) | `input[type=range]` + one `input` listener recomputing derived spans, status text flips `--good`/`--warn`/`--bad` at the spec limit | Any "X vs. limit" relationship — replaces a table of precomputed rows |
+| **Register bitfield** (`.bits`/`.bit`) | Bits rendered from a name array; clicks toggle state; hex + binary readout recomputes | Register-map/datasheet pages where the reader composes a config value |
+| **Tab switcher** (`.tabbar`/`.tabpane`) | Buttons with `data-tab`, `hidden` panes, `aria-selected` maintained | Two configurations sharing a structure, compared one at a time — never for load-bearing warnings (tabs hide content from skimmers, and the page says so) |
+| **Copy-to-clipboard code block** (`.codebox`/`.copy-btn`) | `navigator.clipboard.writeText` with graceful failure, transient "copied ✓" feedback | Commands/configs the reader will paste into a terminal |
+| **Collapsible deep-dive** (`.fold`) | Native `<details>` styled to match the site; no JS at all | Derivations and long secondary detail; the section takeaway must stand without opening it |
+| **SVG chart with hover tooltips** (`.chart-wrap`/`.chart-tip`) | One `DATA` array drives point positions, labels, and tooltips; listeners on `circle[data-*]` position an absolutely-placed tip div | Measurement series where the reader wants exact values, not just the shape — includes an annotated spec-limit line |
+| **Canvas 2D waveform** | Static single render (overlaid traces + threshold band), no animation loop | Many-stroke drawings (eye diagrams, noise, scatter clouds) where SVG would bloat; static render respects reduced-motion readers |
+| **Sortable table** (`.tbl th.sortable`) | Click-to-sort, numeric-aware with string fallback, asc/desc toggle | Tables past ~5 rows where readers hunt for the worst case |
+
+Two conventions worth promoting into FABLE5.md if these patterns recur across pages:
+
+1. **Interactivity placement rule** — interactive widgets live inside a `.panel` with a `.panel-cap` explaining the pattern, and anything load-bearing (limits, conclusions) must also exist as static text, since tooltips/tabs/folds are invisible to skimmers and to print.
+2. **Class promotion path** — once two or more real pages copy a gallery class (e.g. `.fold`, `.ctl-row`), move it into `base.css` rather than letting each page carry a diverging copy. Until then, page-local definitions keep base.css stable.
+
+---
+
+## 5. Summary
+
+- `fable5-example.html` now demonstrates every FABLE5.md rule (including the previously missing plain-English-lead-in, in-paragraph bolded number, in-body KEY FINDING, prose citations, and `h3`), is annotated as a self-teaching template, documents its own root-vs-`pages/` path deviation, and ships an eight-widget interactive component gallery (§4) verified in headless Chromium. All content remains placeholder.
 - FABLE5.md has one outright contradiction (two reference-list markups), one omission (TL;DR missing from the skeleton), and a set of smaller ambiguities (labels, numbering, `.ref` semantics, accent color, lintable-vs-editorial rules) listed in §2 with concrete fixes.
 - Enforcement is best served by a small repo-specific lint script + `html-validate` as the blocking layer, `lychee`/`pa11y` as advisory layers, and a Claude Code skill + hook to make the standard self-applying during agent sessions.
