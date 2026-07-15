@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Active Electrodes for EEG with the ADS1299 — Circuit &amp; Why</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+  <style>
+    :root { --accent: #4ecabf; }
+    .schem { background: #0a0f0f; border: 1px solid var(--line); border-radius: 12px; padding: 8px; margin: 6px 0; }
+    .schem text { font-family: 'JetBrains Mono', monospace; }
+    .pinrow { display: grid; grid-template-columns: 130px 1fr; gap: 10px 16px; margin: 18px 0; font-size: 14px; }
+    .pinrow .pn { font-family: 'JetBrains Mono', monospace; color: var(--accent); }
+    .pinrow .pd { color: #e2d8d1; }
+    .pinrow > div { padding: 8px 0; border-bottom: 1px solid var(--line2); }
+    .chain-row { display: flex; align-items: center; gap: 0; margin: 16px 0; flex-wrap: wrap; }
+    .chain-box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 13px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--mut); white-space: nowrap; }
+    .chain-box.hi { border-color: var(--accent); color: var(--accent); }
+    .chain-box.bad { border-color: var(--bad); color: var(--bad); }
+    .chain-arr { color: var(--dim); padding: 0 7px; font-size: 14px; }
+    .formula-block { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; margin: 16px 0; line-height: 1.9; }
+    .formula-block .comment { color: var(--dim); font-size: 12px; }
+  </style>
+</head>
+<body>
+<div id="prog"></div>
+
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+    <div class="kicker"><span class="dot"></span> EEG · ADS1299 · ELECTRODE FRONT-END</div>
+    <h1>Active Electrodes <span style="color:var(--accent)">for the ADS1299</span></h1>
+    <p class="lead">An active electrode is nothing more than a unity-gain op-amp buffer sitting <em>at</em> the electrode, before the cable. This page shows the exact circuit, wires it into the ADS1299's inputs pin-by-pin, and explains why every part — the bias resistor, the driven guard, the low-bias-current op-amp — has to be there.</p>
+    <p class="mut">2026-07-14</p>
+    <div class="scrolltip"><span class="arr">↓</span> start reading</div>
+  </div>
+</header>
+
+<!-- ── TL;DR ── -->
+<section id="tldr">
+  <div class="wrap">
+    <div class="note">
+      <div class="lbl">TL;DR</div>
+      <p style="margin:6px 0 0">An <strong>active electrode = a unity-gain buffer op-amp mounted on the electrode</strong>. It converts a high, unstable source impedance (a dry contact can be ~10 MΩ <span class="ref" title="[10]">[10]</span>) into a low output impedance of a few ohms, so the cable run to the ADS1299 stops picking up mains hum and motion artifact.</p>
+      <p style="margin:10px 0 0">Wire it as a non-inverting follower: electrode → op-amp <code>+</code> input, output → back to <code>−</code> input <em>and</em> down the cable to an ADS1299 <code>INxP</code> pin. Add a <strong>high-value DC bias resistor (MΩ–GΩ) from the <code>+</code> input to the reference</strong> — without it the op-amp's input bias current has no return path, charges the electrode, and the output rails. <span class="ref" title="[13]">[13]</span></p>
+      <p style="margin:10px 0 0">Pick an op-amp with <strong>very low input bias current</strong> (sub-pA to single-digit pA — OPA2376, OPA378, TLC272) so it doesn't create DC drift into the electrode. <span class="ref" title="[4]">[4]</span><span class="ref" title="[7]">[7]</span> Honest caveat: with <em>wet</em> Ag/AgCl electrodes and short cables the ADS1299 alone already rivals lab gear <span class="ref" title="[8]">[8]</span>, and at least one bench test found active electrodes barely changed the recorded signal <span class="ref" title="[11]">[11]</span> — the payoff is real mainly for <strong>dry / high-impedance electrodes and long or moving cables</strong>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Section 1: The problem ── -->
+<section id="s1">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">01</span> The problem</p>
+    <h2>Why a wire from a scalp electrode is a bad antenna</h2>
+
+    <p><strong>The electrode is a high-impedance source, and high-impedance sources make cables act like antennas.</strong></p>
+
+    <p>Model the electrode–skin contact as a voltage source (your µV-level EEG) behind a series impedance. A wet Ag/AgCl contact is roughly 10 kΩ; a <strong>dry electrode is 100–1000× worse, around 10 MΩ</strong>. <span class="ref" title="[10]">[10]</span></p>
+
+    <p>Now the cable from that node to the amplifier has capacitance to everything around it — mains wiring, your body, the air. That stray capacitance forms a divider and a current-injection path.</p>
+
+    <div class="callout">
+      <div class="lbl">THE MECHANISM</div>
+      <p style="margin:6px 0 0">Two things go wrong when source impedance is high and it sits behind a long cable:</p>
+      <ul style="margin:8px 0 0">
+        <li><strong>Interference pickup</strong> — 50/60 Hz displacement current from mains couples into the high-impedance node; the higher the impedance, the bigger the resulting voltage.</li>
+        <li><strong>Motion artifact</strong> — cable flexing changes its stray capacitance; that modulates the signal because the source can't "stiffly" drive the line.</li>
+        <li><strong>CMRR collapse</strong> — the ADS1299's −110 dB CMRR <span class="ref" title="[1]">[1]</span> assumes matched source impedances. Two electrodes with different, drifting MΩ impedances unbalance the inputs and convert common-mode hum into differential error.</li>
+      </ul>
+    </div>
+
+    <p class="mut" style="font-size:14px">Plain version: a microvolt signal coming out of a 10 MΩ source down a wobbling cable is almost impossible to keep clean. You want to fix that <em>at the electrode</em>, before the wire.</p>
+  </div>
+</section>
+
+<!-- ── Section 2: What an active electrode is ── -->
+<section id="s2">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">02</span> The idea</p>
+    <h2>Put a buffer on the electrode</h2>
+
+    <p><strong>An active electrode locally buffers the µV EEG signal right at the scalp, before any cabling.</strong> <span class="ref" title="[18]">[18]</span></p>
+
+    <p>The fix is an <strong>impedance converter</strong>: a unity-gain op-amp follower physically mounted on the electrode. Its <code>+</code> input sees the huge source impedance; its output is a stiff, low-impedance copy of that same voltage — same volts, but now able to drive a cable.</p>
+
+    <div class="chain-row">
+      <span class="chain-box bad">Electrode ~10 MΩ</span>
+      <span class="chain-arr">→</span>
+      <span class="chain-box hi">×1 buffer</span>
+      <span class="chain-arr">→</span>
+      <span class="chain-box">Zout ≈ few Ω</span>
+      <span class="chain-arr">→</span>
+      <span class="chain-box">cable</span>
+      <span class="chain-arr">→</span>
+      <span class="chain-box">ADS1299 INxP</span>
+    </div>
+
+    <div class="note">
+      <div class="lbl">KEY FINDING</div>
+      <p style="margin:6px 0 0">The gain is <strong>×1 — it does not amplify voltage</strong>. Its entire job is to transform impedance. The published review of wearable EEG active electrodes puts it plainly: "the low output impedance of an AE mitigates cable motion artifacts, thus enabling the use of high-impedance dry electrodes." <span class="ref" title="[18]">[18]</span> (General engineering knowledge: a follower's low <code>Zout</code> means stray cable capacitance is charged by the op-amp, not by your fragile electrode node.)</p>
+    </div>
+
+    <p>Some designs add a small gain or a high-pass, but the canonical active electrode — OpenEEG, OpenBCI, and most DIY builds — is a <strong>unity-gain follower with a driven guard</strong>. <span class="ref" title="[6]">[6]</span></p>
+  </div>
+</section>
+
+<!-- ── Section 3: The circuit ── -->
+<section id="s3">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">03</span> The circuit</p>
+    <h2>The full schematic, part by part</h2>
+
+    <p><strong>Four things live on the electrode: the buffer, a DC bias resistor, a driven guard/shield, and power.</strong> Here is how they connect.</p>
+
+    <div class="panel">
+      <div class="panel-hd"><span class="panel-title">One active electrode → one ADS1299 channel</span><span class="panel-sub">non-inverting unity-gain buffer</span></div>
+      <div class="schem">
+        <svg viewBox="0 0 760 400" role="img" aria-label="Active electrode buffer schematic connected to the ADS1299">
+          <defs>
+            <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+              <path d="M0,0 L8,4.5 L0,9 z" fill="#4ecabf"/>
+            </marker>
+          </defs>
+          <!-- scalp / electrode -->
+          <text x="20" y="30" fill="#a8978f" font-size="12">SCALP / SKIN</text>
+          <path d="M20,44 Q70,34 120,44" stroke="#7e716c" stroke-width="2" fill="none"/>
+          <rect x="52" y="44" width="36" height="12" rx="2" fill="#181219" stroke="#4ecabf" stroke-width="1.5"/>
+          <text x="70" y="53" fill="#4ecabf" font-size="9" text-anchor="middle">EEG µV</text>
+          <!-- source impedance -->
+          <line x1="70" y1="56" x2="70" y2="86" stroke="#7e716c" stroke-width="2"/>
+          <rect x="52" y="86" width="36" height="40" rx="3" fill="none" stroke="#ff5a52" stroke-width="1.5"/>
+          <text x="70" y="103" fill="#ff5a52" font-size="9" text-anchor="middle">Zsrc</text>
+          <text x="70" y="116" fill="#ff5a52" font-size="9" text-anchor="middle">~10MΩ</text>
+          <line x1="70" y1="126" x2="70" y2="170" stroke="#7e716c" stroke-width="2"/>
+          <!-- node to opamp + -->
+          <line x1="70" y1="170" x2="210" y2="170" stroke="#7e716c" stroke-width="2"/>
+          <circle cx="130" cy="170" r="3.5" fill="#7e716c"/>
+          <!-- bias resistor down to ref -->
+          <line x1="130" y1="170" x2="130" y2="215" stroke="#7e716c" stroke-width="2"/>
+          <rect x="112" y="215" width="36" height="42" rx="3" fill="none" stroke="#f0a24b" stroke-width="1.5"/>
+          <text x="130" y="233" fill="#f0a24b" font-size="9" text-anchor="middle">Rbias</text>
+          <text x="130" y="246" fill="#f0a24b" font-size="9" text-anchor="middle">MΩ–GΩ</text>
+          <line x1="130" y1="257" x2="130" y2="300" stroke="#7e716c" stroke-width="2"/>
+          <line x1="100" y1="300" x2="160" y2="300" stroke="#7e716c" stroke-width="2"/>
+          <text x="168" y="304" fill="#a8978f" font-size="10">REF (mid-supply / body)</text>
+          <!-- op amp triangle -->
+          <path d="M210,145 L210,220 L280,182.5 z" fill="#0c0a0d" stroke="#4ecabf" stroke-width="1.8"/>
+          <text x="222" y="178" fill="#4ecabf" font-size="12">+</text>
+          <text x="222" y="205" fill="#a8978f" font-size="12">−</text>
+          <text x="238" y="187" fill="#e2d8d1" font-size="9">×1</text>
+          <!-- + input arrow -->
+          <line x1="210" y1="170" x2="210" y2="170" stroke="#7e716c"/>
+          <!-- output node -->
+          <line x1="280" y1="182.5" x2="330" y2="182.5" stroke="#4ecabf" stroke-width="2" marker-end="url(#ah)"/>
+          <circle cx="305" cy="182.5" r="3.5" fill="#4ecabf"/>
+          <!-- feedback to - input -->
+          <path d="M305,182.5 L305,240 L195,240 L195,205 L210,205" stroke="#4ecabf" stroke-width="1.5" fill="none"/>
+          <text x="228" y="253" fill="#7e716c" font-size="9">feedback (unity gain)</text>
+          <!-- guard branch -->
+          <path d="M305,182.5 L305,120 L360,120" stroke="#5b8cff" stroke-width="1.5" fill="none" stroke-dasharray="4 3"/>
+          <text x="312" y="112" fill="#5b8cff" font-size="9">drives GUARD / shield →</text>
+          <!-- cable -->
+          <rect x="335" y="150" width="150" height="66" rx="6" fill="none" stroke="#5b8cff" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <text x="410" y="145" fill="#5b8cff" font-size="9" text-anchor="middle">shielded cable</text>
+          <line x1="330" y1="182.5" x2="500" y2="182.5" stroke="#4ecabf" stroke-width="2"/>
+          <text x="410" y="176" fill="#4ecabf" font-size="9" text-anchor="middle">buffered signal, Zout≈Ω</text>
+          <!-- power rails down cable -->
+          <line x1="335" y1="300" x2="500" y2="300" stroke="#f0a24b" stroke-width="1.5"/>
+          <line x1="335" y1="320" x2="500" y2="320" stroke="#f0a24b" stroke-width="1.5"/>
+          <text x="345" y="294" fill="#f0a24b" font-size="9">+2.5V →</text>
+          <text x="345" y="336" fill="#f0a24b" font-size="9">−2.5V →</text>
+          <text x="250" y="300" fill="#f0a24b" font-size="9">op-amp</text>
+          <text x="250" y="312" fill="#f0a24b" font-size="9">power</text>
+          <!-- ADS1299 block -->
+          <rect x="560" y="120" width="180" height="200" rx="10" fill="#100d11" stroke="#4ecabf" stroke-width="1.8"/>
+          <text x="650" y="150" fill="#f2ebe6" font-size="14" text-anchor="middle" font-weight="600">ADS1299</text>
+          <text x="650" y="167" fill="#7e716c" font-size="9" text-anchor="middle">8-ch AFE + PGA + ADC</text>
+          <line x1="500" y1="182.5" x2="560" y2="182.5" stroke="#4ecabf" stroke-width="2" marker-end="url(#ah)"/>
+          <text x="530" y="176" fill="#4ecabf" font-size="10" text-anchor="middle">INxP</text>
+          <rect x="575" y="195" width="150" height="26" rx="4" fill="none" stroke="#4ecabf" stroke-width="1"/>
+          <text x="650" y="212" fill="#4ecabf" font-size="10" text-anchor="middle">MUX → PGA(1–24) → ADC</text>
+          <text x="575" y="245" fill="#a8978f" font-size="9">SRB1/SRB2 — shared reference</text>
+          <text x="575" y="262" fill="#a8978f" font-size="9">BIAS (RLD) — common-mode</text>
+          <text x="575" y="279" fill="#a8978f" font-size="9">AVDD/AVSS · DVDD/GND</text>
+          <line x1="500" y1="300" x2="560" y2="300" stroke="#f0a24b" stroke-width="1.5"/>
+          <line x1="500" y1="320" x2="560" y2="320" stroke="#f0a24b" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <p class="panel-cap">The buffer (teal) sits on the electrode. The DC bias resistor (amber) gives input bias current a path to the reference. The op-amp output does double duty: it feeds the cable to <code>INxP</code> and drives the cable guard/shield (blue, dashed) so the shield tracks the signal. Power for the op-amp is carried down the same cable from the board's ±2.5 V rails.</p>
+    </div>
+
+    <h3>Component by component — and why it's there</h3>
+
+    <div class="pinrow">
+      <div class="pn">The buffer</div>
+      <div class="pd">Non-inverting op-amp with output tied straight back to its <code>−</code> input → gain = ×1. Turns ~10 MΩ source impedance into a few ohms of output impedance. This is the whole point of the circuit.</div>
+      <div class="pn">Rbias</div>
+      <div class="pd">High-value resistor (megohms to gigohms) from the <code>+</code> input to the reference. <strong>Mandatory.</strong> An op-amp <code>+</code> input still sinks/sources a tiny bias current; the DC-blocking electrode interface can't supply it, so without Rbias that current charges the interface and the output drifts to the rail. <span class="ref" title="[13]">[13]</span> One published interface uses a 1 kΩ input R plus a 1 MΩ resistor for a ~10 MΩ input impedance. <span class="ref" title="[16]">[16]</span></div>
+      <div class="pn">Driven guard</div>
+      <div class="pd">The op-amp output also drives the cable shield (and a guard ring around the input trace). Because the shield sits at the <em>same</em> voltage as the signal, the input-to-shield capacitance sees 0 V across it and effectively disappears — no charging current, so the high-impedance node stays fast and quiet. <span class="ref" title="[6]">[6]</span> (Classic guarding technique.)</div>
+      <div class="pn">Power</div>
+      <div class="pd">The op-amp needs supply rails at the electrode. OpenBCI runs a shielded 3-wire cable — signal, +2.5 V, −2.5 V — powering the buffer from the board rails, with the shield to GND. <span class="ref" title="[6]">[6]</span></div>
+    </div>
+
+    <div class="warn-note">
+      <div class="lbl">WHERE TO TAP POWER</div>
+      <p style="margin:6px 0 0">OpenBCI's community build powers the buffers from <code>AVDD/AVSS</code> (±2.5 V) <span class="ref" title="[6]">[6]</span>, but experienced builders warn against it: "any noise back-coupled from the active into AVDD/AVSS will show up on all channels" — they recommend powering from <code>DVDD/GND</code> instead. <span class="ref" title="[7]">[7]</span> The buffer's own supply current is a noise source; keep it off the analog rails your ADC references.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Section 4: DC bias path deep dive ── -->
+<section id="s4">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">04</span> The one that bites you</p>
+    <h2>Why the bias resistor is non-negotiable</h2>
+
+    <p><strong>Skip the DC bias path and your active electrode works for a minute, then saturates.</strong></p>
+
+    <p>An op-amp input draws a small bias current, <code>Ib</code>. The electrode–skin interface is capacitive (it blocks DC). So that bias current has nowhere to go except <em>into</em> the interface capacitance, charging it up like a slow integrator.</p>
+
+    <div class="formula-block">
+      dV/dt = Ib / Cinterface
+      <br><span class="comment">// bias current with no DC return path → voltage ramps until the output rails</span>
+    </div>
+
+    <p>The classic study measured exactly this — drift scales directly with the op-amp's bias current: <span class="ref" title="[12]">[12]</span></p>
+
+    <table class="tbl">
+      <thead><tr><th>Op-amp</th><th>Input bias current</th><th>Baseline drift @ 60 min</th></tr></thead>
+      <tbody>
+        <tr><td>µA741</td><td class="bad">20 nA</td><td class="bad">28 %</td></tr>
+        <tr><td>LF356</td><td class="warn">3 pA</td><td class="warn">9 %</td></tr>
+        <tr><td>AD523</td><td class="good">0.25 pA</td><td class="good">2 %</td></tr>
+      </tbody>
+    </table>
+
+    <p>Two defenses, used together:</p>
+    <ul>
+      <li><strong>Give the current a path</strong> — Rbias from the <code>+</code> input to a stable reference. Now Ib flows through Rbias instead of the electrode. The trade-off: Rbias sets the input impedance and adds thermal noise, so it wants to be as large as tolerable (MΩ–GΩ).</li>
+      <li><strong>Pick a low-Ib op-amp</strong> — sub-pA to single-digit pA so there's barely any current to deal with in the first place (see the op-amp table below).</li>
+    </ul>
+
+    <div class="conflict">
+      <div class="lbl">CONFLICT — surfaced, not resolved</div>
+      <p style="margin:6px 0 0"><strong>Does an active electrode actually help an ADS1299 rig?</strong> The wearable-EEG review and several papers say yes — local buffering enables dry/high-impedance electrodes and cuts cable artifact. <span class="ref" title="[18]">[18]</span> The ADS1299's own 300 pA bias and ~1 GΩ DC input impedance are "small… may not be suitable for dry passive electrodes." <span class="ref" title="[19]">[19]</span> <em>But</em> one OpenBCI bench test found active electrodes dropped measured contact impedance from ~40 kΩ to ~4 kΩ yet left the recorded signal and 50 Hz noise "roughly the same… probably not enough to warrant the extra costs." <span class="ref" title="[11]">[11]</span> And the ADS1299 with <em>wet</em> Ag/AgCl electrodes already matches lab-grade systems below 40 Hz. <span class="ref" title="[8]">[8]</span></p>
+      <p style="margin:10px 0 0"><strong>Reading:</strong> the payoff is real for <em>dry / high-impedance electrodes and long or moving cables</em>. For wet electrodes on short leads, the ADS1299 alone is usually enough — both results can be true.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Section 5: Connecting into the ADS1299 ── -->
+<section id="s5">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">05</span> Into the AFE</p>
+    <h2>Wiring the buffer output into the ADS1299</h2>
+
+    <p><strong>The buffer output is just a low-impedance voltage — it lands on a normal channel input pin; the ADS1299's shared reference and bias pins do the rest.</strong></p>
+
+    <div class="pinrow">
+      <div class="pn">INxP / INxN</div>
+      <div class="pd">The buffered signal drives the positive input of a channel. The other input is either a second active electrode (differential pair) or the shared reference via SRB.</div>
+      <div class="pn">SRB1 / SRB2</div>
+      <div class="pd">Shared-reference-buffer pins routed to <em>all eight</em> channels' MUXes. <span class="ref" title="[1]">[1]</span> Tie SRB1 to your reference electrode to make every channel a measurement against that common reference — the usual "referential montage" EEG wiring.</div>
+      <div class="pn">BIAS (RLD)</div>
+      <div class="pd">The on-chip bias/right-leg-drive amplifier senses the common-mode from selected channels and injects an inverted copy back into a body electrode to cancel mains hum. <span class="ref" title="[17]">[17]</span> The EEG-FE board uses Rf = 392 kΩ, Cf = 10 nF, Rp = 4.99 kΩ in its RLD feedback. <span class="ref" title="[3]">[3]</span> A 1 MΩ series resistor on BIASOUT limits patient current. <span class="ref" title="[9]">[9]</span></div>
+      <div class="pn">AVDD/AVSS · DVDD</div>
+      <div class="pd">Source of the ±2.5 V (analog) or digital rails you carry down the cable to power the buffers — see the power-tap warning above.</div>
+    </div>
+
+    <div class="note">
+      <div class="lbl">KEY FINDING — the active electrode and the RLD are not the same thing</div>
+      <p style="margin:6px 0 0">The <strong>active electrode fixes per-electrode source impedance</strong> (a buffer on each signal electrode). The <strong>RLD/BIAS fixes whole-body common-mode</strong> (one feedback electrode driving the body). They solve different problems and you generally use <em>both</em>: buffers on the signal electrodes, RLD on a body-reference electrode.</p>
+    </div>
+
+    <div class="callout">
+      <div class="lbl">SETTLING — a real interaction</div>
+      <p style="margin:6px 0 0">The ADS1299 input is a switched-capacitor front end with a ~20 pF input capacitance behind a 3-MHz EMI filter. <span class="ref" title="[20]">[20]</span> Each sample yanks charge from the source. A raw MΩ electrode can't settle that in time; a buffer's few-ohm output can. So the buffer <em>helps</em> settling — but the op-amp must have enough bandwidth and low enough output impedance to absorb those switched-cap transients. Note the datasheet specifies only DC input impedance, not AC. <span class="ref" title="[21]">[21]</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Section 6: Op-amp selection ── -->
+<section id="s6">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">06</span> Choosing the op-amp</p>
+    <h2>What makes an op-amp a good active-electrode buffer</h2>
+
+    <p><strong>Three specs dominate: input bias current (low), input voltage noise (low, especially 1/f), and supply/EMI behavior.</strong> Real parts used in published active electrodes:</p>
+
+    <table class="tbl">
+      <thead><tr><th>Op-amp</th><th>Input bias current</th><th>Noise</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>OPA2376</td><td class="good">0.2 pA typ (10 pA max)</td><td class="good">0.8 µVpp (0.1–10 Hz)</td><td>Used in active dry EEG/ECG electrodes <span class="ref" title="[4]">[4]</span><span class="ref" title="[5]">[5]</span></td></tr>
+        <tr><td>OPA378</td><td class="good">low pA</td><td class="good">0.4 µVpp (0.1–10 Hz); 1.13 µVrms (0.5–50 Hz)</td><td>Spring-loaded dry electrodes; 125–150 µA <span class="ref" title="[14]">[14]</span></td></tr>
+        <tr><td>MAX40023/24</td><td class="good">&lt;5 pA</td><td class="good">&lt;32 nV/√Hz; &lt;1.5 µVpp (0.1–10 Hz)</td><td>110 dB EMI rej @1.8/2.4 GHz — RF immune <span class="ref" title="[15]">[15]</span></td></tr>
+        <tr><td>TLC272</td><td class="good">&lt;1 pA typ (room temp)</td><td class="warn">higher</td><td>Classic cheap DIY active-electrode part <span class="ref" title="[7]">[7]</span></td></tr>
+        <tr><td>INA116</td><td class="good">3 fA @25°C</td><td class="warn">CMRR 84 dB (G=10)</td><td>Guarded in-amp, 10¹⁵ Ω input <span class="ref" title="[10a]">[10a]</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="warn-note">
+      <div class="lbl">WHY THESE SPECS</div>
+      <ul style="margin:6px 0 0">
+        <li><strong>Bias current</strong> — directly sets DC drift into the electrode (Section 04). Sub-pA is ideal.</li>
+        <li><strong>1/f (low-frequency) voltage noise</strong> — EEG lives at 0.1–40 Hz, right in the flicker-noise band; quote noise as µVpp over 0.1–10 Hz, not just nV/√Hz at 1 kHz.</li>
+        <li><strong>EMI rejection</strong> — the buffer sits on a person acting as an antenna; parts with built-in RF rejection (MAX40023) keep phone/Wi-Fi from rectifying into a DC offset. <span class="ref" title="[15]">[15]</span></li>
+      </ul>
+    </div>
+
+    <p class="mut" style="font-size:14px">Datasheet vs. paper: OPA2376's <em>datasheet</em> max bias current is 10 pA <span class="ref" title="[4a]">[4a]</span>; the 0.2 pA figure is the typical value reported when it was used as an electrode buffer <span class="ref" title="[4]">[4]</span>. Design to the max, not the typ.</p>
+  </div>
+</section>
+
+<!-- ── Section 7: Recipe ── -->
+<section id="s7">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">07</span> Putting it together</p>
+    <h2>A working active-electrode recipe for the ADS1299</h2>
+
+    <p><strong>If you already have the ADS1299 running, here's the minimum you add per electrode.</strong></p>
+
+    <div class="spec-grid">
+      <div class="spec-card"><span class="sc" style="background:#4ecabf"></span><div class="sv">×1</div><div class="sl">Op-amp follower on each signal electrode (OPA2376 / OPA378-class)</div></div>
+      <div class="spec-card"><span class="sc" style="background:#f0a24b"></span><div class="sv">MΩ–GΩ</div><div class="sl">Rbias from + input to reference — DC path for Ib</div></div>
+      <div class="spec-card"><span class="sc" style="background:#5b8cff"></span><div class="sv">Guard</div><div class="sl">Output drives cable shield / guard ring</div></div>
+      <div class="spec-card"><span class="sc" style="background:#f0a24b"></span><div class="sv">±2.5 V</div><div class="sl">Power down the cable, ideally off DVDD/GND not AVDD/AVSS</div></div>
+      <div class="spec-card"><span class="sc" style="background:#5fd0a6"></span><div class="sv">INxP</div><div class="sl">Buffered output → channel input; reference via SRB1</div></div>
+      <div class="spec-card"><span class="sc" style="background:#5fd0a6"></span><div class="sv">RLD</div><div class="sl">Keep the BIAS/right-leg drive on a body electrode — still needed</div></div>
+    </div>
+
+    <p>Reported results from ADS1299 + active-electrode designs: input impedance up to <strong>3.5 GΩ</strong> and CMRR of <strong>139 dB</strong> in one design <span class="ref" title="[6a]">[6a]</span>; input-referred noise around 4.5 µVrms (0.5–200 Hz). <span class="ref" title="[6a]">[6a]</span></p>
+
+    <div class="callout">
+      <div class="lbl">SANITY CHECK BEFORE YOU BUILD</div>
+      <p style="margin:6px 0 0">If you're using <strong>wet Ag/AgCl electrodes on short cables</strong>, try the ADS1299 <em>without</em> active electrodes first — it already rivals lab EEG below 40 Hz. <span class="ref" title="[8]">[8]</span> Add active electrodes when you move to <strong>dry electrodes, long cables, or a moving subject</strong>, which is where the buffer earns its cost.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── References ── -->
+<details class="src">
+  <summary>References <span class="chev">▾</span></summary>
+  <div class="srcbody">
+    <ol>
+      <li id="r1">[1] Texas Instruments. "ADS1299 Low-Noise, 8-Channel, 24-Bit AFE for Biopotential Measurements." Product page / datasheet. Ib = 300 pA, CMRR = −110 dB, input-referred noise 1 µVPP (70-Hz BW), PGA 1/2/4/6/8/12/24; SRB1/SRB2/BIASIN common to all 8 MUX blocks. <a href="https://www.ti.com/product/ADS1299">ti.com/product/ADS1299</a></li>
+      <li id="r3">[3] TI E2E Forum. "ADS1299 SRB, BIAS and reference." RLD feedback on EEG-FE board: Rf = 392 kΩ, Cf = 10 nF, Rp = 4.99 kΩ. <a href="https://e2e.ti.com/support/data-converters-group/data-converters/f/data-converters-forum/551341/ads1299-srb-bias-and-reference">e2e.ti.com/…/551341</a></li>
+      <li id="r4">[4] Guerrero, F. N. et al. "Low-cost low-noise active dry electrode." PMC5156995. OPA2376 as electrode buffer: 0.2 pA typ Ib, 5 µV offset, 0.8 µVPP (0.1–10 Hz); two-buffer (signal + active shield) topology; EEG power-line noise 1.3 vs 2.0 µVrms. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5156995/">pmc.ncbi.nlm.nih.gov/articles/PMC5156995</a></li>
+      <li id="r4a">[4a] Texas Instruments. "OPA2376 datasheet." Input bias current max = 10 pA; Vn = 7.5 nV/√Hz @ 1 kHz. <a href="https://www.ti.com/product/OPA2376">ti.com/product/OPA2376</a></li>
+      <li id="r5">[5] (Same source as [4], PMC5156995) — active dry electrode ECG correlation 99.34%. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5156995/">pmc.ncbi.nlm.nih.gov/articles/PMC5156995</a></li>
+      <li id="r6">[6] OpenBCI. "Active Electrodes for OpenBCI." Shielded 3-wire cable (signal, +2.5 V, −2.5 V) powered from AVDD/AVSS, shield to GND; unity-gain buffer with guard. <a href="https://openbci.com/community/active-electrodes-for-openbci/">openbci.com/community/active-electrodes-for-openbci</a></li>
+      <li id="r6a">[6a] Uktveris, T. &amp; Jusas, V. "Development of a Modular Board for EEG Signal Acquisition." PMC6263632. Active-electrode + ADS1299 design: Zin 3.5 GΩ, CMRR 139.1 dB; active-electrode input-referred noise 4.52 µVrms (0.5–200 Hz). <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6263632/">ncbi.nlm.nih.gov/pmc/articles/PMC6263632</a></li>
+      <li id="r7">[7] OpenBCI Forum. "Active electrodes (TLC272)." TLC272 with guard drive; recommends powering from DVDD/GND not AVDD/AVSS ("noise back-coupled… will show up on all channels"). TLC272 Ib &lt; 1 pA typ at room temp. <a href="https://openbci.com/forum/index.php?p=/discussion/2288/active-electrodes-tlc272">openbci.com/forum/…/2288</a></li>
+      <li id="r8">[8] (PMC6263632) — ADS1299 with wet Ag/AgCl electrodes is analogous to lab-based EEG systems below 40 Hz; input-referred noise 1 µVpp, 5 mW/channel. <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6263632/">ncbi.nlm.nih.gov/pmc/articles/PMC6263632</a></li>
+      <li id="r9">[9] Digi-Key / TI. "ADS1299EEGFE-PDK User Guide." 1 MΩ series resistor on BIASOUT to limit maximum patient current. <a href="https://www.digikey.at/htmldatasheets/production/1165519/0/0/1/ads1299eegfe-pdk.html">digikey.at/…/ads1299eegfe-pdk</a></li>
+      <li id="r10">[10] Analog Devices. "High-Impedance and Low-Noise Op Amps Enable Dry Electrodes in Medical Systems." Dry electrode ≈ 10 MΩ vs wet ≈ 10 kΩ (100–1000×). <a href="https://www.analog.com/en/resources/design-notes/highimpedance-and-lownoise-op-amps-enable-dry-electrodes-in-medical-systems.html">analog.com/…/high-impedance-low-noise-op-amps</a></li>
+      <li id="r10a">[10a] Texas Instruments. "INA116 datasheet" &amp; TI E2E. Zin 10¹⁵ Ω, Ib 3 fA @ 25 °C (DiFET guarded inputs), CMRR 84 dB (G=10). <a href="https://www.ti.com/product/INA116">ti.com/product/INA116</a></li>
+      <li id="r11">[11] OpenBCI Forum. "Skin impedance measurement of active vs. passive electrodes." Active dropped measured impedance ~40 kΩ → ~4 kΩ, but recorded signal &amp; 50 Hz noise "roughly the same… probably not enough to warrant the extra costs." <a href="https://openbci.com/forum/index.php?p=/discussion/928/skin-impedance-measurement-of-active-vs-passive-electrodes">openbci.com/forum/…/928</a></li>
+      <li id="r12">[12] Huigen, E. et al. "Investigation into the origin of the noise of surface electrodes." PMC1079902. Bias current charges interface capacitance → nonlinear drift; drift @60 min: µA741 (20 nA) 28 %, LF356 (3 pA) 9 %, AD523 (0.25 pA) 2 %. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC1079902/">pmc.ncbi.nlm.nih.gov/articles/PMC1079902</a></li>
+      <li id="r13">[13] (PMC1079902) — input bias/offset current with no DC return path progressively charges the electrode interface capacitance, causing baseline drift. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC1079902/">pmc.ncbi.nlm.nih.gov/articles/PMC1079902</a></li>
+      <li id="r14">[14] "Active spring-loaded dry electrode" (OPA378). PMC6833060. Noise 1.131 µVRMS (0.5–50 Hz), 0.4 µVpp (0.1–10 Hz), 125–150 µA. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6833060/">pmc.ncbi.nlm.nih.gov/articles/PMC6833060</a></li>
+      <li id="r15">[15] Analog Devices. "High-Impedance and Low-Noise Op Amps…" MAX40023/24: Ib &lt; 5 pA, noise &lt; 32 nV/√Hz, EMI rejection ≥ 110 dB @ 1.8/2.4 GHz, 17 µA/ch. <a href="https://www.analog.com/en/resources/design-notes/highimpedance-and-lownoise-op-amps-enable-dry-electrodes-in-medical-systems.html">analog.com/…/high-impedance-low-noise-op-amps</a></li>
+      <li id="r16">[16] Analog Devices. "Optimizing Performance and Lowering Power in an EEG Amplifier." Active electrode interface: 1 kΩ input R + 1 MΩ R → ~10 MΩ input impedance. <a href="https://www.analog.com/en/resources/technical-articles/optimizing-performance-and-lowering-power-in-an-eeg-amplifier.html">analog.com/…/optimizing-eeg-amplifier</a></li>
+      <li id="r17">[17] OpenBCI Forum. "BIAS: why do I need it?" BIAS/RLD electrode injects a reverse-phase low-amplitude signal to cancel common-mode mains noise. <a href="https://openbci.com/forum/index.php?p=/discussion/1524/bias-why-do-i-need-it">openbci.com/forum/…/1524</a></li>
+      <li id="r18">[18] Xu, J. et al. "Active Electrodes for Wearable EEG Acquisition: Review and Design Methodology." IEEE Reviews in Biomedical Engineering, 2017. DOI 10.1109/RBME.2017.2656388. "An AE locally amplifies and buffers µV-level EEG signals before driving any cabling"; low output impedance mitigates cable motion artifacts, enabling dry electrodes. <a href="https://research.tudelft.nl/en/publications/active-electrodes-for-wearable-eeg-acquisition-review-and-design-/">doi.org/10.1109/RBME.2017.2656388</a></li>
+      <li id="r19">[19] Guermandi, M. et al. (MDPI Sensors 19(4):772). ADS1299 has small input impedance that "may not be suitable for dry passive electrodes" due to 300 pA bias current. <a href="https://www.mdpi.com/1424-8220/19/4/772">mdpi.com/1424-8220/19/4/772</a></li>
+      <li id="r20">[20] TI E2E Forum. "ADS1299 input current on channel electrode…" AC input impedance includes a typical 20 pF input capacitance, part of the 3-MHz EMI filter. <a href="https://e2e.ti.com/support/data-converters-group/data-converters/f/data-converters-forum/1100754">e2e.ti.com/…/1100754</a></li>
+      <li id="r21">[21] TI E2E Forum. "ADS1299 AC input impedance." Only DC input impedance is specified/tested; DC input impedance is common-mode, differential = 2× (≈ 2 GΩ). <a href="https://e2e.ti.com/support/data-converters-group/data-converters/f/data-converters-forum/612315/ads1299-ac-input-impedance">e2e.ti.com/…/612315</a></li>
+    </ol>
+  </div>
+</details>
+
+<footer><div class="wrap"><a class="back-link" href="../index.html">← Index</a></div></footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const el = document.documentElement;
+    document.getElementById('prog').style.width =
+      (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+  });
+</script>
+</body>
+</html>
