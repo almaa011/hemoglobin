@@ -12,9 +12,11 @@ A local research documentation website focused on biomedical electronics (PPG, h
 
 **Before writing or changing any CSS, choosing a color, or designing a component, read [`UI_REFERENCE.md`](UI_REFERENCE.md) and open [`ui-reference.html`](ui-reference.html) in a browser.** They define the design system, taken directly from the reference screenshots supplied by the user — not from your own judgement. **`ui-reference.html` is the authority**; where the prose and the rendered page disagree, match the page.
 
-In short: lavender-grey canvas `#EAE8EF`, white cards, pure-black ink, exactly two accents (lime `#D2F53C` primary, violet `#A78BFA` secondary), one sans family with **no monospace anywhere**, **Title Case in headings and body copy**, flat surfaces with no shadows, and illustration built only from squares, circles and dotted strokes. `UI_REFERENCE.md` §6 lists what is banned outright (glow blobs, pulsing idle animation, glassmorphism, gradient headlines, drop shadows, emoji, a third accent).
+In short: lavender-grey canvas `#EAE8EF`, white cards, pure-black ink, exactly two accents (lime `#D2F53C` primary, violet `#A78BFA` secondary), Inter as the single sans family, **Title Case in headings and body copy**, flat surfaces with no shadows, and illustration built only from squares, circles and dotted strokes. `UI_REFERENCE.md` §6 lists what is banned outright (glow blobs, pulsing idle animation, glassmorphism, gradient headlines, drop shadows, emoji, a third accent).
 
-The **Base Stylesheet** and page skeleton documented later in this file are the *current, legacy* dark implementation. They still apply to day-to-day page creation so pages stay consistent with each other until the site is rebuilt — but they violate items 1, 2, 3, 7 and 8 of the banned list and are **not** the design target. Where the two conflict, `UI_REFERENCE.md` wins.
+**The system ships as [`ui.css`](ui.css) at the repo root.** `index.html` links it as `ui.css`; every new page in `pages/` links it as `../ui.css`. Never paste a stylesheet block into a page.
+
+**Pages written before the rebuild still use the legacy dark `pages/base.css`.** Leave them alone — they are not being migrated. Only `index.html` has been rebuilt so far. Do not link `base.css` or `style.css` from anything new.
 
 ## Serve locally
 
@@ -30,10 +32,11 @@ npm run build   # Bundles pages into dist/ as self-contained single-file HTML (v
 ```
 hemoglobin/
 ├── CLAUDE.md               ← this file
-├── UI_REFERENCE.md         ← design taste guide — read before any visual/CSS work
-├── ui-reference.html       ← rendered style guide companion to UI_REFERENCE.md
-├── index.html              ← navigation hub (append new links here only)
-├── style.css               ← styles for index.html only
+├── UI_REFERENCE.md         ← design system spec — read before any visual/CSS work
+├── ui-reference.html       ← rendered specimen of the system (the authority)
+├── ui.css                  ← THE stylesheet — index.html + every new page link this
+├── index.html              ← navigation hub (append new links inside the marker only)
+├── style.css               ← LEGACY, unused since the index rebuild — do not link
 ├── vite.config.js          ← Vite build config (bundles pages into dist/ as single-file HTML)
 ├── dist/                   ← Build output — do not edit manually
 ├── package.json
@@ -120,9 +123,9 @@ For every `[NEEDS RESEARCH: ...]` gap that would appear in the page:
 ### Step 5 — Create the page file
 
 - Filename: `pages/topic-slug.html` — short, lowercase, hyphenated, no date prefix (e.g. `afe4490-signal-chain.html`)
-- Link to the shared stylesheet: `<link rel="stylesheet" href="base.css">` (sibling file in `pages/`). Then add a small page-specific `<style>` block for overrides only — usually just `--accent` and any domain-specific semantic variables, plus any unique component classes not in the base.
-- Use the **Page skeleton** and **component class names** defined in the "Page Design Conventions" section below. Do **not** reinvent class names that the base already provides.
-- Do **not** link to `../style.css`. Do **not** re-embed the full base stylesheet inline.
+- Link to the shared stylesheet: `<link rel="stylesheet" href="../ui.css">`. Then add a small page-specific `<style>` block for overrides only — layout tweaks and unique component classes, never token overrides.
+- Use the **Page skeleton** and **component class names** defined in the "Page Design Conventions" section below. Do **not** reinvent class names that `ui.css` already provides.
+- Do **not** link `../style.css` or `base.css`. Do **not** re-embed a stylesheet inline.
 - Every fact traces to a finding in the verified merged record — no interpolation from training data (see Gap-filling rule)
 
 ### Step 6 — Append the link to index.html
@@ -240,22 +243,31 @@ Do not add a diagram just to have one — add it when it genuinely reduces confu
 
 ## Page Design Conventions
 
-> **Legacy pattern — see [`UI_REFERENCE.md`](UI_REFERENCE.md) first.** Everything below (the dark glow-blob hero, the pulsing kicker dot, etc.) is the current implementation, not the design target. Follow it for now so pages stay consistent with each other, but do not copy its slop patterns into new visual decisions — check `UI_REFERENCE.md` for those.
+All shared styles live in **`ui.css` at the repo root**, which implements the design
+system defined by [`UI_REFERENCE.md`](UI_REFERENCE.md) and [`ui-reference.html`](ui-reference.html).
+Every new page links it and adds only its own overrides in a small inline `<style>` block.
 
-All shared styles live in `pages/base.css`. Each page links to it and adds only its own overrides in a small inline `<style>` block.
+`pages/base.css` is the **legacy dark theme**. It belongs to pages written before the
+rebuild. Do not link it from a new page and do not copy patterns out of it.
 
 ### Required links in `<head>`
 
 ```html
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="base.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../ui.css">
 <style>
-  :root { --accent: #YOUR_COLOR; /* domain semantic vars */ }
-  /* unique component classes only — nothing already in base.css */
+  /* page-specific overrides only — nothing already in ui.css */
 </style>
 ```
+
+Add `&family=JetBrains+Mono:wght@400;500` to the fonts URL **only** if the page
+actually renders register values, pin names or code in `<code>`.
+
+**Do not** override `--lime`, `--violet` or any core token. The system has exactly two
+accents and pages do not get their own accent color — that was the old `--accent` per-page
+convention and it is retired.
 
 ### Page skeleton
 
@@ -263,38 +275,68 @@ All shared styles live in `pages/base.css`. Each page links to it and adds only 
 <body>
 <div id="prog"></div>
 
-<header class="hero">
-  <div class="hero-bg"></div>
-  <div class="wrap">
-    <a class="back-link" href="../index.html">← Index</a>
-    <div class="kicker"><span class="dot"></span> TOPIC · SUBTOPIC</div>
-    <h1>Page <span style="color:var(--accent)">Title</span></h1>
-    <p class="lead">2–4 sentence summary for a hardware engineer.</p>
-    <p class="mut">YYYY-MM-DD</p>
-    <div class="scrolltip"><span class="arr">↓</span> start reading</div>
-  </div>
+<div class="wrap">
+  <nav class="nav">
+    <a class="brand" href="../index.html"><span class="mark"><i></i><i></i></span> Research Index</a>
+    <div class="navlinks"><a href="../index.html">Index</a></div>
+    <a class="btn btn-out" href="../ui-reference.html">Design System</a>
+  </nav>
+</div>
+
+<header class="wrap hero">
+  <a class="back-link" href="../index.html">← Index</a>
+  <h1>Page Title In Title Case</h1>
+  <p class="lead">2–4 sentence summary for a hardware engineer.</p>
+  <p class="date">YYYY-MM-DD</p>
 </header>
 
-<section id="s1">
-  <div class="wrap">
-    <p class="eyebrow"><span class="n">01</span> Section label</p>
-    <h2>Section heading</h2>
-    <!-- prose, panels, tables, spec-grids here -->
+<section>
+  <div class="wrap-narrow">
+    <div class="note">
+      <div class="lbl">TL;DR</div>
+      <p>The conclusion, in 3–5 sentences, before any detail.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-narrow">
+    <p class="eyebrow"><span class="n">01</span> Section Label</p>
+    <h2>Section Heading</h2>
+    <p><strong>One-line takeaway.</strong> Supporting detail follows.</p>
+    <!-- panels, tables, spec-grids here -->
   </div>
 </section>
 
 <!-- more sections ... -->
 
-<details class="src">
-  <summary>References <span class="chev">▾</span></summary>
-  <div class="srcbody">
-    <ol>
-      <li id="r1">[1] Author. "Title." Source, Year. <a href="...">URL</a></li>
-    </ol>
-  </div>
-</details>
+<div class="wrap-narrow">
+  <details class="src">
+    <summary>References <span class="chev">▾</span></summary>
+    <div class="srcbody">
+      <ol><li id="r1">[1] Author. "Title." Source, Year. <a href="...">URL</a></li></ol>
+    </div>
+  </details>
+</div>
 
-<footer><div class="wrap"><a class="back-link" href="../index.html">← Index</a></div></footer>
+<footer class="foot">
+  <div class="notch">
+    <svg viewBox="0 0 300 56" width="300" height="56">
+      <path d="M0,0 C38,1 52,54 96,54 C140,54 149,6 150,0 C151,6 160,54 204,54 C248,54 262,1 300,0 Z" fill="#EAE8EF"/>
+    </svg>
+  </div>
+  <div class="wrap">
+    <div class="footgrid">
+      <div>
+        <div class="brand"><span class="mark"><i></i><i></i></span> Research Index</div>
+        <p>Local Research Documentation On Biomedical Electronics.</p>
+      </div>
+      <div><div class="fh">Navigate</div><div class="flinks"><a href="../index.html">All Pages</a></div></div>
+    </div>
+  </div>
+  <div class="checker" id="checker"></div>
+</footer>
+<div class="copyright">Research Index · Biomedical Electronics · 2026</div>
 
 <script>
   window.addEventListener('scroll', () => {
@@ -302,233 +344,60 @@ All shared styles live in `pages/base.css`. Each page links to it and adds only 
     document.getElementById('prog').style.width =
       (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
   });
+  /* footer checkerboard — copy verbatim from index.html */
   /* page-specific chart / SVG code below */
 </script>
 </body>
 ```
 
+### Writing style inside the system
+
+- **Title Case in headings and body copy.** This is the system's signature — sentence
+  case reads as a different design. See `UI_REFERENCE.md` §2.
+- Emphasis inside a heading = wrap the word in `<em>` (renders violet). Never italics.
+- Body copy is `--body-2` grey at 15px. Headings are pure black.
+
 ### Component class names — use exactly these, no alternatives
 
 | Element | Markup |
 |---|---|
-| Section eyebrow | `<p class="eyebrow"><span class="n">01</span> Label</p>` |
-| Dark card / diagram panel | `<div class="panel">` — inside use `.panel-hd`, `.panel-title`, `.panel-sub`, `.panel-cap` |
-| Amber callout / formula box | `<div class="callout"><div class="lbl">LABEL</div>…</div>` |
-| Key finding (blue) | `<div class="note"><div class="lbl">KEY FINDING</div>…</div>` |
-| Warning / hard limit (red) | `<div class="warn-note"><div class="lbl">WARNING</div>…</div>` |
-| Researcher conflict flag | `<div class="conflict"><div class="lbl">CONFLICT</div>…</div>` |
+| Section label | `<p class="eyebrow"><span class="n">01</span> Label</p>` |
+| Card | `<div class="card">` · large container `<div class="bigcard">` |
+| Diagram / figure panel | `<div class="panel">` — inside use `.panel-hd`, `.panel-title`, `.panel-sub`, `.panel-cap` |
+| Key finding (violet rule) | `<div class="note"><div class="lbl">KEY FINDING</div>…</div>` |
+| Formula / note (lime rule) | `<div class="callout"><div class="lbl">LABEL</div>…</div>` |
+| Hard limit / warning (inverted black card) | `<div class="warn-note"><div class="lbl">WARNING</div>…</div>` |
+| Researcher conflict (black rule) | `<div class="conflict"><div class="lbl">CONFLICT</div>…</div>` |
 | Pull-quote aside | `<div class="aside">…</div>` |
-| Data table | `<table class="tbl">` — use `.good`, `.bad`, `.warn` on cells |
-| Spec / metric card grid | `<div class="spec-grid"><div class="spec-card"><span class="sc" style="background:COLOR"></span><div class="sv">VALUE</div><div class="sl">label</div></div></div>` |
-| Inline citation marker | `<span class="ref" title="[1]">[1]</span>` |
+| Data table | `<table class="tbl">` — use `.good`, `.bad`, `.warn` on cells; wrap in `.tbl-scroll` |
+| Spec / metric cards | `<div class="spec-grid"><div class="spec-card"><span class="sc"></span><div class="sv">VALUE</div><div class="sl">label</div></div></div>` |
+| Numbered list | `<div class="nums"><div class="num"><b>1</b> Label</div></div>` |
+| Buttons | `<a class="btn btn-lime">` · `btn-dark` · `btn-out` |
+| Inline citation | `<span class="ref" title="[1]">[1]</span>` |
 | Reference list | `<details class="src"><summary>References <span class="chev">▾</span></summary><div class="srcbody"><ol>…</ol></div></details>` |
 
 ### JavaScript rules
 - All JS inline in one `<script>` block at the bottom of `<body>`
-- Always include the scroll-progress bar snippet shown in the skeleton (targets `#prog`)
+- Always include the scroll-progress bar snippet (targets `#prog`) and the footer
+  checkerboard builder
 - SVG charts: build SVG string, inject via `el.innerHTML = svg` into a `<div id="chartid">` inside `.panel`
-- Canvas charts: `<canvas id="...">` rendered via 2D context
-- Sliders: `<input type="range">` with a `<span>` label updated by `addEventListener('input', ...)`
+- Diagram colors come from the tokens only: black linework, `--violet` for highlights,
+  `--lime` for the one "on"/active element, `--dot` for dashed strokes
+- Seed any randomised illustration with a fixed-seed RNG so it renders identically every load
 - No external scripts, no frameworks
+- No idle animation — motion only in response to scroll or input
 
 ---
 
-## Base Stylesheet
+## Design System Source Of Truth
 
-Copy this block verbatim at the top of every page's `<style>` block. Do not modify it — add page-specific overrides below it.
+`ui.css` is generated from the system documented in `UI_REFERENCE.md` and demonstrated
+in `ui-reference.html`. **Do not paste a stylesheet block into a page.** If a page needs
+a component that `ui.css` does not have:
 
-```css
-/* ── tokens ── */
-:root {
-  --bg:    #0c0a0d;
-  --bg2:   #100d11;
-  --panel: #181219;
-  --ink:   #f2ebe6;
-  --mut:   #a8978f;
-  --dim:   #7e716c;
-  --line:  rgba(255,255,255,.09);
-  --line2: rgba(255,255,255,.05);
-  --good:  #5fd0a6;
-  --warn:  #f0a24b;
-  --bad:   #ff5a52;
-  --accent: #5b8cff; /* override per page */
-}
-
-/* ── reset ── */
-*, *::before, *::after { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  * { animation: none !important; transition: none !important; }
-}
-body {
-  margin: 0; background: var(--bg); color: var(--ink);
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 16px; line-height: 1.7;
-  -webkit-font-smoothing: antialiased; overflow-x: hidden;
-}
-
-/* ── layout ── */
-.wrap { max-width: 880px; margin: 0 auto; padding: 0 22px; }
-section { padding: 64px 0; border-top: 1px solid var(--line2); }
-
-/* ── typography ── */
-h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; letter-spacing: -.01em; }
-h1 { font-size: clamp(34px,7vw,60px); font-weight: 700; line-height: 1.02; margin: 0 0 20px; }
-h2 { font-size: clamp(26px,4.4vw,38px); font-weight: 700; line-height: 1.1; margin: 0 0 6px; }
-h3 { font-size: 20px; font-weight: 600; margin: 36px 0 10px; }
-p { margin: 14px 0; color: #e2d8d1; }
-a { color: var(--accent); }
-strong { color: var(--ink); }
-code { font-family: 'JetBrains Mono', monospace; font-size: .88em; color: var(--mut); }
-.lead { font-size: 18px; color: #ede3dc; max-width: 640px; }
-.mono { font-family: 'JetBrains Mono', monospace; }
-.mut { color: var(--mut); }
-
-/* ── section eyebrow ── */
-.eyebrow {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 12px; font-weight: 600;
-  letter-spacing: .16em; text-transform: uppercase;
-  color: var(--accent); margin: 0 0 14px;
-}
-.eyebrow .n { font-family: 'JetBrains Mono', monospace; color: var(--dim); font-size: 13px; margin-right: 8px; }
-
-/* ── inline citation ── */
-.ref {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; color: var(--dim);
-  vertical-align: super; line-height: 0;
-  margin: 0 1px; text-decoration: none; cursor: default;
-}
-
-/* ── hero ── */
-.hero {
-  position: relative; min-height: 100vh;
-  display: flex; flex-direction: column; justify-content: center;
-  overflow: hidden; padding: 0; border-top: none;
-}
-.hero-bg {
-  position: absolute; inset: 0; pointer-events: none;
-  background:
-    radial-gradient(800px 500px at 70% 30%, rgba(91,140,255,.10), transparent 60%),
-    radial-gradient(600px 400px at 15% 75%, rgba(95,208,166,.07), transparent 60%);
-}
-.hero .wrap { position: relative; z-index: 2; padding-top: 80px; padding-bottom: 60px; }
-
-/* kicker pill */
-.kicker {
-  display: inline-flex; align-items: center; gap: 9px;
-  font-family: 'JetBrains Mono', monospace; font-size: 12px;
-  color: var(--mut); border: 1px solid var(--line);
-  border-radius: 100px; padding: 6px 13px; margin-bottom: 26px;
-}
-.kicker .dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--accent); box-shadow: 0 0 10px var(--accent);
-  animation: pulse 1.6s ease-in-out infinite;
-}
-@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
-
-/* ── back link & scroll tip ── */
-.back-link {
-  display: inline-block; font-family: 'JetBrains Mono', monospace;
-  font-size: 13px; color: var(--mut); text-decoration: none; margin-bottom: 20px;
-}
-.back-link:hover { color: var(--ink); }
-.scrolltip {
-  font-family: 'JetBrains Mono', monospace; font-size: 12px;
-  color: var(--dim); margin-top: 28px; display: flex; align-items: center; gap: 10px;
-}
-.scrolltip .arr { animation: bob 1.8s ease-in-out infinite; }
-@keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(5px)} }
-
-/* ── panel (dark card) ── */
-.panel {
-  background: linear-gradient(180deg, var(--panel), var(--bg2));
-  border: 1px solid var(--line); border-radius: 16px;
-  padding: 20px; margin: 26px 0;
-}
-.panel-hd { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-.panel-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 15px; }
-.panel-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--dim); }
-.panel-cap { font-size: 13px; color: var(--mut); margin-top: 12px; line-height: 1.55; }
-svg { display: block; width: 100%; height: auto; overflow: visible; }
-
-/* ── callout boxes ── */
-.callout {
-  background: rgba(240,162,75,.06); border: 1px solid rgba(240,162,75,.22);
-  border-left: 3px solid var(--warn); border-radius: 10px;
-  padding: 16px 18px; margin: 20px 0;
-}
-.callout .lbl, .note .lbl, .warn-note .lbl, .conflict .lbl {
-  font-family: 'JetBrains Mono', monospace; font-size: 11px;
-  letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px;
-}
-.callout .lbl { color: var(--warn); }
-.note {
-  background: linear-gradient(180deg,rgba(91,140,255,.07),rgba(91,140,255,.02));
-  border: 1px solid rgba(91,140,255,.22); border-radius: 12px; padding: 18px 20px; margin: 24px 0;
-}
-.note .lbl { color: var(--accent); }
-.warn-note {
-  background: linear-gradient(180deg,rgba(255,90,82,.07),rgba(255,90,82,.02));
-  border: 1px solid rgba(255,90,82,.22); border-radius: 12px; padding: 18px 20px; margin: 24px 0;
-}
-.warn-note .lbl { color: var(--bad); }
-.conflict {
-  background: rgba(240,162,75,.06); border: 1px solid rgba(240,162,75,.25);
-  border-left: 3px solid var(--warn); border-radius: 10px; padding: 14px 18px; margin: 20px 0;
-}
-.conflict .lbl { color: var(--warn); font-size: 10px; }
-
-/* ── aside ── */
-.aside { border-left: 3px solid var(--line); padding: 4px 0 4px 18px; margin: 22px 0; color: var(--mut); font-size: 15px; }
-
-/* ── table ── */
-.tbl { width: 100%; border-collapse: collapse; margin: 22px 0; font-size: 14px; }
-.tbl th, .tbl td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); }
-.tbl th { font-family: 'Space Grotesk', sans-serif; font-size: 12px; color: var(--mut); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-.tbl tr:last-child td { border-bottom: none; }
-.tbl td:first-child { color: var(--mut); font-size: 13px; font-family: 'JetBrains Mono', monospace; }
-.tbl .good { color: var(--good); }
-.tbl .bad  { color: var(--bad);  }
-.tbl .warn { color: var(--warn); }
-
-/* ── spec grid ── */
-.spec-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); gap: 10px; margin: 22px 0; }
-.spec-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
-.spec-card .sv { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 600; color: var(--ink); line-height: 1.1; margin-bottom: 4px; }
-.spec-card .sl { font-size: 12px; color: var(--mut); line-height: 1.4; }
-.spec-card .sc { display: block; width: 28px; height: 3px; border-radius: 2px; margin-bottom: 10px; }
-
-/* ── references ── */
-details.src { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); margin-top: 28px; }
-details.src summary { cursor: pointer; padding: 16px 20px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; }
-details.src summary::-webkit-details-marker { display: none; }
-details.src summary .chev { transition: .2s; color: var(--mut); }
-details.src[open] summary .chev { transform: rotate(180deg); }
-.srcbody { padding: 0 20px 20px; font-size: 13px; color: var(--mut); line-height: 1.75; }
-.srcbody ol { padding-left: 20px; margin: 0; }
-.srcbody li { margin-bottom: 6px; }
-.srcbody a { word-break: break-word; color: var(--dim); }
-.srcbody a:hover { color: var(--accent); }
-.unverified { color: var(--dim); font-style: italic; }
-
-/* ── read-progress bar ── */
-#prog { position: fixed; top: 0; left: 0; height: 3px; width: 0; background: linear-gradient(90deg,var(--accent),var(--good)); z-index: 99; transition: width .1s; }
-
-/* ── footer ── */
-footer { padding: 50px 0 70px; text-align: center; color: var(--dim); font-size: 13px; border-top: 1px solid var(--line2); }
-
-/* ── responsive ── */
-@media (max-width:560px) {
-  section { padding: 48px 0; }
-  .hero .wrap { padding-top: 60px; }
-}
-```
-
----
+1. Check `ui-reference.html` for an existing pattern that already covers it
+2. If genuinely new, add it to `ui.css` using only existing tokens
+3. Never introduce a new color, a third accent, or a second font family
 
 ## Page-Reviewer Rubric
 
@@ -542,18 +411,20 @@ The `page-reviewer` agent checks every page against these criteria before passin
 | 4 | No values or claims interpolated from training data without a source | BLOCKING |
 | 5 | Any claim about an electrical/electronic component cites the official datasheet specifically | BLOCKING |
 | 6 | Scope matches the user's brief (no silent scope creep, no missing areas) | BLOCKING |
-| 7 | Page is self-contained at runtime — links only to `base.css` (sibling in `pages/`) and Google Fonts CDN; no other external CSS or scripts | BLOCKING |
+| 7 | Page is self-contained at runtime — links only to `../ui.css` and Google Fonts CDN; no other external CSS or scripts, no inline stylesheet block, no `base.css`/`style.css` | BLOCKING |
 | 8 | Required header block present: title, date, summary, back-to-index link | SHOULD FIX |
 | 9 | All [NEEDS RESEARCH] placeholders survived the recovery loop (not skipped) | SHOULD FIX |
 | 10 | Conflicts between researchers are surfaced to the user, not silently resolved | SHOULD FIX |
 | 11 | [UNVERIFIED] citations are labeled as such in the reference list | SHOULD FIX |
 | 12 | Inline citation markers are visually subtle — prose reads cleanly without distraction | NICE TO HAVE |
 | 13 | Diagrams present where they would reduce confusion (not mandatory, but flagged if obviously missing) | NICE TO HAVE |
-| 14 | Base Stylesheet copied verbatim — page uses canonical class names (`.eyebrow`, `.panel`, `.callout`, `.note`, `.warn-note`, `.conflict`, `.tbl`, `.spec-grid`, `.src`) not ad-hoc alternatives | SHOULD FIX |
-| 15 | Any new decorative element added beyond the base skeleton does not introduce a fresh instance of a banned pattern from `UI_REFERENCE.md` (extra glow blobs, new pulsing dots, gradient text, glassmorphism, generic gradient-circle icon grids) | SHOULD FIX |
-| 16 | TL;DR `.note` panel present immediately after the hero, giving the page's conclusion in 3–5 sentences before any detail | BLOCKING |
-| 17 | No paragraph exceeds ~3 sentences; multi-item lists are rendered as bullets/tables, not narrated in prose | BLOCKING |
-| 18 | Each major section opens with a bolded one-line takeaway before its supporting detail | SHOULD FIX |
+| 14 | Page uses the canonical `ui.css` class names (`.eyebrow`, `.panel`, `.card`, `.callout`, `.note`, `.warn-note`, `.conflict`, `.tbl`, `.spec-grid`, `.nums`, `.btn`, `.src`) not ad-hoc alternatives, and overrides no core token | SHOULD FIX |
+| 15 | Nothing on the page introduces a banned pattern from `UI_REFERENCE.md` §6 — no glow blobs, pulsing idle animation, glassmorphism, gradient headlines, drop shadows, emoji, third accent color, or second font family | SHOULD FIX |
+| 16 | Headings and body copy are in Title Case, per `UI_REFERENCE.md` §2 | SHOULD FIX |
+| 17 | Monospace appears only inside `<code>`/`.mono` for literal machine text (register values, pin names) — never for labels, metadata or UI chrome | SHOULD FIX |
+| 18 | TL;DR `.note` panel present immediately after the hero, giving the page's conclusion in 3–5 sentences before any detail | BLOCKING |
+| 19 | No paragraph exceeds ~3 sentences; multi-item lists are rendered as bullets/tables, not narrated in prose | BLOCKING |
+| 20 | Each major section opens with a bolded one-line takeaway before its supporting detail | SHOULD FIX |
 
 ---
 

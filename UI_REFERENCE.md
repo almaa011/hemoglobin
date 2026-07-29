@@ -155,14 +155,23 @@ drifted back into generic AI output:
 11. Icons rendered as a filled gradient circle repeated across a feature grid.
 12. Stock photography or 3D renders.
 
-## 7. Applying it to the research pages
+## 7. How this is shipped
 
-The site is migrating from the dark theme in `pages/base.css` to this light system.
-That migration has **not** been done yet — `base.css` still describes the old pages and
-violates items 1, 2, 3, 7, and 8 above.
+The system lives in **`ui.css` at the repo root**. It carries the tokens and components
+above, plus the extra components research pages need (panels, callouts, tables, spec
+grids, citations, reference blocks) — all built from the same tokens.
 
-When the rebuild happens, the research pages keep their information density but adopt
-this system wholesale: lavender canvas, white content cards, pure-black headings in
-Title Case, lime for the one accent, violet for emphasis and diagram linework. The
-existing inline SVG signal-chain and spectra diagrams already match recipe 3 in spirit
-and should be restyled to the palette rather than redrawn.
+- `index.html` links `ui.css`
+- Every **new** page in `pages/` links `../ui.css`
+- Never paste a stylesheet into a page; if a component is missing, add it to `ui.css`
+  using existing tokens only
+
+**Current state.** `index.html` has been rebuilt in this system. The existing research
+pages in `pages/` still use the legacy dark `pages/base.css` and are **not** being
+migrated — leave them as they are. Everything created from now on uses `ui.css`.
+
+**One documented exception to §2.** The reference is a marketing site and has no
+monospace. This is a hardware documentation site, so monospace is permitted in exactly
+one place: inside `<code>` / `.mono`, for literal machine text — register values, pin
+names, code. It is still banned for labels, eyebrows, metadata, dates and any other UI
+chrome, which is where the old dark theme used it decoratively.
