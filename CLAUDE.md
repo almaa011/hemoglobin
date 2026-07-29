@@ -8,6 +8,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A local research documentation website focused on biomedical electronics (PPG, hemoglobin sensing, optical sensors). Pages are self-contained HTML files served statically. The audience is a hardware/electronics engineer — not a doctor, not a software developer.
 
+## UI Design Taste — read before any visual work
+
+**Before writing or changing any CSS, choosing a color, or designing a component, read [`UI_REFERENCE.md`](UI_REFERENCE.md) and open [`ui-reference.html`](ui-reference.html) in a browser.** These define the required design taste going forward: one confident accent color, flat solid surfaces, geometric/generative illustration, plain bold type — and an explicit banned list of "AI slop" patterns (glow blobs, pulsing decorative dots, glassmorphism, gradient text, generic icon-in-gradient-circle grids).
+
+The **Base Stylesheet** and page skeleton documented later in this file are the *current, legacy* implementation and still apply to day-to-day page creation until a full migration happens — but they are known to violate several rules in `UI_REFERENCE.md` (see its banned list) and should not be treated as the design target. Where the two conflict, `UI_REFERENCE.md` wins.
+
 ## Serve locally
 
 ```bash
@@ -22,6 +28,8 @@ npm run build   # Bundles pages into dist/ as self-contained single-file HTML (v
 ```
 hemoglobin/
 ├── CLAUDE.md               ← this file
+├── UI_REFERENCE.md         ← design taste guide — read before any visual/CSS work
+├── ui-reference.html       ← rendered style guide companion to UI_REFERENCE.md
 ├── index.html              ← navigation hub (append new links here only)
 ├── style.css               ← styles for index.html only
 ├── vite.config.js          ← Vite build config (bundles pages into dist/ as single-file HTML)
@@ -218,6 +226,8 @@ Do not add a diagram just to have one — add it when it genuinely reduces confu
 ---
 
 ## Page Design Conventions
+
+> **Legacy pattern — see [`UI_REFERENCE.md`](UI_REFERENCE.md) first.** Everything below (the dark glow-blob hero, the pulsing kicker dot, etc.) is the current implementation, not the design target. Follow it for now so pages stay consistent with each other, but do not copy its slop patterns into new visual decisions — check `UI_REFERENCE.md` for those.
 
 All shared styles live in `pages/base.css`. Each page links to it and adds only its own overrides in a small inline `<style>` block.
 
@@ -527,6 +537,7 @@ The `page-reviewer` agent checks every page against these criteria before passin
 | 12 | Inline citation markers are visually subtle — prose reads cleanly without distraction | NICE TO HAVE |
 | 13 | Diagrams present where they would reduce confusion (not mandatory, but flagged if obviously missing) | NICE TO HAVE |
 | 14 | Base Stylesheet copied verbatim — page uses canonical class names (`.eyebrow`, `.panel`, `.callout`, `.note`, `.warn-note`, `.conflict`, `.tbl`, `.spec-grid`, `.src`) not ad-hoc alternatives | SHOULD FIX |
+| 15 | Any new decorative element added beyond the base skeleton does not introduce a fresh instance of a banned pattern from `UI_REFERENCE.md` (extra glow blobs, new pulsing dots, gradient text, glassmorphism, generic gradient-circle icon grids) | SHOULD FIX |
 
 ---
 
