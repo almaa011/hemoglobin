@@ -1,141 +1,168 @@
-# UI Reference — Design Taste Guide
+# UI Reference — Design System
 
-This file is the canonical design-taste reference for this project. It exists because
-the current visual language (see `pages/base.css`, dark-bg + neon-glow + pulsing-dot
-theme) reads as generic "AI-generated landing page" — and that is exactly what we are
-moving away from.
+The canonical design system for this project. Derived **directly** from the reference
+screenshots supplied by the user (the "Square Card" fintech site — desktop, mobile,
+and full-page views). Nothing in this file is invented taste; every token, radius,
+and pattern below is read off those screenshots.
 
-**Read this before writing any CSS, choosing a color, or designing a component.**
-Companion file: [`ui-reference.html`](ui-reference.html) — open it in a browser. It is
-a working style guide that renders every pattern below. When in doubt, match what's
-rendered there, not what's described in prose here.
+**Read this before writing or changing any CSS, choosing a color, or designing a
+component.** Companion file: [`ui-reference.html`](ui-reference.html) — a working
+specimen that renders the entire system. **The HTML is the authority.** Where this
+prose and the rendered page disagree, match the page.
 
 ---
 
-## 1. Where this taste comes from
+## 1. Tokens
 
-Derived from a set of reference screenshots supplied directly by the user: a fintech
-marketing site ("Square Card" — bank-card product pages, desktop + mobile) and an
-education-platform dashboard. Neither is in our domain (biomedical electronics), but
-the *taste* — restraint, confidence, geometric illustration instead of decoration — is
-what we're extracting. The literal palette (lime + off-white + black) is not mandatory
-outside of `ui-reference.html`; the principles are mandatory everywhere.
+Copy these verbatim. Do not substitute, do not "warm them up", do not add a third accent.
 
-## 2. Core principles
+```css
+:root{
+  /* surfaces */
+  --bg:          #EAE8EF;   /* page canvas — cool lavender-grey, NOT beige */
+  --white:       #FFFFFF;   /* cards, full-bleed light sections */
+  --tint:        #F5F4F8;   /* inset / active-state panel inside a white card */
 
-1. **One accent color, used with confidence.** Not a gradient between two accents. Not
-   an accent-per-section. Pick one (plus a neutral secondary if the content truly needs
-   it — e.g. a purple used only for line-art icons) and repeat it deliberately.
-2. **Type does the work, not decoration.** Headlines are large, bold, tight-leading,
-   and plain-colored (solid black or solid ink — never gradient-filled text). Hierarchy
-   comes from size and weight jumps, not from adding visual noise around the text.
-3. **Illustration is geometric and generative, never skeuomorphic.** Dots, circles,
-   squares, thin connecting lines, pixel/voxel mosaics, orbiting particle systems. No
-   3D renders, no stock photography, no "AI-image" style hero art, no clipart people.
-4. **Flat and solid beats glassy and glowing.** Cards are solid color or plain white/
-   dark panels with a hairline border. No frosted-glass blur, no drop-shadow halos, no
-   glow effects on buttons or dots.
-5. **Whitespace is a feature.** Generous padding, uncluttered grids, room for the type
-   to breathe. Density is achieved by page length, not by cramming.
-6. **Shapes are deliberate signatures, not decoration filler.** The scalloped cutout at
-   the top of the fintech site's footer is a good example — one custom, memorable
-   shape used once, not a library of rounded blobs scattered everywhere.
-7. **Buttons are solid pills with hard, confident edges.** One primary style (solid
-   accent-fill pill, dark text) and one secondary style (solid dark-fill pill, light
-   text, or outline). No gradient buttons, no soft glow on hover.
-8. **Motion is functional, not ambient.** Scroll progress bars, hover states, chart
-   transitions — yes. Idle pulsing dots, floating particles that never stop, ambient
-   glow breathing effects — no. If nothing changed on screen and nothing the user did
-   caused it, don't animate it.
-9. **Data visualization is plain and legible.** Bar charts, sliders, concentric-circle
-   diagrams rendered as flat vector shapes with 2–4 colors max. No 3D bars, no
-   unnecessary gradients inside chart marks.
+  /* ink */
+  --black:       #000000;   /* headings, nav, footer, primary text — pure black */
+  --body:        #8E8B96;   /* body copy on light surfaces */
+  --body-2:      #6F6C79;   /* slightly stronger body copy */
+  --foot-body:   #A9A5B4;   /* body copy on the black footer */
 
-## 3. The banned list ("AI slop" checklist)
+  /* accents — exactly two */
+  --lime:        #D2F53C;   /* primary: CTA fill, number badges, knobs, arrows */
+  --violet:      #A78BFA;   /* secondary: mosaic squares, emphasised words, linework */
+  --violet-deep: #7C4DFF;   /* violet at full strength: filled dots, social badge */
 
-Reject a design if it does any of these — this list exists because our own
-`pages/base.css` currently does several of them:
+  /* lines */
+  --line:        #E5E3EB;   /* hairline borders */
+  --dot:         #C7C4D1;   /* dotted / dashed stroke grey */
 
-- Dark navy/black background with large blurred radial-gradient "glow blobs" behind
-  the hero copy (`hero-bg` in the current base.css is exactly this — retire it).
-- A pulsing/breathing glow animation on a small decorative dot for no functional
-  reason (`.kicker .dot` pulse — decorative only, retire it).
-- Glassmorphism: translucent blurred panels with a soft white border-glow.
-- Gradient-filled headline text (accent-to-accent color transitions across letters).
-- Generic icon-in-a-gradient-circle repeated identically across a feature grid.
-- Emoji used as functional icons or bullet markers.
-- Sparkle/star iconography used to signal "new" or "AI-powered."
-- Stock-photo-style or generic 3D-rendered hero illustrations.
-- Center-aligned everything with no asymmetry or grid variation.
-- Drop shadows used as the primary way to separate every card from the background
-  (a 1px hairline border reads cleaner and is used throughout the reference).
-- Badge pills that exist purely to say "NEW" / "AI" / "Powered by AI" with no
-  information content.
+  /* radii */
+  --r-card:      24px;      /* standard card */
+  --r-lg:        34px;      /* large container */
+  --r-pill:      999px;     /* buttons, chips, toggles */
+}
+```
 
-## 4. Color system
+**Accent discipline.** Lime is the *only* color used for filled call-to-action
+surfaces. Violet never fills a large area — it appears as small squares, thin
+strokes, emphasised words, and small dots. Everything else is black, white, lavender,
+or grey. There is no third accent and no gradient between accents anywhere in the
+system except inside illustration shapes.
 
-**Reference palette (as shown in `ui-reference.html`):**
+## 2. Typography
 
-| Role | Value | Use |
-|---|---|---|
-| Canvas | `#EDEBE7` (light) / adapt to `#0c0a0d`-class near-black for dark contexts | Page background |
-| Ink | `#141116` | Primary text, headlines |
-| Muted ink | `#6b6570` | Body copy, secondary text |
-| Accent (primary) | `#D6FA3C` (lime) | Primary CTA fill, numbered badges, highlight strokes |
-| Accent (secondary) | `#8B7CF6` (soft violet) | Line-art icon strokes, small illustration accents only — never on large fills |
-| Surface | `#FFFFFF` (light) / `#151217`-class panel (dark) | Card backgrounds |
-| Line | `rgba(20,17,22,.10)` (light) / `rgba(255,255,255,.09)` (dark) | Hairline borders only |
+**One family for the entire page.** The reference uses a Helvetica-Now-class
+grotesque; **Inter** is the substitute used here (closest match available on Google
+Fonts). There is **no monospace font anywhere in this system** — drop mono entirely.
 
-Rule: **two accent colors maximum**, one dominant (used on CTAs, numbers, key
-highlights) and one supporting (used sparingly, only in illustration linework). Every
-other color on the page is a neutral (ink / muted / canvas / surface / line).
+| Role | Size | Weight | Tracking | Line-height | Color |
+|---|---|---|---|---|---|
+| Hero headline | `clamp(40px,6.2vw,68px)` | 700 | `-0.03em` | 1.06 | `--black` |
+| Section heading | `clamp(28px,3.6vw,42px)` | 700 | `-0.02em` | 1.16 | `--black` |
+| Card title | 17px | 600 | `-0.01em` | 1.35 | `--black` |
+| Body copy | 13.5px | 400 | 0 | 1.75 | `--body` |
+| Nav / button | 14px | 500 / 600 | 0 | 1 | `--black` |
 
-## 5. Typography system
+**Title Case is a hard rule.** Headings *and* body copy are written in Title Case —
+"This Modern Bank Card Embraces The Era Of Contactless Payments". This is the single
+most recognisable signature of the system. Sentence case reads as a different design.
 
-- Display headline: bold grotesque sans, `clamp(34px, 7vw, 60px)`, line-height ~1.02,
-  slightly negative letter-spacing. Solid ink color only.
-- Section heading: same family, `clamp(26px, 4.4vw, 38px)`, weight 700.
-- Body: a plain humanist sans at 16–18px, line-height 1.6–1.7, muted-ink color.
-- Labels / eyebrows / numbers: monospace or a distinct condensed face, small size,
-  uppercase, letter-spacing ~0.1em — used for metadata, not for headlines.
-- Avoid: more than two font families on one page; gradient text; italics as emphasis
-  (use weight instead).
+Emphasis inside a heading is done by coloring the word `--violet` — never by italics,
+never by a gradient fill, never by a highlight background.
 
-## 6. Layout & components
+## 3. Layout
 
-- **Nav**: small logo mark + wordmark, a handful of plain text links (small dot
-  bullets optional), one solid pill CTA on the right. Nothing else.
-- **Hero**: big headline (max ~2 lines of large type), one short supporting sentence,
-  one pill CTA, a row of small logotype/partner marks below — and a geometric
-  illustration to the side, not centered beneath.
-- **Feature grid**: white/surface cards on the canvas background, each with a thin
-  line-art icon (not a filled gradient icon), a short title, 1–2 lines of copy. Cards
-  are equal-weight — no single "hero" card unless it's genuinely the most important.
-- **Numbered list**: small solid-accent circular number badges + plain text label,
-  paired with a generative dot/orbit diagram beside the list, not one icon per row.
-- **Footer**: a full-width solid dark panel. A single custom cutout/scallop shape at
-  the top edge is an acceptable signature flourish (used once, not repeated). Link
-  columns are plain text, email capture is a plain input + solid accent pill button.
-- **Cards showing content (course cards, product cards, etc.)**: solid flat color
-  fill (not gradient), rounded corners (12–20px), small icon-in-white-circle badge,
-  rating/status pill in the opposite corner, avatar stack + count as social proof.
+- Content width `1160px`, gutter `28px`.
+- Section padding `76px` vertical.
+- Cards sit **flat on the canvas** — a white fill on `--bg` is enough separation. No
+  drop shadows. A `1px --line` border only where two white surfaces meet.
+- Generous internal padding: `40–48px` inside a large white card, `26px` inside a
+  small one.
+- Big radii everywhere: `24px` on cards, `34px` on large containers, full pill on
+  anything interactive.
+- Grids are **equal-weight** — four features across, three cards across. The third
+  card in a carousel row is deliberately **clipped by the viewport edge** to signal
+  horizontal scroll; do not fit it neatly.
 
-## 7. Applying this to the hemoglobin research site
+## 4. Components
 
-This project's actual content (biomedical electronics research pages) is technical
-and dense — unlike marketing pages, it needs to stay scannable and information-dense,
-not whitespace-maximal. When migrating research pages to this taste, keep:
+**Buttons.** Two variants only, both full pills with a trailing `↗` glyph:
+- Primary — `--lime` fill, black text, no border.
+- Secondary — black fill, white text.
+- Outline (`Sign In` only) — white fill, `1px` black border, black text.
 
-- The dark near-black canvas (appropriate for long technical reading sessions) —
-  but drop the glow-blob hero background and the pulsing dot.
-- One accent color per page (already the convention via `--accent`) — keep that,
-  but restrict it strictly to CTAs/highlights/citations, not decorative gradients.
-- Geometric SVG diagrams for signal chains / spectra (already the convention) — these
-  already fit principle 3 well; keep building them this way.
-- Hairline borders on panels instead of heavier drop shadows.
-- Replace the pulsing kicker dot with a static dot, or remove the kicker treatment
-  entirely in favor of a plain small-caps label.
+**Nav.** Logo mark (two black rectangles) + wordmark, left. Centered link row where
+every link is prefixed by a small `•` dot; the active link and its dot are `--violet`.
+Right side: a search glyph and the outlined `Sign In` pill. Nothing else.
 
-Full migration of `pages/base.css` to this taste is a separate, larger task and has
-not been done yet — this document and `ui-reference.html` are the target to migrate
-toward, not a description of the current state.
+**Carousel arrows.** A white circular `←` and a wide `--lime` pill `→`, paired at the
+right of the section heading.
+
+**Inline toggle chip.** A white pill with a `1px` black border sitting *inside* an
+`h2` line (`From 2020` + a small black switch). Used to qualify a heading.
+
+**Numbered list.** `26px` `--lime` circles with black numerals, black label text, laid
+out in two columns. Paired with an illustration on the opposite side — never one icon
+per row.
+
+**Footer.** Full-bleed pure black. Signature **double-arch notch** cut out of the top
+centre, filled with the color of the section above. Three columns: brand + description,
+`Quick Access` links in two sub-columns, newsletter capture. A `Contact Us :` row of
+small circular social badges — the first is `--violet-deep` filled, the rest near-black.
+The bottom edge dissolves into a **checkerboard strip** of background-colored squares,
+one and two cells tall, in an irregular pattern. Copyright sits centred on `--bg` below
+the black.
+
+## 5. Illustration
+
+All illustration is **flat vector built from primitives** — squares, circles, dotted
+strokes, thin outlines. No 3D, no photography, no raster art, no icon fonts, no emoji.
+
+Four recipes carry the whole system:
+
+1. **Pixel-mosaic dissolve** — a solid black rounded rect, tilted ~12°, whose lower
+   half is overlaid with a grid of `17px` violet and lime squares that grows denser
+   downward until the black itself breaks into squares and scatters off the bottom.
+   Lime rounded rects peek out from behind the right edge. Detached squares float
+   nearby, joined by dotted elbow lines ending in tiny squares.
+2. **Orbit / particle field** — a solid black disc holding a cluster of small lime and
+   violet circles, wrapped on the left by three concentric arcs of evenly spaced black
+   dots, with dotted rays firing off to the right that terminate in filled and hollow
+   circles.
+3. **Thin-line feature icons** — overlapping outlined circles, dashed toggle rows with
+   one lime knob, nested rings, dotted branch trees. Grey linework with violet as the
+   single highlight and lime reserved for the one "on" element.
+4. **Gradient chiplets** — small rounded rects with a lime→violet gradient arranged in
+   a ring, each carrying a tiny dot-grid glyph.
+
+## 6. Not in this system
+
+These appear nowhere in the reference. Their presence is the tell that a page has
+drifted back into generic AI output:
+
+1. Dark background with blurred radial gradient "glow blobs".
+2. Glow / box-shadow halos on buttons, dots, or cards.
+3. Pulsing, breathing, or floating idle animation with no user input behind it.
+4. Glassmorphism — translucent blurred panels with a light border-glow.
+5. Gradient-filled headline text.
+6. Drop shadows used to lift every card off the background.
+7. A monospace font.
+8. Sentence case body copy.
+9. A third accent color, or an accent-per-section.
+10. Emoji, sparkles, or "AI"/"NEW" badges with no information content.
+11. Icons rendered as a filled gradient circle repeated across a feature grid.
+12. Stock photography or 3D renders.
+
+## 7. Applying it to the research pages
+
+The site is migrating from the dark theme in `pages/base.css` to this light system.
+That migration has **not** been done yet — `base.css` still describes the old pages and
+violates items 1, 2, 3, 7, and 8 above.
+
+When the rebuild happens, the research pages keep their information density but adopt
+this system wholesale: lavender canvas, white content cards, pure-black headings in
+Title Case, lime for the one accent, violet for emphasis and diagram linework. The
+existing inline SVG signal-chain and spectra diagrams already match recipe 3 in spirit
+and should be restyled to the palette rather than redrawn.

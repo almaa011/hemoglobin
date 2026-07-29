@@ -10,9 +10,11 @@ A local research documentation website focused on biomedical electronics (PPG, h
 
 ## UI Design Taste — read before any visual work
 
-**Before writing or changing any CSS, choosing a color, or designing a component, read [`UI_REFERENCE.md`](UI_REFERENCE.md) and open [`ui-reference.html`](ui-reference.html) in a browser.** These define the required design taste going forward: one confident accent color, flat solid surfaces, geometric/generative illustration, plain bold type — and an explicit banned list of "AI slop" patterns (glow blobs, pulsing decorative dots, glassmorphism, gradient text, generic icon-in-gradient-circle grids).
+**Before writing or changing any CSS, choosing a color, or designing a component, read [`UI_REFERENCE.md`](UI_REFERENCE.md) and open [`ui-reference.html`](ui-reference.html) in a browser.** They define the design system, taken directly from the reference screenshots supplied by the user — not from your own judgement. **`ui-reference.html` is the authority**; where the prose and the rendered page disagree, match the page.
 
-The **Base Stylesheet** and page skeleton documented later in this file are the *current, legacy* implementation and still apply to day-to-day page creation until a full migration happens — but they are known to violate several rules in `UI_REFERENCE.md` (see its banned list) and should not be treated as the design target. Where the two conflict, `UI_REFERENCE.md` wins.
+In short: lavender-grey canvas `#EAE8EF`, white cards, pure-black ink, exactly two accents (lime `#D2F53C` primary, violet `#A78BFA` secondary), one sans family with **no monospace anywhere**, **Title Case in headings and body copy**, flat surfaces with no shadows, and illustration built only from squares, circles and dotted strokes. `UI_REFERENCE.md` §6 lists what is banned outright (glow blobs, pulsing idle animation, glassmorphism, gradient headlines, drop shadows, emoji, a third accent).
+
+The **Base Stylesheet** and page skeleton documented later in this file are the *current, legacy* dark implementation. They still apply to day-to-day page creation so pages stay consistent with each other until the site is rebuilt — but they violate items 1, 2, 3, 7 and 8 of the banned list and are **not** the design target. Where the two conflict, `UI_REFERENCE.md` wins.
 
 ## Serve locally
 
