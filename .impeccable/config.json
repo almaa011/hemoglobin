@@ -1,0 +1,23 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-07-29T15:36:07.574Z",
+        "reason": "User confirmed Inter is intentional - same exception as ui.css, covering the Google Fonts link check's value casing"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "ui.css"
+        ],
+        "createdAt": "2026-07-29T15:36:14.498Z",
+        "reason": "User confirmed the callout family's left-rule (.note/.callout/.conflict/.warn-note) is a core documented component, not AI-slop drift - see DESIGN.md Components > Callouts"
+      }
+    ]
+  }
+}
