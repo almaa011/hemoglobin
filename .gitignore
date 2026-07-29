@@ -1,3 +1,4 @@
 node_modules/
 dist/
 .vite/
+.impeccable/hook.cache.json

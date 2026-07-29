@@ -18,6 +18,8 @@ In short: lavender-grey canvas `#EAE8EF`, white cards, pure-black ink, exactly t
 
 **Pages written before the rebuild still use the legacy dark `pages/base.css`.** Leave them alone — they are not being migrated. Only `index.html` has been rebuilt so far. Do not link `base.css` or `style.css` from anything new.
 
+**A `ui-polisher` agent runs the `impeccable` design skill after every new page.** See "UI Polish Automation" below — it refines within this system, it never evolves it.
+
 ## Serve locally
 
 ```bash
@@ -35,11 +37,16 @@ hemoglobin/
 ├── UI_REFERENCE.md         ← design system spec — read before any visual/CSS work
 ├── ui-reference.html       ← rendered specimen of the system (the authority)
 ├── ui.css                  ← THE stylesheet — index.html + every new page link this
+├── PRODUCT.md              ← impeccable product brief — read by ui-polisher, not authoritative over this section
+├── DESIGN.md               ← impeccable design mirror of UI_REFERENCE.md/ui.css — same rule
 ├── index.html              ← navigation hub (append new links inside the marker only)
 ├── style.css               ← LEGACY, unused since the index rebuild — do not link
 ├── vite.config.js          ← Vite build config (bundles pages into dist/ as single-file HTML)
 ├── dist/                   ← Build output — do not edit manually
 ├── package.json
+├── .claude/
+│   ├── agents/             ← researcher, page-reviewer, ui-polisher subagent definitions
+│   └── skills/impeccable/  ← installed impeccable design skill (project-local, `npx impeccable install`)
 └── pages/                  ← all research pages live here
 ```
 
@@ -51,12 +58,13 @@ When the user asks to research a topic, run the full research workflow (Steps 1�
 
 ## Agents Available
 
-Four sub-agents are used during the research-and-publish workflow:
+These sub-agents are used during the research-and-publish workflow:
 
 | Agent | When to use |
 |---|---|
 | **researcher** (×3, parallel) | Before writing any page — dispatch three in parallel with distinct mandates (see Step 1) |
 | **page-reviewer** | After writing the page — always run this before declaring the job done |
+| **ui-polisher** | After `page-reviewer` passes (Step 7.5) — runs the installed `impeccable` skill's `polish`/`audit` playbooks on the new page and applies fixes directly, within the fixed system only |
 
 Never write a page from memory. Never skip the review step.
 
@@ -130,11 +138,18 @@ For every `[NEEDS RESEARCH: ...]` gap that would appear in the page:
 
 ### Step 6 — Append the link to index.html
 
-Find `<!-- NEW PAGES GO HERE -->` and insert directly below it:
+`index.html`'s page list is grouped into four domain sections, each with its own marker comment. Pick the one that fits the new page's topic and insert directly below that marker:
+
+- `<!-- NEW PAGES GO HERE: ECG & EEG -->` — ECG/EEG front-ends, electrodes, lead-off, CMRR, ADS129x-family topics
+- `<!-- NEW PAGES GO HERE: PPG & Optical Sensing -->` — PPG, pulse oximetry, Beer–Lambert, optical/hemoglobin sensing
+- `<!-- NEW PAGES GO HERE: Systems & Practice -->` — batteries, EMC/gain/dB fundamentals, teardowns, general practice topics not specific to one signal chain
+- `<!-- NEW PAGES GO HERE: Other -->` — anything that doesn't fit the site's biomedical-electronics scope; also flag this to the user explicitly, since an entry landing here may mean the page doesn't belong in this index at all
+
 ```html
 <li><a href="pages/topic-slug.html">Topic Title <span class="date">YYYY-MM-DD</span></a></li>
 ```
-Never rewrite or reformat anything else in `index.html`.
+
+Insert newest-first within that group's `<ul>` (by date, matching the existing entries). Never rewrite or reformat anything else in `index.html` — no other group's list, no headings, no marker comments themselves.
 
 ### Step 7 — Run the `page-reviewer` agent
 
@@ -145,6 +160,13 @@ Never rewrite or reformat anything else in `index.html`.
 
 The reviewer checks against the rubric defined in the **Page-Reviewer Rubric** section below.
 
+### Step 7.5 — Run the `ui-polisher` agent
+
+- Only after `page-reviewer` returns PASS (or only NICE TO HAVE items remain)
+- Pass it the same file path
+- It runs the installed `impeccable` skill's `polish` and `audit` playbooks against that one page and applies fixes directly — spacing, contrast, responsive behavior, interaction states — never a redesign (see "UI Polish Automation" below)
+- Read its report: apply anything it flags for the main agent that needs a judgment call; nothing else to do if its "Fixed" and "Declined" lists are the only output
+
 ### Step 8 — Report to the user
 
 - Assumptions made (if Step 0 was skipped)
@@ -153,6 +175,7 @@ The reviewer checks against the rubric defined in the **Page-Reviewer Rubric** s
 - Any conflicts surfaced between researchers
 - Any [UNVERIFIED] citations remaining and why
 - Any [NEEDS RESEARCH] placeholders that survived the recovery loop
+- What `ui-polisher` fixed, and anything it flagged rather than fixed
 - One sentence summary of what the page covers
 
 ### Step 9 — Commit and sync to GitHub
@@ -399,6 +422,38 @@ a component that `ui.css` does not have:
 2. If genuinely new, add it to `ui.css` using only existing tokens
 3. Never introduce a new color, a third accent, or a second font family
 
+## UI Polish Automation (impeccable)
+
+The [impeccable.style](https://impeccable.style) design skill is installed project-locally
+under `.claude/skills/impeccable/` (`npx impeccable install`, project scope). It gives the
+`ui-polisher` agent a `polish` and `audit` playbook to run against every new page after
+`page-reviewer` passes (Step 7.5).
+
+**Precedence — read this before trusting anything impeccable reports:**
+`UI_REFERENCE.md`, `ui-reference.html`, and `ui.css` remain the sole source of truth for
+this project's visual system, exactly as stated at the top of this file. `PRODUCT.md` and
+`DESIGN.md` at the repo root exist only because impeccable's commands read them for
+context — `DESIGN.md` is a generated **mirror** of `UI_REFERENCE.md`/`ui.css`, written once
+by hand to match them. If `DESIGN.md` and `UI_REFERENCE.md`/`ui.css` ever disagree, the
+latter wins; fix `DESIGN.md` to match, never the other way around.
+
+**Why this needed care:** impeccable's own detectors treat some *generic* AI-slop patterns
+as defaults to flag — a numbered eyebrow label over every section, Title Case body copy,
+zero-shadow flat cards. This project's system deliberately uses all three on purpose.
+`DESIGN.md`'s "Do's and Don'ts" section documents each one as a committed, load-bearing
+convention (impeccable's own doctrine: *"Refinement preserves; redesign replaces... visual
+authority is evidence, not a filename"*) so the `ui-polisher` agent — and anyone invoking
+`/impeccable` directly — doesn't "fix" them.
+
+**Do not** run `/impeccable init` or `/impeccable document` — they would regenerate
+`PRODUCT.md`/`DESIGN.md` from scratch and could drift them away from the hand-curated
+version that mirrors `UI_REFERENCE.md`. If either file needs updating, edit it directly
+(and edit `UI_REFERENCE.md` first if the underlying system is actually changing).
+
+**Do not** give `ui-polisher` — or any direct `/impeccable` invocation — permission to
+touch `index.html`, other existing pages, `pages/base.css`-themed legacy pages, or the
+`:root` tokens in `ui.css` itself. Its scope is refinement of one new page at a time.
+
 ## Page-Reviewer Rubric
 
 The `page-reviewer` agent checks every page against these criteria before passing it. Each issue is classified as BLOCKING, SHOULD FIX, or NICE TO HAVE.
@@ -435,6 +490,7 @@ The `page-reviewer` agent checks every page against these criteria before passin
 - Researcher A, B, C → `model: "haiku"`
 - Page reviewer → `model: "haiku"`
 - Gap recovery re-search → `model: "haiku"`
+- ui-polisher → `model: "sonnet"` (applies direct edits — more consequential than the report-only agents above)
 - Page writer (main agent) → no override, inherits default
 - Never use Opus unless the user explicitly requests it
 
@@ -470,3 +526,5 @@ The main agent writes prose during page creation, working from the merged struct
 5. **Always use the `page-reviewer` agent after writing** — do not declare done until it passes
 6. **Use sub-agents to avoid flooding yourself** — break large tasks into delegated steps rather than trying to do everything in one shot
 7. **Any claim about an electrical or electronic component must come from the official datasheet** — the datasheet is authoritative above application notes or third-party pages; cite the datasheet specifically for that claim; note in the page whether a conclusion is datasheet-derived or general engineering knowledge
+8. **Always run the `ui-polisher` agent after `page-reviewer` passes** (Step 7.5) — do not skip it, but never let it or a direct `/impeccable` command touch `ui.css` tokens, `index.html`, or any other existing page
+9. **`UI_REFERENCE.md` / `ui-reference.html` / `ui.css` outrank `DESIGN.md`/`PRODUCT.md`** whenever impeccable's output disagrees with this file — those three remain the only visual authority for this project
