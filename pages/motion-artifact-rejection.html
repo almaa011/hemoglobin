@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motion Artifact Rejection in PPG — An Engineer's Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+  :root { --accent: #38bdf8; /* signal-processing cyan */ }
+  .flow-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; fill: var(--mut); }
+  .flow-box { fill: var(--panel); stroke: var(--line); stroke-width: 1; }
+  .flow-box.hi { stroke: var(--accent); }
+  .flow-title { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; fill: var(--ink); }
+  .bar-track { fill: rgba(255,255,255,.06); }
+  .bar-fill { fill: var(--accent); }
+  .bar-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; fill: var(--ink); }
+  .bar-lbl { font-family: 'Inter', sans-serif; font-size: 12px; fill: var(--mut); }
+</style>
+</head>
+<body>
+<div id="prog"></div>
+
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <a class="back-link" href="../index.html">← Index</a>
+    <div class="kicker"><span class="dot"></span> PPG · SIGNAL PROCESSING</div>
+    <h1>Motion Artifact Rejection in PPG <span style="color:var(--accent)">— An Engineer's Guide</span></h1>
+    <p class="lead">Every time a wearer walks, taps, or flexes their wrist, the optical pulse sensor picks up noise that can dwarf the actual heartbeat. This page covers the physics of why that happens and the hardware + algorithm toolkit used to fight it — from datasheet-level AFE tricks to the adaptive filters running on the wrist.</p>
+    <p class="mut">2026-07-09</p>
+    <div class="scrolltip"><span class="arr">↓</span> start reading</div>
+  </div>
+</header>
+
+<section id="s0">
+  <div class="wrap">
+    <div class="note">
+      <div class="lbl">TL;DR</div>
+      <p><strong>Motion artifact (MA) isn't one problem — it's two.</strong> Sensor displacement shifts the optical path length ("baseline drift"), while tissue squeezing under the sensor changes the light transmission itself ("time-varying system parameters," TVSP). Neither is removable with a simple fixed filter because their frequency content overlaps the heartbeat's <span class="ref" title="[3]">[3]</span>.</p>
+      <p>Real numbers: unfiltered PPG beat-detection sensitivity falls from <strong>99% while walking to 82.49% while running</strong> <span class="ref" title="[12]">[12]</span>, and hand motions like rubbing can push SpO2 error past <strong>10% RMSE</strong> <span class="ref" title="[9]">[9]</span>.</p>
+      <p>The fix is two-layered: AFE hardware does ambient-light and dark-current subtraction (~60 dB rejection) <span class="ref" title="[10]">[10]</span> and fast LED pulsing to cut 1/f noise, while firmware runs adaptive filters (LMS/RLS/ANC) that use a 3-axis accelerometer as a "what the noise looks like" reference to subtract the correlated motion component out of the optical signal.</p>
+      <p>Done well, this combination is dramatic: one validated method cut heart-rate error from <strong>11.47 BPM to 0.92 BPM</strong> during hard running — a ~92% reduction <span class="ref" title="[16]">[16]</span>. Done poorly (or absent), consumer wearables still show large, sport-dependent errors, and several algorithm classes have documented failure modes this page covers explicitly.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s1">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">01</span> The physics</p>
+    <h2>What a "motion artifact" actually is</h2>
+    <p><strong>A PPG sensor is an optical bridge measuring blood volume — anything that changes the light path other than blood volume is noise.</strong> The sensor shines light (usually green, red, or infrared) into tissue and measures how much comes back; blood volume changes with each heartbeat modulate that return signal by a few percent <span class="ref" title="[3]">[3]</span>.</p>
+    <p>Motion corrupts this in two physically distinct ways, and conflating them is the single biggest reason naive filtering fails.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <div class="panel-title">Two failure mechanisms, not one</div>
+        <div class="panel-sub">source-verified, PMC12473256</div>
+      </div>
+      <table class="tbl">
+        <tr><th>Mechanism</th><th>What physically happens</th><th>Circuit analogy</th></tr>
+        <tr><td>Baseline drift</td><td>Sensor shifts relative to the artery — the optical path length itself changes</td><td>Like your photodiode slowly rotating away from a fixed light source — a slow DC offset wander</td></tr>
+        <tr><td>Time-varying system parameters (TVSP)</td><td>Tissue compresses/deforms under the sensor, changing how light transmits through it — independent of any blood-volume change</td><td>Like the gain of your transimpedance amplifier randomly modulating mid-measurement — a multiplicative distortion riding on every harmonic of the real signal</td></tr>
+      </table>
+      <p class="panel-cap">TVSP is the harder of the two: it's quantified at roughly <strong>1% heart-rate variation and &lt;5% pulse-amplitude change</strong> per event, and it cannot be removed by ordinary filtering, empirical mode decomposition, or compressed sensing <span class="ref" title="[3]">[3]</span> — the distortion sits on top of the same frequencies as the real pulse.</p>
+    </div>
+
+    <p><strong>Fixed-frequency filters fail because motion and heartbeat overlap in frequency.</strong> A resting heart rate and a walking cadence can both land in the 1–3 Hz band, so a low-pass or band-pass filter tuned to "heart rate range" cannot tell them apart <span class="ref" title="[4]">[4]</span>.</p>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">02</span> How bad it gets</p>
+    <h2>The scale of the problem, in numbers</h2>
+    <p><strong>Motion artifact amplitude routinely exceeds the pulsatile signal it's corrupting.</strong> In wrist-worn devices specifically, MA "can have much larger amplitude than the pulsatile component in the PPG," and wrist sensors suffer worse than finger-clip sensors because the wrist itself flexes <span class="ref" title="[2]">[2]</span>.</p>
+
+    <div class="spec-grid">
+      <div class="spec-card"><span class="sc" style="background:var(--bad)"></span><div class="sv">99% → 82.49%</div><div class="sl">beat-detection sensitivity, walking → running, unfiltered <span class="ref" title="[12]">[12]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--warn)"></span><div class="sv">9.5–12% RMSE</div><div class="sl">SpO2 error from finger-rubbing motion at 2 Hz <span class="ref" title="[9]">[9]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--warn)"></span><div class="sv">2.01 → 3.04 BPM</div><div class="sl">MAE overall → running, Maxim-validated algorithm <span class="ref" title="[8]">[8]</span></div></div>
+      <div class="spec-card"><span class="sc" style="background:var(--good)"></span><div class="sv">11.47 → 0.92 BPM</div><div class="sl">error with vs. without accel-referenced adaptive filtering <span class="ref" title="[16]">[16]</span></div></div>
+    </div>
+    <p class="mut" style="font-size:13px">Note the last two rows are different studies/algorithms — not a before/after of the same system. They're shown together to bound the range of outcomes reported in the literature.</p>
+
+    <div class="warn-note">
+      <div class="lbl">Warning — even "clean" data isn't clean</div>
+      <p>Even everyday hand motions most people wouldn't call "exercise" — tapping, rubbing, turning a book page, using a tablet — pushed SpO2 RMSE above 4% on at least one tested consumer pulse oximeter <span class="ref" title="[9]">[9]</span>. If you're designing for daily-life use, "resting" is not a safe assumption.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">03</span> Hardware-level defenses</p>
+    <h2>What the AFE does before any algorithm runs</h2>
+    <p><strong>The first line of defense is entirely analog — reject ambient light and dark current before the ADC ever sees them.</strong> This doesn't remove motion artifact directly, but it stops motion-modulated ambient light (sunlight flicker, indoor lighting) from adding a second noise source on top of it.</p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <div class="panel-title">Synchronous detection signal chain</div>
+        <div class="panel-sub">ADI ADPD4100 architecture</div>
+      </div>
+      <div id="chain"></div>
+      <p class="panel-cap">Each measurement cycle takes a dark reading (LEDs off), a red reading, an IR reading, and an ambient-only reading, then subtracts dark + ambient from the LED-on readings before conversion <span class="ref" title="[10]">[10]</span>. This is done every cycle, at LED pulse widths as short as 1 µs, specifically to fight 1/f noise <span class="ref" title="[10]">[10]</span>.</p>
+    </div>
+
+    <table class="tbl">
+      <tr><th>Spec</th><th>Value</th><th>Part</th></tr>
+      <tr><td>Ambient light rejection</td><td class="good">&gt;70 dB @ 120 Hz</td><td>MAX86141 <span class="ref" title="[5]">[5]</span></td></tr>
+      <tr><td>Ambient photodetector current tolerance</td><td>&gt;100 µA</td><td>MAX86141 <span class="ref" title="[5]">[5]</span></td></tr>
+      <tr><td>Typical SNR</td><td class="good">&gt;80 dB</td><td>MAX30101, marketed as "motion artifact resilient" <span class="ref" title="[6]">[6]</span></td></tr>
+      <tr><td>Synchronous ambient/dark subtraction</td><td class="good">60 dB rejection</td><td>ADPD4100 <span class="ref" title="[10]">[10]</span></td></tr>
+      <tr><td>SNR / power tradeoff</td><td>100 dB SNR (low-perfusion mode) or 30 µW @ 75 dB/25 Hz</td><td>ADPD4100 <span class="ref" title="[10]">[10]</span></td></tr>
+      <tr><td>Eval-mode sample rate</td><td>up to 3000 Hz</td><td>TI AFE4403EVM <span class="ref" title="[11]">[11]</span></td></tr>
+    </table>
+
+    <h3>Wavelength choice is itself a motion-robustness decision</h3>
+    <p><strong>Green light is absorbed roughly 10–14x more strongly in the epidermis than in deeper skin layers</strong> — measured absorption coefficients at 532 nm are 1.44 mm⁻¹ (epidermis) vs. 0.10 mm⁻¹ (dermis) vs. 0.15 mm⁻¹ (subcutaneous fat) <span class="ref" title="[17]">[17]</span>. Longer wavelengths (595–800 nm, i.e. red/near-IR) reach deeper into the dermis, and 980–1064 nm reaches the subcutaneous fat layer <span class="ref" title="[17]">[17]</span>.</p>
+    <p>That's why fitness-tracker HR sensors are almost always green while clinical SpO2 needs red+IR: green stays shallow (good SNR near the surface, more resistant to deep-tissue motion noise), but SpO2 math needs the red/IR absorption-ratio physics regardless of penetration depth <span class="ref" title="[7]">[7]</span>. This is a physical tradeoff, not just a marketing choice — a deeper-penetrating wavelength picks up more of the tissue-deformation (TVSP) component described in Section 1.</p>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">04</span> Firmware-level defenses</p>
+    <h2>Adaptive filtering: teaching the system what "motion" looks like</h2>
+    <p><strong>The core idea: feed the filter a reference signal that contains the noise but not the heartbeat, and let it subtract the correlated part out.</strong> A 3-axis accelerometer is the standard reference — it can't see the pulse (a pulse's acceleration signature is far below what even a sensitive accelerometer resolves <span class="ref" title="[3]">[3]</span>), but it does see the body motion causing the artifact.</p>
+
+    <div class="note">
+      <div class="lbl">Key finding — don't conflate two different accelerometer roles</div>
+      <p>Some sources point out accelerometers "can't measure the pulse" <span class="ref" title="[3]">[3]</span> — true, but that's not their job here. Their job is supplying a <em>correlated noise reference</em> for adaptive filtering, not sensing the heartbeat directly. Keep these separate: "accelerometer can't see the pulse" and "accelerometer is useless for motion rejection" are not the same claim.</p>
+    </div>
+
+    <h3>The standard architecture</h3>
+    <ul>
+      <li><strong>Sampling:</strong> Maxim's reference spec runs both PPG and the accelerometer at 25 Hz (38–43 ms interval), synchronized to within 25 ms <span class="ref" title="[13]">[13]</span>.</li>
+      <li><strong>Activity classification:</strong> the accelerometer stream is independently classified into rest/walk/run/bike/other states, without needing the PPG signal at all <span class="ref" title="[13]">[13]</span>.</li>
+      <li><strong>Gating:</strong> a reliable SpO2 reading requires &gt;30 s of continuous signal with "Low PI," "Low SNR," and "Motion" flags all clear <span class="ref" title="[14]">[14]</span> — i.e., the system is designed to refuse an answer rather than report a bad one.</li>
+      <li><strong>Filter classes in use:</strong> LMS-family adaptive filters show up twice in verified sources — constrained ICA + LMS beats plain FFT-LMS and moving-average filtering <span class="ref" title="[4]">[4]</span>, and an LMS-Newton variant drives the accelerometer-referenced ANC result below <span class="ref" title="[16]">[16]</span>. RLS is frequently cited alongside LMS in the broader literature, but no verified source in this research pass confirmed a specific RLS-for-PPG result, so it's omitted here. <code>[NEEDS RESEARCH: verified primary source for RLS specifically applied to PPG motion-artifact removal]</code></li>
+    </ul>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <div class="panel-title">Measured impact of accelerometer-referenced ANC</div>
+        <div class="panel-sub">intensive running, LMS-Newton algorithm, n=12 <span class="ref" title="[16]">[16]</span></div>
+      </div>
+      <div id="barchart"></div>
+      <p class="panel-cap">Band-pass filtering alone leaves 11.47 BPM average error. Adding cascaded ANC with a 3-axis accelerometer reference drops that to 1.59 BPM; the full method (ANC + frequency tracking + notch filtering) reaches 0.92 BPM — about a <strong>92% reduction</strong> from the PPG-only baseline <span class="ref" title="[16]">[16]</span>.</p>
+    </div>
+
+    <h3>Alternative reference: use a second optical channel instead of an accelerometer</h3>
+    <p>One study found that a wrist accelerometer records sensor/limb displacement but structurally cannot record internal tissue deformation, since that deformation doesn't move the wrist itself <span class="ref" title="[15]">[15]</span>. Their proposed fix: use a second PPG wavelength channel as the noise reference instead, since it's affected similarly by the same tissue-level motion <span class="ref" title="[15]">[15]</span>.</p>
+
+    <h3>Other algorithm families</h3>
+    <table class="tbl">
+      <tr><th>Method</th><th>Basic idea</th><th>Note</th></tr>
+      <tr><td>Wavelet decomposition</td><td>Split signal into time-frequency components, threshold out artifact-dominated coefficients</td><td>Confirmed used for PPG motion-artifact localization via continuous wavelet transform (CWT), better time-frequency resolution than STFT <span class="ref" title="[2]">[2]</span></td></tr>
+      <tr><td>Kalman filtering</td><td>State-space model of the pulse, updated recursively as new samples arrive</td><td>Commonly cited for PPG MA removal — see the CONFLICT box below on how strong the evidence actually is</td></tr>
+      <tr><td>Machine learning / deep learning</td><td>Learn artifact-vs-clean classification from labeled training data</td><td>See Section 5 — generalization across body sites and unseen data is a documented weak point <span class="ref" title="[19]">[19]</span></td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">05</span> Where it still breaks</p>
+    <h2>Known failure modes and unresolved disagreements</h2>
+    <p><strong>No single rejection method is complete — every approach here has a documented blind spot.</strong> This section covers what the "adversarial" research angle surfaced: places where the clean story from Sections 3–4 doesn't hold up.</p>
+
+    <div class="conflict">
+      <div class="lbl">Conflict — "best algorithm" is contested, not settled</div>
+      <p>One study found a Kalman-smoother approach outperforming NLMS/RLS/conventional Kalman filtering for artifact removal — but that specific result is for near-infrared spectroscopy signal denoising, not PPG, and it explicitly avoided a backward/fixed-interval smoother as impractical for real-time use <span class="ref" title="[18]">[18]</span>. Meanwhile, a separate 2026 study found a spectral-subtraction method (SPECMAR) as the <em>worst</em> performer under vigorous motion (4.80 BPM max error, highest of all tested algorithms) and found finite-state-machine-based frameworks limited by "considering fewer parameters when judging signal states" <span class="ref" title="[20]">[20]</span>. No source in this research directly compares Kalman vs. wavelet vs. ICA vs. ML head-to-head under identical motion conditions — treat any single "best algorithm" claim you encounter elsewhere with caution.</p>
+    </div>
+
+    <ul>
+      <li><strong>Accelerometer blind spot — fine motion, still wrist.</strong> Finger tapping can leave a wrist-worn accelerometer showing no motion at all while the PPG signal is heavily distorted, because the wrist itself never moves <span class="ref" title="[2]">[2]</span>.</li>
+      <li><strong>Sensitivity collapses with motion intensity.</strong> Beat-detection sensitivity drops from 99% (walking) to 82.49% (running) in one study, and published test protocols themselves are typically limited to walking/fast-walking/running — real-world motion diversity (sports, daily activities) is under-tested in the literature <span class="ref" title="[12]">[12]</span>.</li>
+      <li><strong>ML generalization risk.</strong> Over half of reviewed machine-learning studies for PPG artifact detection don't show evidence of testing on genuinely unseen data, and models trained on finger PPG risk failing at wrist/forehead/earlobe sites due to differing signal morphology <span class="ref" title="[19]">[19]</span>.</li>
+      <li><strong>Proprietary black boxes.</strong> Consumer-wearable biometric algorithms are generally not open to public scrutiny <span class="ref" title="[21]">[21]</span>, and at least one major vendor (Fitbit) does not grant researchers access to raw PPG/accelerometer signals — only its own processed output — making it impossible for outside researchers to isolate whether an error originates in hardware, firmware, or algorithm <span class="ref" title="[22]">[22]</span>.</li>
+      <li><strong>Cross-brand variability is large.</strong> In one review, no wearable brand stayed within ±3% energy-expenditure error more than 13% of the time <span class="ref" title="[21]">[21]</span> — a proxy for how unevenly motion-compensation quality is implemented across the market.</li>
+    </ul>
+
+    <div class="aside">
+      A secondary (non-primary) source reporting on real-world Fitbit heart-rate accuracy claims bias reaching about −16.5 BPM in racket/team sports like badminton and soccer, versus near-zero bias for steady running. This is <strong>[UNVERIFIED]</strong> — it's a blog aggregating other studies rather than a primary source, so treat the specific numbers as illustrative of "sport-specific motion is harder than steady-state motion," not as a verified spec.
+    </div>
+  </div>
+</section>
+
+<section id="s6">
+  <div class="wrap">
+    <p class="eyebrow"><span class="n">06</span> Regulatory context</p>
+    <h2>What standards actually require</h2>
+    <p><strong>Regulators mandate motion testing but leave the numeric pass/fail bar mostly to the standard itself, which is paywalled.</strong> The FDA's pulse-oximeter 510(k) guidance requires manufacturers to test and describe motion characteristics (amplitude, type, frequency) per ISO 80601-2-61:2011, Clause 201.12.1.102 <span class="ref" title="[25]">[25]</span>.</p>
+    <table class="tbl">
+      <tr><th>Sensor type</th><th>Required Arms accuracy</th></tr>
+      <tr><td>Transmittance wrap/clip</td><td class="good">≤ 3.0%</td></tr>
+      <tr><td>Ear clip</td><td class="warn">≤ 3.5%</td></tr>
+      <tr><td>Reflectance</td><td class="warn">≤ 3.5%</td></tr>
+    </table>
+    <p class="mut" style="font-size:13px">Arms = RMS accuracy over 70–100% SpO2, per FDA guidance <span class="ref" title="[25]">[25]</span>. The ISO standard's own numeric motion-tolerance thresholds could not be retrieved — it's paywalled, and only the FDA's reference to its existence was verifiable. <code>[NEEDS RESEARCH: ISO 80601-2-61:2011 §201.12.1.102 exact motion-test thresholds]</code></p>
+  </div>
+</section>
+
+<details class="src">
+  <summary>References <span class="chev">▾</span></summary>
+  <div class="srcbody">
+    <ol>
+      <li id="r1">[1] Analog Devices. "MAX86141 Product Page." <a href="https://www.analog.com/en/products/max86141.html">analog.com/en/products/max86141.html</a></li>
+      <li id="r2">[2] "Motion Artifact Reduction for Wrist-Worn Photoplethysmograph Sensors Based on Different Wavelengths." <em>Sensors</em>, MDPI. <a href="https://www.mdpi.com/1424-8220/19/3/673">mdpi.com/1424-8220/19/3/673</a></li>
+      <li id="r3">[3] "An Analytical Model of Motion Artifacts in a Measured Arterial Pulse Signal." <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12473256/">PMC12473256</a></li>
+      <li id="r4">[4] "Motion artifact removal using constrained ICA and adaptive filtering." <em>BioMedical Engineering OnLine</em>. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4021027/">PMC4021027</a></li>
+      <li id="r5">[5] Analog Devices. "MAX86141 Product Page — ambient light cancellation specs." <a href="https://www.analog.com/en/products/max86141.html">analog.com/en/products/max86141.html</a></li>
+      <li id="r6">[6] Analog Devices. "MAX30101 Product Page." <a href="https://www.analog.com/en/products/max30101.html">analog.com/en/products/max30101.html</a></li>
+      <li id="r7">[7] General engineering knowledge (wavelength selection rationale for HR vs. SpO2), corroborated by wavelength-sensitivity findings in <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7085621/">PMC7085621</a> — not a single-source datasheet claim.</li>
+      <li id="r8">[8] Analog Devices. "Validation and Performance of a Wearable Heart-Rate Monitoring Algorithm." <a href="https://www.analog.com/en/resources/technical-articles/validation-and-performance-of-a-wearable-heartrate-monitoring-algorithm.html">analog.com — validation article</a></li>
+      <li id="r9">[9] "The Use of Wearable Pulse Oximeters in the Prompt Detection of Hypoxemia and During Movement." <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8889481/">PMC8889481</a></li>
+      <li id="r10">[10] Analog Devices. "How to Design a Better Pulse Oximeter" (ADPD4100/ADPD41001 specs). <a href="https://www.analog.com/en/resources/technical-articles/how-to-design-a-better-pulse-oximeter.html">analog.com — design article</a></li>
+      <li id="r11">[11] Texas Instruments. "AFE4403EVM Evaluation Board." <a href="https://www.ti.com/tool/AFE4403EVM">ti.com/tool/AFE4403EVM</a></li>
+      <li id="r12">[12] "Motion Artifact Reduction In Wearable Photoplethysmography Based on Multi-Channel Sensors with Multiple Wavelengths." <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7085621/">PMC7085621</a></li>
+      <li id="r13">[13] Analog Devices/Maxim. "PPG Algorithms Specifications" application note. <a href="https://www.analog.com/en/resources/app-notes/maxim-integrated-ppg-algorithms-specifications.html">analog.com — PPG algorithms app note</a></li>
+      <li id="r14">[14] Same as [13] — Maxim PPG Algorithms Specifications app note (SpO2 gating requirement).</li>
+      <li id="r15">[15] "Motion Artifact Reduction for Wrist-Worn Photoplethysmograph Sensors Based on Different Wavelengths." <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6387309/">PMC6387309</a> (same underlying study as [2]; cited separately per source article ID).</li>
+      <li id="r16">[16] "PPG-Based Heart Rate Estimation During Intensive Physical Exercise Using Cascaded Adaptive Noise Cancellation." <em>Sensors</em>, MDPI. <a href="https://www.mdpi.com/1424-8220/19/15/3312">mdpi.com/1424-8220/19/15/3312</a></li>
+      <li id="r17">[17] "Absorption and scattering coefficients of human skin layers." <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7191311/">PMC7191311</a></li>
+      <li id="r18">[18] Kalman-filtering study for near-infrared spectroscopy denoising (NOT PPG-specific — cited here only to show the actual, narrower scope of this commonly over-cited claim). <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2846950/">PMC2846950</a></li>
+      <li id="r19">[19] "Machine Learning Applied to Reference Signal-Less Detection of Motion Artifacts in Photoplethysmographic Signals: A Review." <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11598458/">PMC11598458</a></li>
+      <li id="r20">[20] "Research on heart rate estimation algorithm based on dynamic PPG." <em>Frontiers in Signal Processing</em>, 2026. <a href="https://www.frontiersin.org/journals/signal-processing/articles/10.3389/frsip.2026.1724468/full">frontiersin.org/frsip.2026.1724468</a></li>
+      <li id="r21">[21] "A guide to consumer-grade wearables in cardiovascular clinical care and population health for non-experts." <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12404996/">PMC12404996</a></li>
+      <li id="r22">[22] "Validation of the Fitbit Charge 5 for the Detection of Heart Rate and Electrodermal Activity." <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12308623/">PMC12308623</a></li>
+      <li class="unverified">[23] — UNVERIFIED — ChatPPG blog post on Fitbit real-world heart-rate accuracy by sport (secondary aggregator, not independently verified as a primary source). <a href="https://chatppg.com/blog/fitbit-heart-rate-accuracy">chatppg.com/blog/fitbit-heart-rate-accuracy</a></li>
+      <li class="unverified">[24] — UNVERIFIED — IEEE filtered X-LMS paper on accelerometer-referenced PPG motion artifact removal; paywalled, quote could not be independently confirmed. <a href="https://ieeexplore.ieee.org/document/8050418/">ieeexplore.org/document/8050418</a></li>
+      <li id="r25">[25] FDA. "Pulse Oximeters — Premarket Notification Submissions [510(k)] Guidance for Industry." <a href="https://www.fda.gov/regulatory-information/search-fda-guidance-documents/pulse-oximeters-premarket-notification-submissions-510ks-guidance-industry-and-food-and-drug">fda.gov guidance document</a></li>
+    </ol>
+  </div>
+</details>
+
+<footer><div class="wrap"><a class="back-link" href="../index.html">← Index</a></div></footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const el = document.documentElement;
+    document.getElementById('prog').style.width =
+      (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+  });
+
+  // Signal chain diagram
+  (function(){
+    const svg = `
+    <svg viewBox="0 0 760 220" xmlns="http://www.w3.org/2000/svg">
+      <rect class="flow-box hi" x="10" y="20" width="140" height="60" rx="10"/>
+      <text class="flow-title" x="80" y="45" text-anchor="middle">LED on/off</text>
+      <text class="flow-label" x="80" y="63" text-anchor="middle">red / IR / green pulses</text>
+
+      <rect class="flow-box" x="200" y="20" width="140" height="60" rx="10"/>
+      <text class="flow-title" x="270" y="45" text-anchor="middle">Photodiode + TIA</text>
+      <text class="flow-label" x="270" y="63" text-anchor="middle">dark/ambient subtract</text>
+
+      <rect class="flow-box" x="390" y="20" width="140" height="60" rx="10"/>
+      <text class="flow-title" x="460" y="45" text-anchor="middle">ADC</text>
+      <text class="flow-label" x="460" y="63" text-anchor="middle">e.g. up to 3000 Hz eval</text>
+
+      <rect class="flow-box hi" x="580" y="20" width="160" height="60" rx="10"/>
+      <text class="flow-title" x="660" y="45" text-anchor="middle">Adaptive filter</text>
+      <text class="flow-label" x="660" y="63" text-anchor="middle">LMS / RLS / ANC</text>
+
+      <rect class="flow-box" x="390" y="140" width="140" height="60" rx="10"/>
+      <text class="flow-title" x="460" y="165" text-anchor="middle">3-axis accel</text>
+      <text class="flow-label" x="460" y="183" text-anchor="middle">25 Hz, synced ±25ms</text>
+
+      <path d="M150,50 H200" stroke="var(--line)" stroke-width="2" marker-end="url(#arr)"/>
+      <path d="M340,50 H390" stroke="var(--line)" stroke-width="2" marker-end="url(#arr)"/>
+      <path d="M530,50 H580" stroke="var(--line)" stroke-width="2" marker-end="url(#arr)"/>
+      <path d="M460,140 V95 Q460,80 490,80 H580" stroke="var(--accent)" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+      <text class="flow-label" x="660" y="105" text-anchor="middle" fill="var(--accent)">reference signal</text>
+
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--line)"/>
+        </marker>
+      </defs>
+    </svg>`;
+    document.getElementById('chain').innerHTML = svg;
+  })();
+
+  // Bar chart: 11.47 -> 1.59 -> 0.92 BPM
+  (function(){
+    const data = [
+      {label:'Band-pass filter only', val:11.47},
+      {label:'+ cascaded ANC (accel ref)', val:1.59},
+      {label:'+ freq tracking + notch (full method)', val:0.92}
+    ];
+    const max = 12;
+    const w = 640, barH = 34, gap = 22, top = 10;
+    let rows = '';
+    data.forEach((d,i) => {
+      const y = top + i*(barH+gap);
+      const bw = (d.val/max) * (w-260);
+      rows += `
+        <text class="bar-lbl" x="0" y="${y+barH/2+4}">${d.label}</text>
+        <rect class="bar-track" x="260" y="${y}" width="${w-260}" height="${barH}" rx="6"/>
+        <rect class="bar-fill" x="260" y="${y}" width="${bw}" height="${barH}" rx="6"/>
+        <text class="bar-val" x="${260+bw+10}" y="${y+barH/2+4}">${d.val} BPM</text>
+      `;
+    });
+    const svgH = top + data.length*(barH+gap);
+    const svg = `<svg viewBox="0 0 ${w} ${svgH}" xmlns="http://www.w3.org/2000/svg">${rows}</svg>`;
+    document.getElementById('barchart').innerHTML = svg;
+  })();
+</script>
+</body>
+</html>
