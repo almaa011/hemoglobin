@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Best Open-Source Project For A 48V 3-Phase Motor Driver</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../ui.css">
+  <style>
+    /* page-specific overrides only */
+    .bridge text{font-family:'Inter',sans-serif;}
+    .legend{display:flex;gap:20px;flex-wrap:wrap;margin-top:6px;font-size:12.5px;color:var(--body-2);}
+    .legend span{display:inline-flex;align-items:center;gap:7px;}
+    .legend i{width:12px;height:12px;border-radius:2px;display:inline-block;}
+    /* keep the bridge diagram's labels legible instead of shrinking to
+       illegible size on narrow viewports — scroll horizontally instead,
+       same strategy as .tbl-scroll below */
+    @media (max-width:600px){
+      .bridge{overflow-x:auto;}
+      .bridge svg{min-width:520px;}
+    }
+    /* comparison table: scroll rather than cram six columns of prose
+       into a few dozen px per cell on small screens */
+    .tbl-scroll .tbl{min-width:680px;}
+  </style>
+</head>
+<body>
+<div id="prog"></div>
+
+<div class="wrap">
+  <nav class="nav">
+    <a class="brand" href="../index.html"><span class="mark"><i></i><i></i></span> Research Index</a>
+    <div class="navlinks"><a href="../index.html">Index</a></div>
+    <a class="btn btn-out" href="../ui-reference.html">Design System</a>
+  </nav>
+</div>
+
+<header class="wrap hero">
+  <a class="back-link" href="../index.html">← Index</a>
+  <h1>The Best Open-Source Project For A <em>48V</em> 3-Phase Motor Driver</h1>
+  <p class="lead">A Hardware Engineer's Survey Of The Open ESC Landscape — VESC, moteus, ODrive, SimpleFOC — Then A Build-Level Deep Dive On What It Actually Takes To Drive A Three-Phase Motor From A 48V Bus.</p>
+  <p class="date">2026-08-01</p>
+</header>
+
+<section>
+  <div class="wrap-narrow">
+    <div class="note">
+      <div class="lbl">TL;DR</div>
+      <p><strong>For A 48V Motor, Start From VESC.</strong> Its hardware is released under Creative Commons Attribution-ShareAlike 4.0 and its firmware under GPLv3, so schematics, PCB, BOM and code are all there to fabricate a proven design — and the VESC 6 MkVI is rated for the full 6–60V band that a 12S / 48V pack lives in. If you need a fully-permissive licence (hardware and firmware both Apache 2.0) for a robotics or servo build, <strong>moteus n1</strong> (10–54V) is the cleaner reuse. Avoid leaning on ODrive as your "open" base — its newer hardware and firmware have gone closed — and note that SimpleFOC, while the easiest on-ramp to FOC, ships no board rated above 35V, so it is not a 48V ESC on its own. Whatever the base, the 48V-specific work is the same: MOSFETs rated 80–100V (never 48V), tight dead-time to stop shoot-through, and a low-inductance power-loop layout.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-narrow">
+    <p class="eyebrow"><span class="n">01</span> The Landscape</p>
+    <h2>What You're Actually Building</h2>
+    <p><strong>An ESC Is A Three-Phase Inverter Plus A Commutation Brain.</strong> The power stage is six switches — three half-bridges — that chop the DC bus into three phase currents; the controller decides which switch is on when.</p>
+    <p>The two control styles map cleanly onto circuits you already know. This is general engineering knowledge, not tied to one source:</p>
+    <ul>
+      <li><strong>Six-Step (Trapezoidal)</strong> — Only Two Of The Three Phases Are Energised At Any Instant; The Controller Steps Through Six States Per Electrical Revolution. Simple, Cheap, But Torque Ripples At Each Commutation.</li>
+      <li><strong>FOC (Field-Oriented Control)</strong> — All Three Phases Are Driven With Sinusoidal Current, Regulated In A Rotating Reference Frame. Smoother And More Efficient On A Sinusoidal-Back-EMF Motor, But It Needs Current Sensing And More Compute.</li>
+    </ul>
+    <p>Every open project below is really a packaging of the same three-half-bridge power stage plus one of these two brains. The differences that matter for you are <strong>voltage rating, how open the design truly is, and how much you have to build yourself.</strong></p>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <div>
+          <div class="panel-title">The Six-Switch Three-Phase Bridge</div>
+          <div class="panel-sub">The Power Stage Inside Every ESC On This Page</div>
+        </div>
+      </div>
+      <div class="bridge">
+        <svg viewBox="0 0 640 340" width="100%" height="auto" role="img" aria-label="Three-phase inverter: DC bus, three half-bridge legs of high-side and low-side MOSFETs, phases A B C to a motor.">
+          <!-- rails -->
+          <line x1="40" y1="40" x2="470" y2="40" stroke="#000" stroke-width="2"/>
+          <line x1="40" y1="300" x2="470" y2="300" stroke="#000" stroke-width="2"/>
+          <text x="40" y="30" font-size="13" font-weight="600" fill="#000">DC+ (48V)</text>
+          <text x="40" y="320" font-size="13" font-weight="600" fill="#000">DC−</text>
+          <!-- bus cap -->
+          <line x1="60" y1="40" x2="60" y2="128" stroke="#000" stroke-width="1.5"/>
+          <line x1="48" y1="128" x2="72" y2="128" stroke="#000" stroke-width="2"/>
+          <line x1="50" y1="140" x2="70" y2="140" stroke="#000" stroke-width="2"/>
+          <line x1="60" y1="140" x2="60" y2="300" stroke="#000" stroke-width="1.5"/>
+          <text x="82" y="138" font-size="12" fill="#6F6C79">Bus Cap</text>
+          <!-- three legs -->
+          <!-- leg positions -->
+          <g>
+            <!-- Leg A -->
+            <line x1="180" y1="40" x2="180" y2="90" stroke="#000" stroke-width="1.5"/>
+            <rect x="152" y="90" width="56" height="44" rx="7" fill="#D2F53C" stroke="#000" stroke-width="1.5"/>
+            <text x="180" y="117" font-size="12" font-weight="600" fill="#000" text-anchor="middle">Q1</text>
+            <line x1="180" y1="134" x2="180" y2="206" stroke="#000" stroke-width="1.5"/>
+            <rect x="152" y="206" width="56" height="44" rx="7" fill="#fff" stroke="#000" stroke-width="1.5"/>
+            <text x="180" y="233" font-size="12" font-weight="600" fill="#000" text-anchor="middle">Q2</text>
+            <line x1="180" y1="250" x2="180" y2="300" stroke="#000" stroke-width="1.5"/>
+            <circle cx="180" cy="170" r="3.5" fill="#7C4DFF"/>
+            <line x1="180" y1="170" x2="300" y2="170" stroke="#7C4DFF" stroke-width="1.5"/>
+            <text x="150" y="270" font-size="12" font-weight="600" fill="#7C4DFF" text-anchor="middle">A</text>
+          </g>
+          <g>
+            <!-- Leg B -->
+            <line x1="270" y1="40" x2="270" y2="90" stroke="#000" stroke-width="1.5"/>
+            <rect x="242" y="90" width="56" height="44" rx="7" fill="#fff" stroke="#000" stroke-width="1.5"/>
+            <text x="270" y="117" font-size="12" font-weight="600" fill="#000" text-anchor="middle">Q3</text>
+            <line x1="270" y1="134" x2="270" y2="206" stroke="#000" stroke-width="1.5"/>
+            <rect x="242" y="206" width="56" height="44" rx="7" fill="#fff" stroke="#000" stroke-width="1.5"/>
+            <text x="270" y="233" font-size="12" font-weight="600" fill="#000" text-anchor="middle">Q4</text>
+            <line x1="270" y1="250" x2="270" y2="300" stroke="#000" stroke-width="1.5"/>
+            <circle cx="270" cy="185" r="3.5" fill="#7C4DFF"/>
+            <line x1="270" y1="185" x2="300" y2="185" stroke="#7C4DFF" stroke-width="1.5"/>
+            <text x="242" y="285" font-size="12" font-weight="600" fill="#7C4DFF" text-anchor="middle">B</text>
+          </g>
+          <g>
+            <!-- Leg C -->
+            <line x1="360" y1="40" x2="360" y2="90" stroke="#000" stroke-width="1.5"/>
+            <rect x="332" y="90" width="56" height="44" rx="7" fill="#fff" stroke="#000" stroke-width="1.5"/>
+            <text x="360" y="117" font-size="12" font-weight="600" fill="#000" text-anchor="middle">Q5</text>
+            <line x1="360" y1="134" x2="360" y2="206" stroke="#000" stroke-width="1.5"/>
+            <rect x="332" y="206" width="56" height="44" rx="7" fill="#D2F53C" stroke="#000" stroke-width="1.5"/>
+            <text x="360" y="233" font-size="12" font-weight="600" fill="#000" text-anchor="middle">Q6</text>
+            <line x1="360" y1="250" x2="360" y2="300" stroke="#000" stroke-width="1.5"/>
+            <circle cx="360" cy="200" r="3.5" fill="#7C4DFF"/>
+            <line x1="360" y1="200" x2="300" y2="200" stroke="#7C4DFF" stroke-width="1.5"/>
+            <text x="388" y="285" font-size="12" font-weight="600" fill="#7C4DFF" text-anchor="middle">C</text>
+          </g>
+          <!-- motor -->
+          <circle cx="540" cy="170" r="62" fill="none" stroke="#000" stroke-width="2"/>
+          <line x1="300" y1="170" x2="478" y2="170" stroke="#7C4DFF" stroke-width="1.5"/>
+          <path d="M300 185 L440 185 L440 232 L478 232" stroke="#7C4DFF" stroke-width="1.5" fill="none"/>
+          <path d="M300 200 L420 200 L420 108 L478 108" stroke="#7C4DFF" stroke-width="1.5" fill="none"/>
+          <text x="540" y="176" font-size="14" font-weight="600" fill="#000" text-anchor="middle">M</text>
+          <text x="540" y="250" font-size="12" fill="#6F6C79" text-anchor="middle">3-Phase Motor</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#D2F53C"></i> Switch On (Conducting)</span>
+        <span><i style="background:#fff;border:1px solid #000"></i> Switch Off</span>
+        <span><i style="background:#7C4DFF"></i> Phase Node A / B / C</span>
+      </div>
+      <p class="panel-cap">One Instant Of Six-Step Commutation: High-Side Q1 And Low-Side Q6 Conduct, So Current Flows DC+ → Phase A → Motor → Phase C → DC−. Firing Q1 And Q2 (Same Leg) At Once Is <strong>Shoot-Through</strong> — A Dead Short Across The Bus.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-narrow">
+    <p class="eyebrow"><span class="n">02</span> The Recommendation</p>
+    <h2>Start From <em>VESC</em></h2>
+    <p><strong>VESC Is The Best All-Round Open Base For A 48V Motor.</strong> It is the only project on this list that is genuinely open at both layers and explicitly rated for the 48V band, with a mature toolchain and the largest community.</p>
+    <p>The hardware is licensed Creative Commons Attribution-ShareAlike 4.0 International<span class="ref" title="[4]">[4]</span>, and the firmware is GPLv3<span class="ref" title="[3]">[3]</span> — so schematics, PCB layout, BOM and source are all published to fabricate a proven design rather than invent one.</p>
+    <p>The <strong>VESC 6 MkVI</strong> is rated 6–60V (safe for 3S–12S LiPo), with input capped around 52V and voltage spikes that must not exceed 60V — squarely covering a 48V-class 12S pack<span class="ref" title="[5]">[5]</span>.</p>
+
+    <div class="spec-grid">
+      <div class="spec-card"><span class="sc"></span><div class="sv">6–60V</div><div class="sl">VESC 6 MkVI Operating Range (12S) <span class="ref" title="[5]">[5]</span></div></div>
+      <div class="spec-card"><span class="sc"></span><div class="sv">CC-BY-SA</div><div class="sl">Hardware Licence (Schematics, PCB, BOM) <span class="ref" title="[4]">[4]</span></div></div>
+      <div class="spec-card"><span class="sc"></span><div class="sv">GPLv3</div><div class="sl">Firmware Licence <span class="ref" title="[3]">[3]</span></div></div>
+    </div>
+
+    <div class="note">
+      <div class="lbl">IF YOU NEED A PERMISSIVE LICENCE</div>
+      <p><strong>Use moteus n1 Instead.</strong> mjbots' moteus publishes firmware and PCBs together under a single Apache 2.0 licence<span class="ref" title="[1]">[1]</span>, and the n1 controller accepts 10–54V (≤12S) with a 100A peak phase current on an STM32G4<span class="ref" title="[2]">[2]</span>. Apache 2.0 is far easier to reuse and commercialise than VESC's share-alike hardware plus GPL firmware — the trade-off is a smaller, more robotics/servo-focused ecosystem.</p>
+    </div>
+
+    <h3>How The Options Compare For A 48V Build</h3>
+    <div class="tbl-scroll">
+    <table class="tbl">
+      <thead>
+        <tr><th>Project</th><th>Hardware Open?</th><th>Firmware</th><th>Max Bus</th><th>48V Fit</th><th>Effort</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>VESC 6 (MkVI)</td>
+          <td class="good">Yes — CC-BY-SA 4.0 <span class="ref" title="[4]">[4]</span></td>
+          <td>GPLv3 <span class="ref" title="[3]">[3]</span></td>
+          <td>6–60V <span class="ref" title="[5]">[5]</span></td>
+          <td class="good">Ideal (12S)</td>
+          <td>Fabricate Proven Design</td>
+        </tr>
+        <tr>
+          <td>moteus n1</td>
+          <td class="good">Yes — Apache 2.0 <span class="ref" title="[1]">[1]</span></td>
+          <td>Apache 2.0 <span class="ref" title="[1]">[1]</span></td>
+          <td>10–54V <span class="ref" title="[2]">[2]</span></td>
+          <td class="good">Yes</td>
+          <td>Servo/Robotics Focus</td>
+        </tr>
+        <tr>
+          <td>ODrive v3.6</td>
+          <td class="bad">Closing — v3.5 open, v3.6+ not released <span class="ref" title="[7]">[7]</span></td>
+          <td class="bad">New Gens Closed / NDA <span class="ref" title="[7]">[7]</span></td>
+          <td>12–56V <span class="ref" title="[8]">[8]</span></td>
+          <td class="warn">Electrically Yes, Not Open</td>
+          <td>Not A Sustainable Open Base</td>
+        </tr>
+        <tr>
+          <td>SimpleFOC</td>
+          <td class="warn">Library MIT; Bring Your Own Board</td>
+          <td>MIT (Library)</td>
+          <td class="bad">Boards ≤35V <span class="ref" title="[9]">[9]</span></td>
+          <td class="bad">No 48V Board</td>
+          <td>Easiest To Learn FOC</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="warn-note">
+      <div class="lbl">WATCH OUT</div>
+      <p><strong>SimpleFOC Is A FOC Library, Not A 48V ESC.</strong> Its official boards top out at 35V (SimpleFOCShield / Mini), 30V (Drive) and 24V (PowerShield)<span class="ref" title="[9]">[9]</span>. It is superb for learning FOC on a bench motor, but to run it at 48V you must design your own power stage — at which point the project gives you the <em>brain</em>, not the finished driver.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-narrow">
+    <p class="eyebrow"><span class="n">03</span> Build Deep-Dive</p>
+    <h2>Making It Drive 48V</h2>
+    <p><strong>Whether You Clone VESC Or Design Fresh, The 48V Power Stage Comes Down To Three Component Decisions.</strong> Get the gate driver, the MOSFETs and the control scheme right and the rest is layout discipline.</p>
+
+    <h3>1 — The Gate Driver</h3>
+    <p><strong>Pick A Driver Whose Supply Range Clears Your Bus With Headroom.</strong> Two families dominate open ESCs, both from TI:</p>
+    <ul>
+      <li><strong>DRV8301 / DRV8302 / DRV8323</strong> — 6–60V Operating Range (65V Absolute Max), ~1.7A Source / 2.3A Sink Gate Drive On The DRV8301<span class="ref" title="[10]">[10]</span>. This Is The Classic VESC-Class Part. A 48V Bus Sits Near The Top Of Its Window, So Transient Margin Is Thin.</li>
+      <li><strong>DRV8353</strong> — 9–100V Operating Range With An Integrated Charge Pump For 100% PWM Duty<span class="ref" title="[11]">[11]</span>. For A <em>fresh</em> 48V Design This Is The Safer Pick: The Bus Sits Mid-Range, Leaving Comfortable Room For Ringing.</li>
+    </ul>
+    <div class="callout">
+      <div class="lbl">WHY THE CHARGE PUMP MATTERS</div>
+      <p>A Plain Bootstrap Supply Cannot Hold The High-Side Gate On At 100% Duty — It Relies On The Low-Side Turning On To Refresh The Bootstrap Cap. A Charge Pump (As On The DRV8353<span class="ref" title="[11]">[11]</span>) Keeps The High-Side FET Fully Enhanced Even At Full Duty, Which Matters When A Motor Is Loaded Near Top Speed. This Is General Power-Electronics Knowledge Reflected In The Datasheet Feature Set.</p>
+    </div>
+
+    <h3>2 — The MOSFETs</h3>
+    <p><strong>Never Use A 48V-Rated MOSFET On A 48V Bus.</strong> The design rule is to size V<sub>DS</sub> to at least 1.5× the system voltage, which for 48V means <strong>80V — and often 100V — rated parts</strong><span class="ref" title="[12]">[12]</span>.</p>
+    <p>The margin is not paranoia: switching a real motor's inductance against PCB and package parasitics produces overshoot and ringing on the phase node far above the nominal bus. This is standard power-stage behaviour, not a source-specific claim.</p>
+
+    <h3>3 — The Control Scheme</h3>
+    <p><strong>Match The Brain To The Motor And To How Hard You Want To Work.</strong> Six-step is the least code and the least sensing; FOC is smoother and quieter but needs per-phase current sense and a faster loop. Both VESC and moteus implement FOC out of the box, which is why cloning one beats writing commutation from scratch.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-narrow">
+    <p class="eyebrow"><span class="n">04</span> Where 48V Bites</p>
+    <h2>The Gotchas That Kill Boards</h2>
+    <p><strong>A 48V Bus Is High Enough To Destroy Silicon In Milliseconds And Low Enough To Tempt You Into Thin Margins.</strong> These are general engineering failure modes, called out so a first build survives.</p>
+
+    <div class="warn-note">
+      <div class="lbl">SHOOT-THROUGH</div>
+      <p>If Both FETs In One Leg Conduct Together, The Bus Shorts To Ground Through Them And They Fail Almost Instantly. The Fix Is <strong>Dead-Time</strong> — A Deliberate Gap Where Both Are Off During The Hand-Off. Too Little Dead-Time Risks Cross-Conduction; Too Much Forces Body-Diode Conduction And Wastes Efficiency. Use The Gate Driver's Configurable Dead-Time Rather Than Relying On The MCU.</p>
+    </div>
+
+    <ul>
+      <li><strong>Power-Loop Layout</strong> — The High-di/dt Loop (Bus Cap → High-Side FET → Low-Side FET → Back To Cap) Must Be Physically Tiny. Wide Copper Pours, Minimal Loop Area, Many Parallel Vias, And The Bootstrap/Decoupling Caps Right At The Driver. Loop Inductance Is What Turns A 48V Bus Into 70V+ Spikes.</li>
+      <li><strong>Regen Overvoltage</strong> — When The Motor Decelerates It Becomes A Generator And Pushes The Bus <em>Above</em> The Battery Voltage. A 48V System Can Climb Well Past Nominal On Hard Braking, So Your FET And Cap Ratings Must Absorb It (Or You Need A Brake Resistor / Clamp).</li>
+      <li><strong>Bus Capacitance</strong> — Size The DC-Link Caps For The Ripple Current, Not Just The Voltage. Undersized Bulk Capacitance Lets The Bus Sag And Ring Under Fast Current Steps.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-narrow">
+    <p class="eyebrow"><span class="n">05</span> Licensing</p>
+    <h2>The "Open" Traps</h2>
+    <p><strong>Open Firmware Does Not Mean You Can Ship It Under Any Name.</strong> Two traps catch people building on these projects.</p>
+    <ul>
+      <li><strong>VESC Trademark ≠ Copyright Licence</strong> — The GPLv3 Firmware And CC-BY-SA Hardware Do <em>Not</em> Grant Rights To The VESC® Name. Its Trademark Policy States That An Open-Source Copyright Licence "Does Not Include An Implied Right Or License To Use A Trademark," And That The Mark Must Not Appear On Cloned Products<span class="ref" title="[6]">[6]</span>. Build The Hardware Freely; Do Not Brand It "VESC."</li>
+      <li><strong>ODrive Is Closing</strong> — Older v3.x Firmware Is Open, But The Source For The Current Pro / S1 / Micro Generation "Is Currently Not Publicly Available" (Access Only Under NDA), And The Matching Hardware Files Are No Longer Released<span class="ref" title="[7]">[7]</span>. It Is Fine As A Product; It Is Not A Foundation You Can Fully Own.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-narrow">
+    <p class="eyebrow"><span class="n">06</span> Open Questions</p>
+    <h2>What The Research Couldn't Pin Down</h2>
+    <p><strong>A Few Facts Stayed Below The Bar Of A Verifiable Primary Source</strong> and are flagged rather than guessed:</p>
+    <div class="conflict">
+      <div class="lbl">CONFLICT — VESC 4.12 GATE DRIVER</div>
+      <p>Sources Disagreed On The Exact Part In The Older VESC 4.12: One Cited A Generic DRV8301, Another The DRV8302. Both Are The Same 6–60V TI Family; The Canonical VESC 4.12 Part Is The DRV8302. Not Load-Bearing For A 48V Build, Since The 48V Recommendation Is The VESC 6 MkVI, Not The 4.12.</p>
+    </div>
+    <div class="callout">
+      <div class="lbl">UNRESOLVED NUMBERS</div>
+      <p>The Exact Regen Overvoltage Peak For A Given 48V Motor/Controller, The Minimum Bootstrap Hold-Up Time At 48V, And Whether VESC Publishes Complete Manufacturing Gerbers Versus Schematics Only — None Resolved To A Quotable Primary Source. Treat The Regen And Bootstrap Points As Qualitative Design Warnings, Not Design Numbers.</p>
+    </div>
+  </div>
+
+  <div class="wrap-narrow">
+    <details class="src">
+      <summary>References <span class="chev">▾</span></summary>
+      <div class="srcbody">
+        <ol>
+          <li id="r1">[1] mjbots. "moteus — Brushless Servo Actuator (Firmware + PCBs, Apache 2.0)." GitHub. <a href="https://github.com/mjbots/moteus">https://github.com/mjbots/moteus</a></li>
+          <li id="r2">[2] mjbots. "moteus n1 — Specifications (10–54V, 100A Peak, STM32G4)." <a href="https://mjbots.com/products/moteus-n1">https://mjbots.com/products/moteus-n1</a></li>
+          <li id="r3">[3] Vedder, B. "VESC Firmware (bldc) — GPLv3." GitHub. <a href="https://github.com/vedderb/bldc">https://github.com/vedderb/bldc</a></li>
+          <li id="r4">[4] Vedder, B. "VESC Hardware — Creative Commons Attribution-ShareAlike 4.0." GitHub. <a href="https://github.com/vedderb/bldc-hardware">https://github.com/vedderb/bldc-hardware</a></li>
+          <li id="r5">[5] Trampa Boards. "VESC 6 MkVI — Voltage 6–60V, 3S–12S, Spikes ≤60V, 52V Max Input." Product / Instruction Manual, 2026. <a href="https://trampaboards.com/vesc-6-mkvi--the-amazing-trampa-vesc-6-mkvi--gives-maximum-power-original-p-27536.html">trampaboards.com</a></li>
+          <li id="r6">[6] VESC Project. "Trademark Policy — Copyright Licence Does Not Grant Trademark Rights." <a href="https://vesc-project.com/trademark_policies">https://vesc-project.com/trademark_policies</a></li>
+          <li id="r7">[7] ODrive Robotics. "ODrive Firmware — v3.x Open (NRND); Pro/S1/Micro Source Not Publicly Available." GitHub. <a href="https://github.com/odriverobotics/ODrive">https://github.com/odriverobotics/ODrive</a></li>
+          <li id="r8">[8] ODrive Robotics. "ODrive v3.6 Specifications — 12–56V, 120A Peak Per Motor." <a href="https://docs.odriverobotics.com/v/0.5.5/specifications.html">docs.odriverobotics.com</a></li>
+          <li id="r9">[9] SimpleFOC. "Supported Boards — Max Input 35V (Shield/Mini), 30V (Drive), 24V (PowerShield)." <a href="https://docs.simplefoc.com/boards">https://docs.simplefoc.com/boards</a></li>
+          <li id="r10">[10] Texas Instruments. "DRV8301 Three-Phase Gate Driver — 6–60V Operating, 1.7A Source / 2.3A Sink." Datasheet / Product Page. <a href="https://www.ti.com/product/DRV8301">https://www.ti.com/product/DRV8301</a></li>
+          <li id="r11">[11] Texas Instruments. "DRV8353 Three-Phase Smart Gate Driver — 9–100V Operating, Charge Pump For 100% Duty." Datasheet / Product Page. <a href="https://www.ti.com/product/DRV8353">https://www.ti.com/product/DRV8353</a></li>
+          <li id="r12">[12] Nexperia. "Power MOSFETs — The Muscle In 48V Systems (V<sub>DS</sub> ≥ 1.5× System Voltage → 80–100V)." <a href="https://efficiencywins.nexperia.com/innovation/power-mosfets-the-muscle-in-48v-systems">efficiencywins.nexperia.com</a></li>
+        </ol>
+      </div>
+    </details>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="notch">
+    <svg viewBox="0 0 300 56" width="300" height="56">
+      <path d="M0,0 C38,1 52,54 96,54 C140,54 149,6 150,0 C151,6 160,54 204,54 C248,54 262,1 300,0 Z" fill="#EAE8EF"/>
+    </svg>
+  </div>
+  <div class="wrap">
+    <div class="footgrid">
+      <div>
+        <div class="brand"><span class="mark"><i></i><i></i></span> Research Index</div>
+        <p>Local Research Documentation On Biomedical Electronics.</p>
+      </div>
+      <div>
+        <div class="fh">Navigate</div>
+        <div class="flinks"><a href="../index.html">All Pages</a></div>
+      </div>
+    </div>
+  </div>
+  <div class="checker" id="checker" aria-hidden="true"></div>
+</footer>
+<div class="copyright">Research Index · Biomedical Electronics · 2026</div>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const el = document.documentElement;
+    document.getElementById('prog').style.width =
+      (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+  });
+
+  /* footer checkerboard dissolve — copied from index.html */
+  (function(){
+    const el=document.getElementById('checker'), cell=28;
+    const pat=[1,0,1,0,2,0,1,0,1,1,0,1,0,2,0,1,0,1,1,0,1,0,1,2,0,1,0,1,0,1,1,0,2,0,1,0];
+    const n=Math.ceil(window.innerWidth/cell)+1;
+    let h='';
+    for(let i=0;i<n;i++){
+      for(let k=0;k<pat[i%pat.length];k++){
+        h+=`<i style="left:${i*cell}px;bottom:${k*cell}px;width:${cell}px;height:${cell}px;"></i>`;
+      }
+    }
+    el.innerHTML=h;
+  })();
+</script>
+</body>
+</html>
