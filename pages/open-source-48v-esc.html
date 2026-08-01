@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Best Open-Source Project For A 48V 3-Phase Motor Driver</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../ui.css">
+  <style>
+    /* page-specific overrides only */
+    .legend{display:flex;gap:20px;flex-wrap:wrap;margin-top:6px;font-size:12.5px;color:var(--body-2);}
+    .legend span{display:inline-flex;align-items:center;gap:7px;}
+    .legend i{width:12px;height:12px;border-radius:2px;display:inline-block;}
+    /* keep the bridge schematic's labels legible instead of shrinking them
+       to illegible size on narrow viewports — scroll horizontally instead */
+    @media (max-width:600px){
+      .bridge{overflow-x:auto;}
+      .bridge svg{min-width:520px;}
+    }
+    /* comparison table: scroll rather than cram six columns into a few px */
+    .tbl-scroll .tbl{min-width:680px;}
+  </style>
+</head>
+<body>
+<div id="prog"></div>
+
+<!-- ══ NAV ══ -->
+<div class="wrap">
+  <nav class="nav">
+    <a class="brand" href="../index.html"><span class="mark"><i></i><i></i></span> Research Index</a>
+    <div class="navlinks">
+      <a href="../index.html">Index</a>
+      <a class="on" href="#verdict">Verdict</a>
+      <a href="#build">Build</a>
+      <a href="#gotchas">Gotchas</a>
+    </div>
+    <a class="btn btn-out" href="../ui-reference.html">Design System</a>
+  </nav>
+</div>
+
+<!-- ══ HERO ══ -->
+<div class="wrap">
+  <header class="hero-split">
+    <div class="copy">
+      <a class="back-link" href="../index.html">← Index</a>
+      <h1>The Best Open-Source Project For A <em>48V</em> 3-Phase Motor Driver</h1>
+      <p class="lead">A Hardware Engineer's Survey Of The Open ESC Landscape — Then A Build-Level Deep Dive On What It Actually Takes To Drive Three Phases From A 48V Bus.</p>
+      <a class="btn btn-lime" href="#verdict">Read The Verdict
+        <svg class="arw" viewBox="0 0 12 12" fill="none"><path d="M3 9 9 3M9 3H4.2M9 3v4.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <div class="logos">
+        <span class="lg">VESC</span>
+        <span class="lg thin">moteus</span>
+        <span class="lg">ODrive</span>
+        <span class="lg thin">SimpleFOC</span>
+      </div>
+      <p class="date">2026-08-01</p>
+    </div>
+    <div class="art" id="hero-art"></div>
+  </header>
+</div>
+
+<!-- ══ TL;DR ══ -->
+<section style="padding-top:20px;">
+  <div class="wrap-narrow">
+    <div class="note">
+      <div class="lbl">TL;DR</div>
+      <p><strong>For A 48V Motor, Start From VESC.</strong> Its hardware is released under Creative Commons Attribution-ShareAlike 4.0 and its firmware under GPLv3, so schematics, PCB, BOM and code are all there to fabricate a proven design — and the VESC 6 MkVI is rated for the full 6–60V band that a 12S / 48V pack lives in. If you need a fully-permissive licence (hardware and firmware both Apache 2.0) for a robotics or servo build, <strong>moteus n1</strong> (10–54V) is the cleaner reuse. Avoid leaning on ODrive as your "open" base — its newer hardware and firmware have gone closed — and note that SimpleFOC, while the easiest on-ramp to FOC, ships no board rated above 35V, so it is not a 48V ESC on its own. Whatever the base, the 48V-specific work is the same: MOSFETs rated 80–100V (never 48V), tight dead-time to stop shoot-through, and a low-inductance power-loop layout.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ THE VERDICT — bigcard + four-up ══ -->
+<section id="verdict" style="padding-top:34px;">
+  <div class="wrap">
+    <div class="bigcard">
+      <div class="top">
+        <h2>Four Projects Claim To Be Open. Only <em>Two</em> Really Are At 48V.</h2>
+        <div>
+          <p class="eyebrow"><span class="n">01</span> The Verdict</p>
+          <p>Openness And Voltage Are The Two Axes That Matter. A Project Fails If Its Hardware Files Are Closed, Or If No Board In Its Family Reaches A 48V Bus. Two Of These Four Fail On One Axis Each.</p>
+          <a class="btn btn-dark" href="#build">How To Build It
+            <svg class="arw" viewBox="0 0 12 12" fill="none"><path d="M3 9 9 3M9 3H4.2M9 3v4.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+        </div>
+      </div>
+      <div class="feats">
+        <div class="feat is-active">
+          <h4>VESC — The Pick</h4>
+          <div class="art" id="f-vesc"></div>
+          <p><strong>6–60V</strong>, CC-BY-SA Hardware, GPLv3 Firmware.<span class="ref" title="[4]">[4]</span><span class="ref" title="[5]">[5]</span></p>
+        </div>
+        <div class="feat">
+          <h4>moteus — Permissive</h4>
+          <div class="art" id="f-moteus"></div>
+          <p><strong>10–54V</strong>, Hardware And Firmware Both Apache 2.0.<span class="ref" title="[1]">[1]</span><span class="ref" title="[2]">[2]</span></p>
+        </div>
+        <div class="feat">
+          <h4>ODrive — Closing</h4>
+          <div class="art" id="f-odrive"></div>
+          <p>12–56V, But New Generations Are Closed / NDA.<span class="ref" title="[7]">[7]</span></p>
+        </div>
+        <div class="feat">
+          <h4>SimpleFOC — Library</h4>
+          <div class="art" id="f-sfoc"></div>
+          <p>No Board Above <strong>35V</strong>. A Brain, Not An ESC.<span class="ref" title="[9]">[9]</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ COMPARISON TABLE ══ -->
+<section class="sec-white">
+  <div class="wrap-narrow">
+    <p class="eyebrow"><span class="n">02</span> Side By Side</p>
+    <h2>How They Compare For A 48V Build</h2>
+    <p><strong>VESC Wins On Proven Openness At Voltage; moteus Wins On Licence Freedom.</strong> Everything below traces to each project's own repository or specification page.</p>
+
+    <div class="tbl-scroll">
+    <table class="tbl">
+      <thead>
+        <tr><th>Project</th><th>Hardware Open?</th><th>Firmware</th><th>Max Bus</th><th>48V Fit</th><th>Effort</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>VESC 6 (MkVI)</td>
+          <td class="good">Yes — CC-BY-SA 4.0 <span class="ref" title="[4]">[4]</span></td>
+          <td>GPLv3 <span class="ref" title="[3]">[3]</span></td>
+          <td>6–60V <span class="ref" title="[5]">[5]</span></td>
+          <td class="good">Ideal (12S)</td>
+          <td>Fabricate Proven Design</td>
+        </tr>
+        <tr>
+          <td>moteus n1</td>
+          <td class="good">Yes — Apache 2.0 <span class="ref" title="[1]">[1]</span></td>
+          <td>Apache 2.0 <span class="ref" title="[1]">[1]</span></td>
+          <td>10–54V <span class="ref" title="[2]">[2]</span></td>
+          <td class="good">Yes</td>
+          <td>Servo / Robotics Focus</td>
+        </tr>
+        <tr>
+          <td>ODrive v3.6</td>
+          <td class="bad">Closing — v3.5 Open, v3.6+ Not Released <span class="ref" title="[7]">[7]</span></td>
+          <td class="bad">New Gens Closed / NDA <span class="ref" title="[7]">[7]</span></td>
+          <td>12–56V <span class="ref" title="[8]">[8]</span></td>
+          <td class="warn">Electrically Yes, Not Open</td>
+          <td>Not A Sustainable Open Base</td>
+        </tr>
+        <tr>
+          <td>SimpleFOC</td>
+          <td class="warn">Library MIT; Bring Your Own Board</td>
+          <td>MIT (Library)</td>
+          <td class="bad">Boards ≤35V <span class="ref" title="[9]">[9]</span></td>
+          <td class="bad">No 48V Board</td>
+          <td>Easiest Way To Learn FOC</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="spec-grid">
+      <div class="spec-card"><span class="sc"></span><div class="sv">6–60V</div><div class="sl">VESC 6 MkVI Operating Range (12S) <span class="ref" title="[5]">[5]</span></div></div>
+      <div class="spec-card"><span class="sc"></span><div class="sv">CC-BY-SA</div><div class="sl">VESC Hardware Licence <span class="ref" title="[4]">[4]</span></div></div>
+      <div class="spec-card"><span class="sc"></span><div class="sv">Apache 2.0</div><div class="sl">moteus Hardware And Firmware <span class="ref" title="[1]">[1]</span></div></div>
+    </div>
+
+    <div class="warn-note">
+      <div class="lbl">WATCH OUT</div>
+      <p><strong>SimpleFOC Is A FOC Library, Not A 48V ESC.</strong> Its official boards top out at 35V (Shield / Mini), 30V (Drive) and 24V (PowerShield)<span class="ref" title="[9]">[9]</span>. It is superb for learning FOC on a bench motor, but to run it at 48V you must design your own power stage — at which point the project gives you the <em>brain</em>, not the finished driver.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ WHAT YOU'RE BUILDING + SCHEMATIC ══ -->
+<section>
+  <div class="wrap-narrow">
+    <p class="eyebrow"><span class="n">03</span> The Power Stage</p>
+    <h2>What You're Actually Building</h2>
+    <p><strong>An ESC Is A Three-Phase Inverter Plus A Commutation Brain.</strong> The power stage is six switches — three half-bridges — that chop the DC bus into three phase currents; the controller decides which switch is on when.</p>
+    <p>The two control styles map onto circuits you already know. This is general engineering knowledge, not tied to one source:</p>
+    <ul>
+      <li><strong>Six-Step (Trapezoidal)</strong> — Only Two Of The Three Phases Are Energised At Any Instant; The Controller Steps Through Six States Per Electrical Revolution. Simple And Cheap, But Torque Ripples At Each Commutation.</li>
+      <li><strong>FOC (Field-Oriented Control)</strong> — All Three Phases Are Driven With Sinusoidal Current, Regulated In A Rotating Reference Frame. Smoother And More Efficient On A Sinusoidal-Back-EMF Motor, But It Needs Current Sensing And More Compute.</li>
+    </ul>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <div>
+          <div class="panel-title">The Six-Switch Three-Phase Bridge</div>
+          <div class="panel-sub">The Power Stage Inside Every ESC On This Page</div>
+        </div>
+      </div>
+      <div class="bridge">
+        <svg viewBox="0 0 640 340" role="img" aria-label="Three-phase inverter: DC bus, three half-bridge legs of high-side and low-side MOSFETs, phases A B C feeding a motor.">
+          <line x1="40" y1="40" x2="470" y2="40" stroke="#000" stroke-width="2"/>
+          <line x1="40" y1="300" x2="470" y2="300" stroke="#000" stroke-width="2"/>
+          <text x="40" y="30" font-size="13" font-weight="600" fill="#000">DC+ (48V)</text>
+          <text x="40" y="320" font-size="13" font-weight="600" fill="#000">DC−</text>
+          <line x1="60" y1="40" x2="60" y2="128" stroke="#000" stroke-width="1.5"/>
+          <line x1="48" y1="128" x2="72" y2="128" stroke="#000" stroke-width="2"/>
+          <line x1="50" y1="140" x2="70" y2="140" stroke="#000" stroke-width="2"/>
+          <line x1="60" y1="140" x2="60" y2="300" stroke="#000" stroke-width="1.5"/>
+          <text x="82" y="138" font-size="12" fill="#6F6C79">Bus Cap</text>
+          <g>
+            <line x1="180" y1="40" x2="180" y2="90" stroke="#000" stroke-width="1.5"/>
+            <rect x="152" y="90" width="56" height="44" rx="7" fill="#D2F53C" stroke="#000" stroke-width="1.5"/>
+            <text x="180" y="117" font-size="12" font-weight="600" fill="#000" text-anchor="middle">Q1</text>
+            <line x1="180" y1="134" x2="180" y2="206" stroke="#000" stroke-width="1.5"/>
+            <rect x="152" y="206" width="56" height="44" rx="7" fill="#fff" stroke="#000" stroke-width="1.5"/>
+            <text x="180" y="233" font-size="12" font-weight="600" fill="#000" text-anchor="middle">Q2</text>
+            <line x1="180" y1="250" x2="180" y2="300" stroke="#000" stroke-width="1.5"/>
+            <circle cx="180" cy="170" r="3.5" fill="#7C4DFF"/>
+            <line x1="180" y1="170" x2="300" y2="170" stroke="#7C4DFF" stroke-width="1.5"/>
+            <text x="150" y="272" font-size="12" font-weight="600" fill="#7C4DFF" text-anchor="middle">A</text>
+          </g>
+          <g>
+            <line x1="270" y1="40" x2="270" y2="90" stroke="#000" stroke-width="1.5"/>
+            <rect x="242" y="90" width="56" height="44" rx="7" fill="#fff" stroke="#000" stroke-width="1.5"/>
+            <text x="270" y="117" font-size="12" font-weight="600" fill="#000" text-anchor="middle">Q3</text>
+            <line x1="270" y1="134" x2="270" y2="206" stroke="#000" stroke-width="1.5"/>
+            <rect x="242" y="206" width="56" height="44" rx="7" fill="#fff" stroke="#000" stroke-width="1.5"/>
+            <text x="270" y="233" font-size="12" font-weight="600" fill="#000" text-anchor="middle">Q4</text>
+            <line x1="270" y1="250" x2="270" y2="300" stroke="#000" stroke-width="1.5"/>
+            <circle cx="270" cy="185" r="3.5" fill="#7C4DFF"/>
+            <line x1="270" y1="185" x2="300" y2="185" stroke="#7C4DFF" stroke-width="1.5"/>
+            <text x="240" y="272" font-size="12" font-weight="600" fill="#7C4DFF" text-anchor="middle">B</text>
+          </g>
+          <g>
+            <line x1="360" y1="40" x2="360" y2="90" stroke="#000" stroke-width="1.5"/>
+            <rect x="332" y="90" width="56" height="44" rx="7" fill="#fff" stroke="#000" stroke-width="1.5"/>
+            <text x="360" y="117" font-size="12" font-weight="600" fill="#000" text-anchor="middle">Q5</text>
+            <line x1="360" y1="134" x2="360" y2="206" stroke="#000" stroke-width="1.5"/>
+            <rect x="332" y="206" width="56" height="44" rx="7" fill="#D2F53C" stroke="#000" stroke-width="1.5"/>
+            <text x="360" y="233" font-size="12" font-weight="600" fill="#000" text-anchor="middle">Q6</text>
+            <line x1="360" y1="250" x2="360" y2="300" stroke="#000" stroke-width="1.5"/>
+            <circle cx="360" cy="200" r="3.5" fill="#7C4DFF"/>
+            <line x1="360" y1="200" x2="300" y2="200" stroke="#7C4DFF" stroke-width="1.5"/>
+            <text x="390" y="272" font-size="12" font-weight="600" fill="#7C4DFF" text-anchor="middle">C</text>
+          </g>
+          <circle cx="540" cy="170" r="62" fill="none" stroke="#000" stroke-width="2"/>
+          <line x1="300" y1="170" x2="478" y2="170" stroke="#7C4DFF" stroke-width="1.5"/>
+          <path d="M300 185 L440 185 L440 232 L478 232" stroke="#7C4DFF" stroke-width="1.5" fill="none"/>
+          <path d="M300 200 L420 200 L420 108 L478 108" stroke="#7C4DFF" stroke-width="1.5" fill="none"/>
+          <text x="540" y="176" font-size="14" font-weight="600" fill="#000" text-anchor="middle">M</text>
+          <text x="540" y="252" font-size="12" fill="#6F6C79" text-anchor="middle">3-Phase Motor</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--lime)"></i> Switch On (Conducting)</span>
+        <span><i style="background:var(--white);border:1px solid var(--black)"></i> Switch Off</span>
+        <span><i style="background:var(--violet-deep)"></i> Phase Node A / B / C</span>
+      </div>
+      <p class="panel-cap">One Instant Of Six-Step Commutation: High-Side Q1 And Low-Side Q6 Conduct, So Current Flows DC+ → Phase A → Motor → Phase C → DC−. Firing Q1 And Q2 (Same Leg) At Once Is <strong>Shoot-Through</strong> — A Dead Short Across The Bus.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ THE THREE BUILD DECISIONS — card row ══ -->
+<section id="build">
+  <div class="wrap">
+    <div class="rowhead">
+      <div>
+        <p class="eyebrow"><span class="n">04</span> Build Deep-Dive</p>
+        <h2>Three Decisions Make It A <em>48V</em> Driver</h2>
+        <p><strong>Gate Driver Headroom, MOSFET Voltage Rating And Commutation Scheme Are The Whole Job.</strong> Get These Three Right And The Rest Is Layout Discipline.</p>
+      </div>
+      <div class="arrows">
+        <button class="abtn" aria-label="Previous"><svg width="17" height="10" viewBox="0 0 17 10" fill="none"><path d="M16 5H1m0 0 4-4M1 5l4 4" stroke="#000" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="abtn next" aria-label="Next"><svg width="24" height="10" viewBox="0 0 24 10" fill="none"><path d="M1 5h22m0 0-4-4m4 4-4 4" stroke="#000" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="wrap clip">
+    <div class="cards">
+      <div class="card">
+        <h4>The Gate Driver</h4>
+        <p>DRV8301 / DRV8323 Give 6–60V With 1.7A Source And 2.3A Sink<span class="ref" title="[10]">[10]</span> — 48V Sits Near The Top. The DRV8353 Runs 9–100V With A Charge Pump For 100% Duty<span class="ref" title="[11]">[11]</span>, Leaving Real Transient Margin.</p>
+        <div class="art" id="c-gate"></div>
+      </div>
+      <div class="card">
+        <h4>The MOSFETs</h4>
+        <p>Size V<sub>DS</sub> To At Least 1.5× The Bus — For 48V That Means <strong>80V, Often 100V</strong> Parts<span class="ref" title="[12]">[12]</span>. Never Fit A 48V-Rated Device To A 48V Rail.</p>
+        <div class="art" id="c-fet"></div>
+      </div>
+      <div class="card">
+        <h4>The Control Scheme</h4>
+        <p>Six-Step Is Least Code And Least Sensing; FOC Is Smoother But Needs Per-Phase Current Sense. VESC And moteus Both Ship FOC, Which Is Why Cloning Beats Writing Commutation Yourself.</p>
+        <div class="art" id="c-foc"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ GOTCHAS — split + orbit ══ -->
+<section class="sec-white" id="gotchas">
+  <div class="wrap">
+    <div class="split">
+      <div>
+        <p class="eyebrow"><span class="n">05</span> Where 48V Bites</p>
+        <h2><span class="tgl">48V Bus <i></i></span> The Gotchas That <em>Kill</em> Boards</h2>
+        <p class="intro"><strong>48V Is High Enough To Destroy Silicon In Milliseconds And Low Enough To Tempt You Into Thin Margins.</strong> These Are General Engineering Failure Modes, Listed So A First Build Survives.</p>
+        <div class="nums">
+          <div class="num"><b>1</b> Shoot-Through</div>
+          <div class="num"><b>4</b> Regen Overvoltage</div>
+          <div class="num"><b>2</b> Dead-Time Trade-Off</div>
+          <div class="num"><b>5</b> Bus Cap Ripple Current</div>
+          <div class="num"><b>3</b> Power-Loop Inductance</div>
+          <div class="num"><b>6</b> Bootstrap At High Duty</div>
+        </div>
+      </div>
+      <div class="art" id="orbit"></div>
+    </div>
+  </div>
+
+  <div class="wrap-narrow" style="margin-top:52px;">
+    <div class="warn-note">
+      <div class="lbl">SHOOT-THROUGH</div>
+      <p>If Both FETs In One Leg Conduct Together, The Bus Shorts To Ground Through Them And They Fail Almost Instantly. The Fix Is <strong>Dead-Time</strong> — A Deliberate Gap Where Both Are Off During The Hand-Off. Too Little Risks Cross-Conduction; Too Much Forces Body-Diode Conduction And Wastes Efficiency. Use The Gate Driver's Configurable Dead-Time Rather Than Relying On The MCU.</p>
+    </div>
+    <ul>
+      <li><strong>Power-Loop Layout</strong> — The High-di/dt Loop (Bus Cap → High-Side FET → Low-Side FET → Back To Cap) Must Be Physically Tiny. Wide Copper Pours, Minimal Loop Area, Many Parallel Vias, And Decoupling Right At The Driver. Loop Inductance Is What Turns A 48V Bus Into 70V+ Spikes.</li>
+      <li><strong>Regen Overvoltage</strong> — A Decelerating Motor Becomes A Generator And Pushes The Bus <em>Above</em> The Battery Voltage. Your FET And Capacitor Ratings Must Absorb That, Or You Need A Brake Resistor Or Clamp.</li>
+      <li><strong>Bus Capacitance</strong> — Size The DC-Link Caps For Ripple Current, Not Just Voltage. Undersized Bulk Capacitance Lets The Bus Sag And Ring Under Fast Current Steps.</li>
+    </ul>
+    <div class="callout">
+      <div class="lbl">WHY THE CHARGE PUMP MATTERS</div>
+      <p>A Plain Bootstrap Supply Cannot Hold The High-Side Gate On At 100% Duty — It Relies On The Low-Side Turning On To Refresh The Bootstrap Cap. A Charge Pump (As On The DRV8353<span class="ref" title="[11]">[11]</span>) Keeps The High-Side FET Fully Enhanced Even At Full Duty, Which Matters When A Motor Is Loaded Near Top Speed. This Is General Power-Electronics Knowledge Reflected In The Datasheet Feature Set.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ LICENSING ══ -->
+<section>
+  <div class="wrap-narrow">
+    <p class="eyebrow"><span class="n">06</span> Licensing</p>
+    <h2>The "Open" Traps</h2>
+    <p><strong>Open Firmware Does Not Mean You Can Ship It Under Any Name.</strong> Two traps catch people building on these projects.</p>
+    <ul>
+      <li><strong>VESC Trademark ≠ Copyright Licence</strong> — The GPLv3 Firmware And CC-BY-SA Hardware Do <em>Not</em> Grant Rights To The VESC® Name. Its Trademark Policy States That An Open-Source Copyright Licence "Does Not Include An Implied Right Or License To Use A Trademark," And That The Mark Must Not Appear On Cloned Products<span class="ref" title="[6]">[6]</span>. Build The Hardware Freely; Do Not Brand It "VESC."</li>
+      <li><strong>ODrive Is Closing</strong> — Older v3.x Firmware Is Open, But The Source For The Current Pro / S1 / Micro Generation "Is Currently Not Publicly Available" (Access Only Under NDA), And The Matching Hardware Files Are No Longer Released<span class="ref" title="[7]">[7]</span>. Fine As A Product; Not A Foundation You Can Fully Own.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ══ OPEN QUESTIONS ══ -->
+<section class="sec-white">
+  <div class="wrap-narrow">
+    <p class="eyebrow"><span class="n">07</span> Open Questions</p>
+    <h2>What The Research Couldn't Pin Down</h2>
+    <p><strong>A Few Facts Stayed Below The Bar Of A Verifiable Primary Source</strong> and are flagged rather than guessed.</p>
+    <div class="conflict">
+      <div class="lbl">CONFLICT — VESC 4.12 GATE DRIVER</div>
+      <p>Sources Disagreed On The Exact Part In The Older VESC 4.12: One Cited A Generic DRV8301, Another The DRV8302. Both Are The Same 6–60V TI Family; The Canonical VESC 4.12 Part Is The DRV8302. Not Load-Bearing Here, Since The 48V Recommendation Is The VESC 6 MkVI, Not The 4.12.</p>
+    </div>
+    <div class="callout">
+      <div class="lbl">UNRESOLVED NUMBERS</div>
+      <p>The Exact Regen Overvoltage Peak For A Given 48V Motor And Controller, The Minimum Bootstrap Hold-Up Time At 48V, And Whether VESC Publishes Complete Manufacturing Gerbers Versus Schematics Only — None Resolved To A Quotable Primary Source. Treat The Regen And Bootstrap Points As Qualitative Design Warnings, Not Design Numbers.</p>
+    </div>
+  </div>
+
+  <div class="wrap-narrow">
+    <details class="src">
+      <summary>References <span class="chev">▾</span></summary>
+      <div class="srcbody">
+        <ol>
+          <li id="r1">[1] mjbots. "moteus — Brushless Servo Actuator (Firmware + PCBs, Apache 2.0)." GitHub. <a href="https://github.com/mjbots/moteus">https://github.com/mjbots/moteus</a></li>
+          <li id="r2">[2] mjbots. "moteus n1 — Specifications (10–54V, 100A Peak, STM32G4)." <a href="https://mjbots.com/products/moteus-n1">https://mjbots.com/products/moteus-n1</a></li>
+          <li id="r3">[3] Vedder, B. "VESC Firmware (bldc) — GPLv3." GitHub. <a href="https://github.com/vedderb/bldc">https://github.com/vedderb/bldc</a></li>
+          <li id="r4">[4] Vedder, B. "VESC Hardware — Creative Commons Attribution-ShareAlike 4.0." GitHub. <a href="https://github.com/vedderb/bldc-hardware">https://github.com/vedderb/bldc-hardware</a></li>
+          <li id="r5">[5] Trampa Boards. "VESC 6 MkVI — Voltage 6–60V, 3S–12S, Spikes ≤60V, 52V Max Input." Product / Instruction Manual, 2026. <a href="https://trampaboards.com/vesc-6-mkvi--the-amazing-trampa-vesc-6-mkvi--gives-maximum-power-original-p-27536.html">trampaboards.com</a></li>
+          <li id="r6">[6] VESC Project. "Trademark Policy — Copyright Licence Does Not Grant Trademark Rights." <a href="https://vesc-project.com/trademark_policies">https://vesc-project.com/trademark_policies</a></li>
+          <li id="r7">[7] ODrive Robotics. "ODrive Firmware — v3.x Open (NRND); Pro/S1/Micro Source Not Publicly Available." GitHub. <a href="https://github.com/odriverobotics/ODrive">https://github.com/odriverobotics/ODrive</a></li>
+          <li id="r8">[8] ODrive Robotics. "ODrive v3.6 Specifications — 12–56V, 120A Peak Per Motor." <a href="https://docs.odriverobotics.com/v/0.5.5/specifications.html">docs.odriverobotics.com</a></li>
+          <li id="r9">[9] SimpleFOC. "Supported Boards — Max Input 35V (Shield/Mini), 30V (Drive), 24V (PowerShield)." <a href="https://docs.simplefoc.com/boards">https://docs.simplefoc.com/boards</a></li>
+          <li id="r10">[10] Texas Instruments. "DRV8301 Three-Phase Gate Driver — 6–60V Operating, 1.7A Source / 2.3A Sink." Datasheet / Product Page. <a href="https://www.ti.com/product/DRV8301">https://www.ti.com/product/DRV8301</a></li>
+          <li id="r11">[11] Texas Instruments. "DRV8353 Three-Phase Smart Gate Driver — 9–100V Operating, Charge Pump For 100% Duty." Datasheet / Product Page. <a href="https://www.ti.com/product/DRV8353">https://www.ti.com/product/DRV8353</a></li>
+          <li id="r12">[12] Nexperia. "Power MOSFETs — The Muscle In 48V Systems (V<sub>DS</sub> ≥ 1.5× System Voltage → 80–100V)." <a href="https://efficiencywins.nexperia.com/innovation/power-mosfets-the-muscle-in-48v-systems">efficiencywins.nexperia.com</a></li>
+        </ol>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ══ FOOTER ══ -->
+<footer class="foot">
+  <div class="notch">
+    <svg viewBox="0 0 300 56" width="300" height="56">
+      <path d="M0,0 C38,1 52,54 96,54 C140,54 149,6 150,0 C151,6 160,54 204,54 C248,54 262,1 300,0 Z" fill="#EAE8EF"/>
+    </svg>
+  </div>
+  <div class="wrap">
+    <div class="footgrid">
+      <div>
+        <div class="brand"><span class="mark"><i></i><i></i></span> Research Index</div>
+        <p>Local Research Documentation On Biomedical Electronics.</p>
+      </div>
+      <div>
+        <div class="fh">Navigate</div>
+        <div class="flinks">
+          <a href="../index.html">All Pages</a>
+          <a href="../ui-reference.html">Design System</a>
+        </div>
+      </div>
+      <div>
+        <div class="fh">On This Page</div>
+        <div class="flinks">
+          <a href="#verdict">The Verdict</a>
+          <a href="#build">Build Deep-Dive</a>
+          <a href="#gotchas">Where 48V Bites</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="checker" id="checker" aria-hidden="true"></div>
+</footer>
+<div class="copyright">Research Index · Biomedical Electronics · 2026</div>
+
+<script>
+/* deterministic RNG so every illustration renders identically each load */
+function rng(s){return function(){s|=0;s=s+0x6D2B79F5|0;var t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const LIME='#D2F53C', VIO='#A78BFA', VIOD='#7C4DFF', BLK='#000000', GREY='#8E8B96', LN='#DCD9E3';
+
+/* ── scroll progress ── */
+window.addEventListener('scroll', () => {
+  const el = document.documentElement;
+  document.getElementById('prog').style.width =
+    (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
+});
+
+/* ── hero: pixel-mosaic dissolve (UI_REFERENCE recipe 1), themed as a
+      controller board breaking into squares ── */
+(function(){
+  const R=rng(48), cw=20, sz=18, gx=124, cols=13;
+  const cardTop=90, cardEnd=300, mosTop=190;
+  const rect=(x,y,f)=>`<rect x="${x}" y="${y}" width="${sz}" height="${sz}" rx="2" fill="${f}"/>`;
+  let sq='';
+  for(let y=mosTop;y<cardEnd;y+=cw){
+    const t=(y-mosTop)/(cardEnd-mosTop);
+    for(let c=0;c<cols;c++){
+      if(R()>0.20+0.52*t) continue;
+      sq+=rect(gx+c*cw,y,R()<0.76?VIO:LIME);
+    }
+  }
+  let i=0;
+  for(let y=cardEnd;y<cardEnd+8*cw;y+=cw,i++){
+    const d=i/8;
+    for(let c=0;c<cols;c++){
+      if(R()>0.95-0.95*d) continue;
+      const r=R();
+      sq+=rect(gx+c*cw,y,r<0.46?BLK:(r<0.86?VIO:LIME));
+    }
+  }
+  const drift=[[96,268,10,VIO],[92,336,8,VIOD],[104,404,11,VIO],
+               [398,214,11,LIME],[404,156,9,VIO],[386,372,10,VIO],
+               [176,468,11,LIME],[268,478,9,VIO],[330,440,10,VIO]];
+  const free=drift.map(([x,y,s,f],k)=>`<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="2" fill="${f}" transform="rotate(${(k%3-1)*12} ${x+s/2} ${y+s/2})"/>`).join('');
+
+  document.getElementById('hero-art').innerHTML=`
+  <svg viewBox="0 0 540 520" role="img" aria-label="Illustration: a controller board dissolving into a mosaic of squares.">
+    <g stroke="${GREY}" stroke-width="1.2" stroke-dasharray="2.5 4" fill="none">
+      <path d="M116 166 82 132 82 96"/><path d="M414 116 414 74 470 74"/><path d="M424 238 468 238"/>
+    </g>
+    <rect x="76" y="86" width="11" height="11" rx="2" fill="${VIOD}"/>
+    <rect x="474" y="68" width="11" height="11" rx="2" fill="${LIME}"/>
+    <rect x="472" y="232" width="11" height="11" rx="2" fill="${VIO}"/>
+    <g transform="rotate(12 268 236)">
+      <rect x="352" y="132" width="112" height="72" rx="16" fill="${LIME}"/>
+      <rect x="352" y="214" width="88" height="62" rx="14" fill="${LIME}"/>
+      <rect x="352" y="286" width="66" height="52" rx="12" fill="${LIME}"/>
+      <rect x="120" y="${cardTop}" width="270" height="${cardEnd-cardTop}" rx="20" fill="${BLK}"/>
+      <text x="150" y="132" fill="${LIME}" font-family="Inter,sans-serif" font-size="15" font-weight="600">3-Phase Inverter</text>
+      <text x="150" y="160" fill="#FFFFFF" font-family="Inter,sans-serif" font-size="16" font-weight="500" letter-spacing="1.2">48V · 12S BUS</text>
+      <text x="150" y="180" fill="#FFFFFF" font-family="Inter,sans-serif" font-size="11" opacity=".8">6 Switches / 3 Legs</text>
+      <g stroke="#FFFFFF" stroke-width="1.3" fill="none" opacity=".9">
+        <rect x="336" y="138" width="12" height="12" rx="2"/><rect x="352" y="138" width="12" height="12" rx="2"/>
+        <rect x="336" y="154" width="12" height="12" rx="2"/><path d="M354 156h3m3 0h3m-9 5h9"/>
+      </g>
+      ${sq}
+    </g>
+    ${free}
+  </svg>`;
+})();
+
+/* ── four-up feature art (UI_REFERENCE recipe 3: thin-line icons) ── */
+(function(){
+  const wrapSvg = s => `<svg width="130" height="96" viewBox="0 0 130 96" fill="none">${s}</svg>`;
+
+  /* VESC — nested rings, the chosen one highlighted lime */
+  document.getElementById('f-vesc').innerHTML = wrapSvg(`
+    <circle cx="65" cy="48" r="34" stroke="${VIO}" stroke-width="1.3"/>
+    <circle cx="65" cy="48" r="24" stroke="${LN}" stroke-width="1.2"/>
+    <circle cx="65" cy="48" r="14" fill="${LIME}"/>
+    <circle cx="65" cy="10" r="4.5" fill="#FFF" stroke="${VIO}" stroke-width="1.3"/>
+    <circle cx="99" cy="66" r="4" fill="${VIOD}"/>`);
+
+  /* moteus — two open padlock-ish rings, fully permissive */
+  document.getElementById('f-moteus').innerHTML = wrapSvg(`
+    <circle cx="48" cy="48" r="22" stroke="${LN}" stroke-width="1.2"/>
+    <circle cx="80" cy="48" r="22" stroke="${VIO}" stroke-width="1.4"/>
+    <rect x="58" y="40" width="14" height="16" rx="3" fill="${LIME}"/>
+    <circle cx="26" cy="26" r="3.5" fill="${VIOD}"/>
+    <circle cx="104" cy="72" r="3.5" fill="${VIO}"/>`);
+
+  /* ODrive — dashed (closing) outline with a solid barrier */
+  document.getElementById('f-odrive').innerHTML = wrapSvg(`
+    <rect x="16" y="24" width="98" height="26" rx="13" stroke="${LN}" stroke-width="1.2" stroke-dasharray="4 4"/>
+    <circle cx="98" cy="37" r="8" fill="#E9E7EE" stroke="#C7C4D1" stroke-width="1.2"/>
+    <rect x="16" y="58" width="98" height="26" rx="13" stroke="${LN}" stroke-width="1.2" stroke-dasharray="4 4"/>
+    <rect x="52" y="14" width="26" height="68" rx="4" fill="${BLK}" opacity=".82"/>`);
+
+  /* SimpleFOC — a small brain-node with no power stage attached */
+  document.getElementById('f-sfoc').innerHTML = wrapSvg(`
+    <circle cx="40" cy="48" r="17" fill="#EFE9FD" stroke="${VIO}" stroke-width="1.4"/>
+    <path d="M57 48h20" stroke="${GREY}" stroke-width="1.4" stroke-dasharray="3 3.5"/>
+    <rect x="80" y="34" width="30" height="28" rx="7" stroke="${LN}" stroke-width="1.3" stroke-dasharray="4 4"/>
+    <circle cx="40" cy="48" r="5" fill="${VIOD}"/>`);
+})();
+
+/* ── build-decision card art (recipe 3 + 4) ── */
+(function(){
+  /* gate driver — dashed toggle rows with one lime knob */
+  document.getElementById('c-gate').innerHTML=`<svg width="200" height="130" viewBox="0 0 200 130" fill="none">
+    <rect x="34" y="18" width="132" height="26" rx="13" stroke="${LN}" stroke-width="1.2" stroke-dasharray="4 4"/>
+    <circle cx="150" cy="31" r="8" fill="#E9E7EE" stroke="#C7C4D1" stroke-width="1.2"/>
+    <rect x="28" y="52" width="144" height="28" rx="14" fill="#F6F1FE" stroke="${VIO}" stroke-width="1.4"/>
+    <rect x="146" y="57" width="20" height="18" rx="9" fill="${LIME}"/>
+    <rect x="34" y="88" width="132" height="26" rx="13" stroke="${LN}" stroke-width="1.2" stroke-dasharray="4 4"/>
+    <circle cx="150" cy="101" r="8" fill="#E9E7EE" stroke="#C7C4D1" stroke-width="1.2"/>
+  </svg>`;
+
+  /* MOSFET margin — stacked bars, the tall one lime (headroom) */
+  document.getElementById('c-fet').innerHTML=`<svg width="200" height="130" viewBox="0 0 200 130" fill="none">
+    <rect x="26" y="86" width="34" height="30" rx="6" fill="${VIO}" opacity=".55"/>
+    <rect x="70" y="60" width="34" height="56" rx="6" fill="${VIO}"/>
+    <rect x="114" y="24" width="34" height="92" rx="6" fill="${LIME}"/>
+    <path d="M20 24h136" stroke="${GREY}" stroke-width="1.3" stroke-dasharray="3 3.5"/>
+    <circle cx="164" cy="24" r="4" fill="${VIOD}"/>
+  </svg>`;
+
+  /* control scheme — six-step staircase vs sine, drawn as primitives */
+  (function(){
+    let step='M20 96 h18 v-26 h18 v-26 h18 v-24 h18';
+    let sine='M20 84';
+    for(let x=0;x<=112;x+=8){ sine+=` L${20+x} ${84-30*Math.sin(x/112*Math.PI*1.5)}`; }
+    document.getElementById('c-foc').innerHTML=`<svg width="200" height="130" viewBox="0 0 200 130" fill="none">
+      <path d="${step}" stroke="${GREY}" stroke-width="1.6" stroke-dasharray="3 3.5" fill="none"/>
+      <path d="${sine}" stroke="${VIO}" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <circle cx="132" cy="20" r="7" fill="${LIME}"/>
+      <circle cx="20" cy="84" r="4" fill="${VIOD}"/>
+    </svg>`;
+  })();
+})();
+
+/* ── gotchas: orbit / particle field (UI_REFERENCE recipe 2) ── */
+(function(){
+  const cx=250, cy=232;
+  let s='';
+  [108,146,184].forEach(r=>{
+    const step=26/r;
+    for(let a=1.05;a<=5.25;a+=step){
+      s+=`<circle cx="${(cx+r*Math.cos(a)).toFixed(1)}" cy="${(cy+r*Math.sin(a)).toFixed(1)}" r="5.4" fill="${BLK}"/>`;
+    }
+  });
+  const rays=[[-58,232,11,BLK,'fill'],[-24,246,8,BLK,'hollow'],[6,238,10,LIME,'fill'],
+              [34,250,7,LIME,'hollow'],[60,236,10,VIOD,'fill']];
+  rays.forEach(([deg,len,rad,col,kind])=>{
+    const a=deg*Math.PI/180;
+    const x1=cx+72*Math.cos(a), y1=cy+72*Math.sin(a);
+    const x2=cx+len*Math.cos(a), y2=cy+len*Math.sin(a);
+    s+=`<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="${BLK}" stroke-width="2" stroke-dasharray="2 7" stroke-linecap="round" opacity=".8"/>`;
+    s+= kind==='fill'
+      ? `<circle cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="${rad}" fill="${col}"/>`
+      : `<circle cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="${rad}" fill="#FFF" stroke="${col}" stroke-width="1.8"/>`;
+  });
+  s+=`<circle cx="${cx+206}" cy="${cy+8}" r="7" fill="${VIOD}"/>`;
+  s+=`<circle cx="${cx}" cy="${cy}" r="62" fill="${BLK}"/>
+      <circle cx="${cx-30}" cy="${cy-6}" r="6" fill="${LIME}"/>
+      <circle cx="${cx-10}" cy="${cy+16}" r="10" fill="${VIO}"/>
+      <circle cx="${cx+14}" cy="${cy-4}" r="5" fill="${VIO}"/>
+      <circle cx="${cx+2}" cy="${cy-24}" r="5" fill="none" stroke="${VIO}" stroke-width="1.5"/>
+      <circle cx="${cx+28}" cy="${cy+18}" r="4" fill="${LIME}"/>
+      <circle cx="${cx-26}" cy="${cy+28}" r="7" fill="${VIOD}"/>
+      <circle cx="${cx+8}" cy="${cy+34}" r="4" fill="${LIME}"/>`;
+  document.getElementById('orbit').innerHTML=`<svg viewBox="0 0 500 464" role="img" aria-label="Illustration: an orbit field of dots and nodes around a solid disc.">${s}</svg>`;
+})();
+
+/* ── card-row arrows: scroll the row on click (no idle motion) ── */
+(function(){
+  const row=document.querySelector('.clip');
+  const [prev,next]=document.querySelectorAll('.abtn');
+  if(!row||!prev||!next) return;
+  const step=()=>Math.max(280, row.clientWidth*0.55);
+  const go=d=>row.scrollBy({left:d*step(), behavior:'smooth'});
+  prev.addEventListener('click',()=>go(-1));
+  next.addEventListener('click',()=>go(1));
+  /* disable the arrows when the row has nothing to scroll */
+  const sync=()=>{
+    const room=row.scrollWidth-row.clientWidth>4;
+    [prev,next].forEach(b=>{b.disabled=!room; b.style.opacity=room?'':'.4'; b.style.cursor=room?'':'default';});
+  };
+  sync();
+  window.addEventListener('resize',sync);
+})();
+
+/* ── footer checkerboard dissolve ── */
+(function(){
+  const el=document.getElementById('checker'), cell=28;
+  const pat=[1,0,1,0,2,0,1,0,1,1,0,1,0,2,0,1,0,1,1,0,1,0,1,2,0,1,0,1,0,1,1,0,2,0,1,0];
+  const n=Math.ceil(window.innerWidth/cell)+1;
+  let h='';
+  for(let i=0;i<n;i++){
+    for(let k=0;k<pat[i%pat.length];k++){
+      h+=`<i style="left:${i*cell}px;bottom:${k*cell}px;width:${cell}px;height:${cell}px;"></i>`;
+    }
+  }
+  el.innerHTML=h;
+})();
+</script>
+</body>
+</html>

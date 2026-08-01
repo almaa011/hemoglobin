@@ -22,7 +22,10 @@
 
 *,*::before,*::after{box-sizing:border-box;}
 html{scroll-behavior:smooth;}
-:focus-visible{outline:2px solid var(--violet);outline-offset:2px;}
+/* --violet-deep, not --violet: the lighter violet measures 2.2–2.7:1 against
+   white, lime and the canvas, below WCAG's 3:1 minimum for a non-text focus
+   indicator. --violet-deep clears it on every surface (3.9–4.8:1). */
+:focus-visible{outline:2px solid var(--violet-deep);outline-offset:2px;}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;} *{transition:none!important;animation:none!important;}}
 body{
   margin:0;background:var(--bg);color:var(--black);
@@ -196,9 +199,77 @@ details.src[open] summary .chev{transform:rotate(180deg);}
 .fh{color:var(--white);font-size:16px;font-weight:600;letter-spacing:-.02em;margin-bottom:20px;}
 .flinks a{display:flex;align-items:center;gap:8px;color:var(--foot-body);font-size:13.5px;text-decoration:none;margin-bottom:13px;}
 .flinks a:hover{color:var(--white);}
-.checker{position:relative;height:56px;margin-top:48px;}
+/* overflow:hidden — the builder emits one cell past the viewport so the
+   dissolve reaches the edge; without clipping it forces a horizontal
+   scrollbar on the whole document. */
+.checker{position:relative;height:56px;margin-top:48px;overflow:hidden;}
 .checker i{display:block;background:var(--bg);position:absolute;}
 .copyright{text-align:center;padding:22px 0 30px;font-size:13px;color:var(--body-2);}
+
+/* ═══════════════════════════════════════════════════════════════
+   Reference layout primitives — promoted verbatim from
+   ui-reference.html so pages can compose the same way the specimen
+   does instead of stacking bare prose. Tokens only, no new colors.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── split hero: copy left, illustration right ── */
+.hero-split{display:grid;grid-template-columns:1.02fr .98fr;gap:32px;align-items:center;padding:44px 0 40px;}
+.hero-split .copy{max-width:580px;}
+.hero-split .lead{margin:26px 0 32px;max-width:440px;}
+.hero-split .date{margin-top:26px;font-size:14px;color:var(--body-2);}
+
+/* ── credibility strip under a hero (project / part names) ── */
+.logos{display:flex;align-items:center;gap:34px;margin-top:46px;flex-wrap:wrap;}
+.logos .lg{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:800;letter-spacing:-.03em;color:var(--black);opacity:.82;}
+.logos .lg.thin{font-weight:600;letter-spacing:-.01em;}
+
+/* ── illustration slot ── */
+.art{display:flex;justify-content:center;align-items:center;}
+.art svg{display:block;width:100%;height:auto;}
+
+/* ── four-up feature grid inside a .bigcard ── */
+.bigcard .top{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:start;}
+.feats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:52px;}
+.feat{padding:24px 18px 18px;border-radius:20px;text-align:center;}
+.feat.is-active{background:var(--tint);}
+.feat h4{font-size:14.5px;font-weight:600;line-height:1.4;margin:0 0 22px;}
+.feat .art{min-height:96px;}
+.feat p{font-size:13px;margin-top:14px;}
+
+/* ── section head with carousel arrows ── */
+.rowhead{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:34px;}
+.rowhead h2{max-width:560px;}
+.arrows{display:flex;align-items:center;gap:10px;flex:none;}
+.abtn{width:44px;height:44px;border-radius:var(--r-pill);background:var(--white);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.abtn.next{width:64px;background:var(--lime);}
+
+/* ── clipped card row ──
+   Scrollable rather than clipped so the .abtn arrows can drive it and
+   touch users can swipe; the scrollbar itself is hidden to keep the
+   flat surface the reference specimen shows. */
+.clip{overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;}
+.clip::-webkit-scrollbar{display:none;}
+.abtn:disabled{cursor:default;}
+.cards{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(330px,1fr);gap:18px;}
+.cards .card{text-align:center;padding:32px 28px 26px;}
+.cards .card h4{font-size:17px;font-weight:600;line-height:1.4;margin:0 0 14px;}
+.cards .card p{max-width:290px;margin:0 auto;font-size:13.5px;}
+.cards .card .art{min-height:130px;margin-top:22px;}
+
+/* ── two-column split: copy + illustration ── */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;}
+.split .intro{margin:24px 0 30px;max-width:430px;}
+.split .nums{max-width:440px;}
+
+/* ── inline toggle chip inside an h2 ── */
+.tgl{
+  display:inline-flex;align-items:center;gap:9px;vertical-align:middle;
+  border:1px solid var(--black);border-radius:var(--r-pill);
+  padding:5px 7px 5px 15px;font-size:13px;font-weight:500;letter-spacing:0;
+  margin-right:6px;transform:translateY(-3px);
+}
+.tgl i{position:relative;display:block;width:34px;height:19px;border-radius:var(--r-pill);background:var(--black);}
+.tgl i::after{content:"";position:absolute;top:2.5px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--white);}
 
 /* ── responsive ── */
 @media (max-width:900px){
@@ -206,4 +277,11 @@ details.src[open] summary .chev{transform:rotate(180deg);}
   .footgrid,.nums{grid-template-columns:1fr;}
   .bigcard{padding:32px 24px;}
   section{padding:52px 0;}
+  .hero-split,.bigcard .top,.split{grid-template-columns:1fr;}
+  .feats{grid-template-columns:repeat(2,1fr);}
+  .cards{grid-auto-columns:minmax(280px,1fr);}
+}
+@media (max-width:560px){
+  .feats{grid-template-columns:1fr;}
+  .logos{gap:20px;}
 }

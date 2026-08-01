@@ -14,6 +14,14 @@ A local research documentation website focused on biomedical electronics (PPG, h
 
 In short: lavender-grey canvas `#EAE8EF`, white cards, pure-black ink, exactly two accents (lime `#D2F53C` primary, violet `#A78BFA` secondary), Inter as the single sans family, **Title Case in headings and body copy**, flat surfaces with no shadows, and illustration built only from squares, circles and dotted strokes. `UI_REFERENCE.md` §6 lists what is banned outright (glow blobs, pulsing idle animation, glassmorphism, gradient headlines, drop shadows, emoji, a third accent).
 
+**Matching the tokens is not the same as matching the design.** A page can use every
+correct color and still look nothing like the reference if it is just a column of prose.
+Pages must *compose* the way `ui-reference.html` composes — split hero with illustration,
+a `.bigcard` with a four-up `.feats` grid, white bands alternating against the canvas, a
+`.split` pairing `.nums` with an illustration. See **"Composition — a page must LOOK like
+`ui-reference.html`"** under Page Design Conventions; it is rubric item 21 and it is
+BLOCKING.
+
 **The system ships as [`ui.css`](ui.css) at the repo root.** `index.html` links it as `ui.css`; every new page in `pages/` links it as `../ui.css`. Never paste a stylesheet block into a page.
 
 **Pages written before the rebuild still use the legacy dark `pages/base.css`.** Leave them alone — they are not being migrated. Only `index.html` has been rebuilt so far. Do not link `base.css` or `style.css` from anything new.
@@ -292,28 +300,72 @@ actually renders register values, pin names or code in `<code>`.
 accents and pages do not get their own accent color — that was the old `--accent` per-page
 convention and it is retired.
 
+### Composition — a page must LOOK like `ui-reference.html`, not just use its tokens
+
+**This is the rule that was previously missing, and its absence produced pages that passed
+every token check while looking nothing like the reference.** Using the right colors and
+Title Case is necessary but *not sufficient*. A page that is a single unbroken column of
+`.wrap-narrow` prose on the lavender canvas has drifted, even if every token is correct.
+
+Before declaring a page done, open `ui-reference.html` side by side with it. The page must
+show the same **rhythm**: full-bleed bands alternating between the lavender canvas and
+`.sec-white`, flat white surfaces holding the content, and flat-vector illustration.
+
+Every page must contain **all** of the following:
+
+| Requirement | Why |
+|---|---|
+| A **split hero** — `.hero-split` with `.copy` on the left and an illustration in `.art` on the right | The reference never opens with a bare headline over prose |
+| At least one **lime CTA** (`.btn.btn-lime`) with the trailing `↗` arrow SVG | Lime's job in this system is the one call to action on screen |
+| At least one **`.bigcard`** with a `.top` two-column head, and a `.feats` four-up grid where the recommended/primary item carries `.is-active` | The reference's signature content block |
+| **At least two `.sec-white` bands** alternating against the canvas | Without this the page is one flat monotone scroll |
+| A **`.split`** section pairing `.nums` (two-column numbered list) with an illustration | Numbered lists are never one-icon-per-row here |
+| **At least three flat-vector illustrations** built from the four recipes in `UI_REFERENCE.md` §5 | Illustration is load-bearing, not decoration |
+| The footer notch + `.checker` checkerboard | Signature footer treatment |
+
+**Illustration is mandatory, and it is not the same thing as a technical diagram.** A
+signal-chain schematic in a `.panel` is content. The reference-language illustration
+(pixel-mosaic dissolve, orbit/particle field, thin-line icons, chiplet ring) is *design*.
+A page needs both. Build them from `--lime`, `--violet`, `--violet-deep`, black and
+`--dot` only, seeded with the fixed-seed `rng()` so they render identically every load.
+
 ### Page skeleton
 
 ```html
 <body>
 <div id="prog"></div>
 
+<!-- NAV — dotted links, active link carries .on -->
 <div class="wrap">
   <nav class="nav">
     <a class="brand" href="../index.html"><span class="mark"><i></i><i></i></span> Research Index</a>
-    <div class="navlinks"><a href="../index.html">Index</a></div>
+    <div class="navlinks">
+      <a href="../index.html">Index</a>
+      <a class="on" href="#s1">Section</a>
+    </div>
     <a class="btn btn-out" href="../ui-reference.html">Design System</a>
   </nav>
 </div>
 
-<header class="wrap hero">
-  <a class="back-link" href="../index.html">← Index</a>
-  <h1>Page Title In Title Case</h1>
-  <p class="lead">2–4 sentence summary for a hardware engineer.</p>
-  <p class="date">YYYY-MM-DD</p>
-</header>
+<!-- HERO — copy left, illustration right -->
+<div class="wrap">
+  <header class="hero-split">
+    <div class="copy">
+      <a class="back-link" href="../index.html">← Index</a>
+      <h1>Page Title In <em>Title</em> Case</h1>
+      <p class="lead">2–4 sentence summary for a hardware engineer.</p>
+      <a class="btn btn-lime" href="#s1">Primary Action
+        <svg class="arw" viewBox="0 0 12 12" fill="none"><path d="M3 9 9 3M9 3H4.2M9 3v4.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <div class="logos"><span class="lg">Part</span><span class="lg thin">Part</span></div>
+      <p class="date">YYYY-MM-DD</p>
+    </div>
+    <div class="art" id="hero-art"></div>
+  </header>
+</div>
 
-<section>
+<!-- TL;DR — immediately after the hero -->
+<section style="padding-top:20px;">
   <div class="wrap-narrow">
     <div class="note">
       <div class="lbl">TL;DR</div>
@@ -322,12 +374,71 @@ convention and it is retired.
   </div>
 </section>
 
-<section>
+<!-- HEADLINE BLOCK — bigcard + four-up grid -->
+<section id="s1">
+  <div class="wrap">
+    <div class="bigcard">
+      <div class="top">
+        <h2>The Page's Central Claim, In <em>Title</em> Case</h2>
+        <div>
+          <p class="eyebrow"><span class="n">01</span> Section Label</p>
+          <p>Supporting detail.</p>
+          <a class="btn btn-dark" href="#s2">Next <svg class="arw" viewBox="0 0 12 12" fill="none"><path d="M3 9 9 3M9 3H4.2M9 3v4.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        </div>
+      </div>
+      <div class="feats">
+        <div class="feat is-active"><h4>Primary</h4><div class="art" id="f1"></div><p>Detail.</p></div>
+        <div class="feat"><h4>Option</h4><div class="art" id="f2"></div><p>Detail.</p></div>
+        <!-- four total -->
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DETAIL BAND — alternate to white -->
+<section class="sec-white">
   <div class="wrap-narrow">
-    <p class="eyebrow"><span class="n">01</span> Section Label</p>
+    <p class="eyebrow"><span class="n">02</span> Section Label</p>
     <h2>Section Heading</h2>
     <p><strong>One-line takeaway.</strong> Supporting detail follows.</p>
-    <!-- panels, tables, spec-grids here -->
+    <!-- panels, tables, spec-grids, callouts here -->
+  </div>
+</section>
+
+<!-- CARD ROW — three cards, arrows wired to scroll .clip -->
+<section id="s2">
+  <div class="wrap">
+    <div class="rowhead">
+      <div><p class="eyebrow"><span class="n">03</span> Label</p><h2>Row Heading</h2></div>
+      <div class="arrows">
+        <button class="abtn" aria-label="Previous">…</button>
+        <button class="abtn next" aria-label="Next">…</button>
+      </div>
+    </div>
+  </div>
+  <div class="wrap clip">
+    <div class="cards">
+      <div class="card"><h4>Card Title</h4><p>Detail.</p><div class="art" id="c1"></div></div>
+      <!-- three total -->
+    </div>
+  </div>
+</section>
+
+<!-- SPLIT — numbered list + illustration -->
+<section class="sec-white">
+  <div class="wrap">
+    <div class="split">
+      <div>
+        <p class="eyebrow"><span class="n">04</span> Label</p>
+        <h2><span class="tgl">Qualifier <i></i></span> Heading With <em>Emphasis</em></h2>
+        <p class="intro"><strong>Takeaway.</strong> Supporting detail.</p>
+        <div class="nums">
+          <div class="num"><b>1</b> Item</div>
+          <div class="num"><b>4</b> Item</div>
+        </div>
+      </div>
+      <div class="art" id="orbit"></div>
+    </div>
   </div>
 </section>
 
@@ -385,6 +496,15 @@ convention and it is retired.
 | Element | Markup |
 |---|---|
 | Section label | `<p class="eyebrow"><span class="n">01</span> Label</p>` |
+| Split hero | `<header class="hero-split"><div class="copy">…</div><div class="art" id="hero-art"></div></header>` |
+| Credibility strip | `<div class="logos"><span class="lg">Name</span><span class="lg thin">Name</span></div>` |
+| Illustration slot | `<div class="art" id="…"></div>` — filled by inline JS, never an `<img>` |
+| Four-up grid | `<div class="feats"><div class="feat is-active">…</div></div>` — inside a `.bigcard` |
+| Bigcard head | `<div class="top"><h2>…</h2><div>…</div></div>` |
+| Card row | `<div class="rowhead">…<div class="arrows"><button class="abtn">…</button><button class="abtn next">…</button></div></div>` then `<div class="wrap clip"><div class="cards">…</div></div>` |
+| Two-col split | `<div class="split"><div>… `.nums` …</div><div class="art" id="orbit"></div></div>` |
+| Heading qualifier chip | `<span class="tgl">Label <i></i></span>` inside an `<h2>` |
+| White band | `<section class="sec-white">` — alternate against the canvas |
 | Card | `<div class="card">` · large container `<div class="bigcard">` |
 | Diagram / figure panel | `<div class="panel">` — inside use `.panel-hd`, `.panel-title`, `.panel-sub`, `.panel-cap` |
 | Key finding (violet rule) | `<div class="note"><div class="lbl">KEY FINDING</div>…</div>` |
@@ -480,6 +600,9 @@ The `page-reviewer` agent checks every page against these criteria before passin
 | 18 | TL;DR `.note` panel present immediately after the hero, giving the page's conclusion in 3–5 sentences before any detail | BLOCKING |
 | 19 | No paragraph exceeds ~3 sentences; multi-item lists are rendered as bullets/tables, not narrated in prose | BLOCKING |
 | 20 | Each major section opens with a bolded one-line takeaway before its supporting detail | SHOULD FIX |
+| 21 | Page **composes** like `ui-reference.html`, not merely tokenised like it — split hero with illustration, ≥1 lime CTA, a `.bigcard` + four-up `.feats`, ≥2 `.sec-white` bands, a `.split`+`.nums` block, footer notch + checkerboard. A single unbroken column of `.wrap-narrow` prose is a FAIL even if every token is correct | BLOCKING |
+| 22 | ≥3 flat-vector illustrations from the `UI_REFERENCE.md` §5 recipes, seeded with the fixed-seed `rng()`. A technical schematic in a `.panel` is content and does **not** count toward this | SHOULD FIX |
+| 23 | No horizontal page scroll at 1280 / 768 / 390px; wide diagrams and tables scroll inside their own container | SHOULD FIX |
 
 ---
 

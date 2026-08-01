@@ -34,6 +34,18 @@ typography:
     fontWeight: 600
     lineHeight: 1.6
     letterSpacing: "-0.02em"
+  card-title:
+    fontFamily: "Inter, system-ui, -apple-system, sans-serif"
+    fontSize: "17px"
+    fontWeight: 600
+    lineHeight: 1.4
+    letterSpacing: "-0.01em"
+  tile-title:
+    fontFamily: "Inter, system-ui, -apple-system, sans-serif"
+    fontSize: "14.5px"
+    fontWeight: 600
+    lineHeight: 1.4
+    letterSpacing: "-0.01em"
   body:
     fontFamily: "Inter, system-ui, -apple-system, sans-serif"
     fontSize: "15px"
@@ -87,6 +99,7 @@ rounded:
   chip: "5px"
   callout: "16px"
   spec: "18px"
+  tile: "20px"
   card: "24px"
   lg: "34px"
   pill: "999px"
@@ -217,6 +230,8 @@ counterpart, no display/body split beyond size and weight.
 - **Display** (700, `clamp(38px,4.9vw,60px)`, 1.06, `-0.03em`): page `<h1>` only.
 - **Headline** (700, `clamp(28px,3.6vw,42px)`, 1.16, `-0.02em`): `<h2>` section titles.
 - **Title** (600, 21px, inherits body line-height 1.6, `-0.02em`): `<h3>` sub-heads.
+- **Card Title** (600, 17px, 1.4, `-0.01em`): the `<h4>` heading inside a `.cards .card`. Documented in `UI_REFERENCE.md` §2 and read off `ui-reference.html`.
+- **Tile Title** (600, 14.5px, 1.4): the `<h4>` inside a four-up `.feat` tile, and the `.num` label text — a tighter step used only inside dense grids.
 - **Body Large** (400, 16px, 1.8): `.lead`, wordmark, panel/reference-summary titles — one step up from Body for slightly heavier UI text.
 - **Body** (400, 15px, 1.8): `<p>`, `<ul>`/`<ol>` text, color `--body-2`.
 - **Label** (500–600, 14px, 1, `-0.01em`): nav links, buttons, `.eyebrow` text.
@@ -265,7 +280,9 @@ Radii are large and consistent: `24px` on standard cards and panels
 `.callout`, `.warn-note`, `.conflict`) use a smaller `16px` radius plus a
 `3px` colored left rule that carries their semantic meaning (violet = key
 finding, lime = formula/note, black = hard limit or researcher conflict).
-Spec cards use an `18px` radius. Two smaller decorative radii round out the
+Spec cards use an `18px` radius, and the four-up `.feat` tiles inside a
+`.bigcard` use `20px` (read directly off `ui-reference.html`). Two smaller
+decorative radii round out the
 scale: `2px` (the tick-mark corners on the `.mark` logo bars and the
 `.spec-card .sc` accent tick) and `5px` (the `code`/`.mono` chip background).
 There is no sharp-cornered surface anywhere in the system.
