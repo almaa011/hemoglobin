@@ -329,6 +329,17 @@ signal-chain schematic in a `.panel` is content. The reference-language illustra
 A page needs both. Build them from `--lime`, `--violet`, `--violet-deep`, black and
 `--dot` only, seeded with the fixed-seed `rng()` so they render identically every load.
 
+**Borrow the reference's visual *language*, never its literal motifs.** §5's four recipes
+describe a vocabulary — flat rounded rects, circles, dotted strokes, two accents — not a
+set of pictures to paste onto any topic. The reference is a fintech site, so its mosaic
+recipe is built around a *credit card* and its orbit recipe is pure decoration. Dropping
+either onto a hardware page produces something that matches every token and still looks
+ridiculous. **An illustration must depict the page's own subject**: for a motor-driver
+page that means the inverter bridge, voltage-range bars against a threshold, a switching
+waveform overshooting a rail. If a recipe has no meaningful mapping to the topic, invent
+a new illustration in the same language rather than forcing the motif — an illustration
+carrying no information is decoration, and decoration is what §6 bans.
+
 ### Page skeleton
 
 ```html
@@ -601,7 +612,8 @@ The `page-reviewer` agent checks every page against these criteria before passin
 | 19 | No paragraph exceeds ~3 sentences; multi-item lists are rendered as bullets/tables, not narrated in prose | BLOCKING |
 | 20 | Each major section opens with a bolded one-line takeaway before its supporting detail | SHOULD FIX |
 | 21 | Page **composes** like `ui-reference.html`, not merely tokenised like it — split hero with illustration, ≥1 lime CTA, a `.bigcard` + four-up `.feats`, ≥2 `.sec-white` bands, a `.split`+`.nums` block, footer notch + checkerboard. A single unbroken column of `.wrap-narrow` prose is a FAIL even if every token is correct | BLOCKING |
-| 22 | ≥3 flat-vector illustrations from the `UI_REFERENCE.md` §5 recipes, seeded with the fixed-seed `rng()`. A technical schematic in a `.panel` is content and does **not** count toward this | SHOULD FIX |
+| 22 | ≥3 flat-vector illustrations in the `UI_REFERENCE.md` §5 visual language, any randomness seeded with the fixed-seed `rng()`. A technical schematic in a `.panel` is content and does **not** count toward this | SHOULD FIX |
+| 22b | Each illustration **depicts the page's own subject** and carries information. A reference motif transplanted onto an unrelated topic (the credit-card mosaic, a decorative orbit field) is a FAIL even though it uses the right recipe and tokens | SHOULD FIX |
 | 23 | No horizontal page scroll at 1280 / 768 / 390px; wide diagrams and tables scroll inside their own container | SHOULD FIX |
 
 ---
