@@ -311,7 +311,7 @@
           <div class="num"><b>6</b> Bootstrap At High Duty</div>
         </div>
       </div>
-      <div class="art" id="orbit"></div>
+      <div class="art" id="ringing"></div>
     </div>
   </div>
 
@@ -430,161 +430,163 @@ window.addEventListener('scroll', () => {
     (el.scrollTop / (el.scrollHeight - el.clientHeight) * 100) + '%';
 });
 
-/* ── hero: pixel-mosaic dissolve (UI_REFERENCE recipe 1), themed as a
-      controller board breaking into squares ── */
+/* ── hero: the inverter itself — three legs of two switches, bus caps and
+      three phase outputs feeding a motor. Built from the system's primitives
+      (rounded rects, circles, dotted strokes) but depicting the actual
+      subject rather than borrowing the reference's card motif. ── */
 (function(){
-  const R=rng(48), cw=20, sz=18, gx=124, cols=13;
-  const cardTop=90, cardEnd=300, mosTop=190;
-  const rect=(x,y,f)=>`<rect x="${x}" y="${y}" width="${sz}" height="${sz}" rx="2" fill="${f}"/>`;
-  let sq='';
-  for(let y=mosTop;y<cardEnd;y+=cw){
-    const t=(y-mosTop)/(cardEnd-mosTop);
-    for(let c=0;c<cols;c++){
-      if(R()>0.20+0.52*t) continue;
-      sq+=rect(gx+c*cw,y,R()<0.76?VIO:LIME);
-    }
-  }
-  let i=0;
-  for(let y=cardEnd;y<cardEnd+8*cw;y+=cw,i++){
-    const d=i/8;
-    for(let c=0;c<cols;c++){
-      if(R()>0.95-0.95*d) continue;
-      const r=R();
-      sq+=rect(gx+c*cw,y,r<0.46?BLK:(r<0.86?VIO:LIME));
-    }
-  }
-  const drift=[[96,268,10,VIO],[92,336,8,VIOD],[104,404,11,VIO],
-               [398,214,11,LIME],[404,156,9,VIO],[386,372,10,VIO],
-               [176,468,11,LIME],[268,478,9,VIO],[330,440,10,VIO]];
-  const free=drift.map(([x,y,s,f],k)=>`<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="2" fill="${f}" transform="rotate(${(k%3-1)*12} ${x+s/2} ${y+s/2})"/>`).join('');
+  const sw=(x,y,f,l)=>`<rect x="${x}" y="${y}" width="54" height="40" rx="8" fill="${f}"/>`
+    +`<text x="${x+27}" y="${y+25}" text-anchor="middle" font-family="Inter,sans-serif" font-size="12" font-weight="600" fill="${BLK}">${l}</text>`;
+  const cap=cx=>`<circle cx="${cx}" cy="128" r="16" fill="${VIOD}"/><circle cx="${cx}" cy="128" r="6" fill="${BLK}"/>`;
+
+  /* three legs: high-side, low-side, phase node, dotted output */
+  const legs=[[200,LIME,VIO,'Q1','Q2','A'],[254,VIO,VIO,'Q3','Q4','B'],[308,VIO,LIME,'Q5','Q6','C']];
+  let bridge='';
+  legs.forEach(([y,hf,lf,h,l,ph])=>{
+    const ny=y+20;
+    bridge+=sw(64,y,hf,h)+sw(130,y,lf,l);
+    bridge+=`<path d="M184 ${ny}H214" stroke="#FFFFFF" stroke-width="1.5"/>`;
+    bridge+=`<circle cx="214" cy="${ny}" r="5" fill="#FFFFFF"/>`;
+    bridge+=`<path d="M214 ${ny}H340" stroke="${VIO}" stroke-width="1.6" stroke-dasharray="3 5"/>`;
+    bridge+=`<text x="258" y="${ny-9}" font-family="Inter,sans-serif" font-size="11" font-weight="600" fill="${LIME}">${ph}</text>`;
+  });
+
+  /* motor: three phase windings at 120°, dashed rotation path */
+  const mx=442, my=254;
+  const coil=(deg,f)=>{const a=deg*Math.PI/180;
+    return `<circle cx="${(mx+26*Math.cos(a)).toFixed(1)}" cy="${(my+26*Math.sin(a)).toFixed(1)}" r="8" fill="${f}"/>`;};
 
   document.getElementById('hero-art').innerHTML=`
-  <svg viewBox="0 0 540 520" role="img" aria-label="Illustration: a controller board dissolving into a mosaic of squares.">
+  <svg viewBox="0 0 540 470" role="img" aria-label="Illustration: a three-phase inverter board of six switches in three legs, with bus capacitors and three phase outputs driving a motor.">
     <g stroke="${GREY}" stroke-width="1.2" stroke-dasharray="2.5 4" fill="none">
-      <path d="M116 166 82 132 82 96"/><path d="M414 116 414 74 470 74"/><path d="M424 238 468 238"/>
+      <path d="M40 118 20 98 20 80"/><path d="M470 146 500 146"/><path d="M420 352 420 392 470 392"/>
     </g>
-    <rect x="76" y="86" width="11" height="11" rx="2" fill="${VIOD}"/>
-    <rect x="474" y="68" width="11" height="11" rx="2" fill="${LIME}"/>
-    <rect x="472" y="232" width="11" height="11" rx="2" fill="${VIO}"/>
-    <g transform="rotate(12 268 236)">
-      <rect x="352" y="132" width="112" height="72" rx="16" fill="${LIME}"/>
-      <rect x="352" y="214" width="88" height="62" rx="14" fill="${LIME}"/>
-      <rect x="352" y="286" width="66" height="52" rx="12" fill="${LIME}"/>
-      <rect x="120" y="${cardTop}" width="270" height="${cardEnd-cardTop}" rx="20" fill="${BLK}"/>
-      <text x="150" y="132" fill="${LIME}" font-family="Inter,sans-serif" font-size="15" font-weight="600">3-Phase Inverter</text>
-      <text x="150" y="160" fill="#FFFFFF" font-family="Inter,sans-serif" font-size="16" font-weight="500" letter-spacing="1.2">48V · 12S BUS</text>
-      <text x="150" y="180" fill="#FFFFFF" font-family="Inter,sans-serif" font-size="11" opacity=".8">6 Switches / 3 Legs</text>
-      <g stroke="#FFFFFF" stroke-width="1.3" fill="none" opacity=".9">
-        <rect x="336" y="138" width="12" height="12" rx="2"/><rect x="352" y="138" width="12" height="12" rx="2"/>
-        <rect x="336" y="154" width="12" height="12" rx="2"/><path d="M354 156h3m3 0h3m-9 5h9"/>
-      </g>
-      ${sq}
-    </g>
-    ${free}
+    <rect x="14" y="66" width="11" height="11" rx="2" fill="${VIOD}"/>
+    <rect x="504" y="140" width="11" height="11" rx="2" fill="${LIME}"/>
+    <rect x="474" y="386" width="10" height="10" rx="2" fill="${VIO}"/>
+    <rect x="18" y="298" width="9" height="9" rx="2" fill="${VIO}" transform="rotate(-12 22 302)"/>
+    <rect x="26" y="410" width="8" height="8" rx="2" fill="${VIOD}" transform="rotate(14 30 414)"/>
+
+    <rect x="40" y="90" width="300" height="290" rx="22" fill="${BLK}"/>
+    <text x="66" y="122" font-family="Inter,sans-serif" font-size="14" font-weight="600" fill="${LIME}">3-Phase Inverter</text>
+    <text x="66" y="146" font-family="Inter,sans-serif" font-size="12" fill="#FFFFFF" opacity=".7">48V · 12S Bus</text>
+    ${cap(258)}${cap(302)}
+    ${bridge}
+
+    <path d="M340 220 384 232M340 274 380 254M340 328 384 276" stroke="${VIO}" stroke-width="1.6" fill="none"/>
+    <circle cx="${mx}" cy="${my}" r="62" fill="#FFFFFF" stroke="${BLK}" stroke-width="2"/>
+    <circle cx="${mx}" cy="${my}" r="44" fill="none" stroke="${GREY}" stroke-width="1.3" stroke-dasharray="3 5"/>
+    ${coil(-90,LIME)}${coil(30,VIO)}${coil(150,VIOD)}
+    <circle cx="${mx}" cy="${my}" r="5" fill="${BLK}"/>
+    <text x="${mx}" y="342" text-anchor="middle" font-family="Inter,sans-serif" font-size="12" fill="${GREY}">3-Phase Motor</text>
   </svg>`;
 })();
 
-/* ── four-up feature art (UI_REFERENCE recipe 3: thin-line icons) ── */
+/* ── four-up feature art: each project's usable bus range against the 48V
+      line, so the comparison is readable at a glance. SimpleFOC's bar
+      visibly stops short of the marker. ── */
 (function(){
-  const wrapSvg = s => `<svg width="130" height="96" viewBox="0 0 130 96" fill="none">${s}</svg>`;
+  const X=v=>10+v*1.10;                 /* 0–100V mapped across 110px */
+  const M=X(48);
+  const bar=(lo,hi,fill,op)=>`
+    <rect x="10" y="44" width="110" height="10" rx="5" fill="#E9E7EE"/>
+    <rect x="${X(lo).toFixed(1)}" y="41" width="${(X(hi)-X(lo)).toFixed(1)}" height="16" rx="8" fill="${fill}" opacity="${op}"/>
+    <path d="M${M.toFixed(1)} 26V72" stroke="${BLK}" stroke-width="1.4" stroke-dasharray="3 3"/>
+    <text x="${M.toFixed(1)}" y="20" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="600" fill="${BLK}">48V</text>`;
+  const wrap=(s,label)=>`<svg viewBox="0 0 130 96" role="img" aria-label="${label}">${s}</svg>`;
 
-  /* VESC — nested rings, the chosen one highlighted lime */
-  document.getElementById('f-vesc').innerHTML = wrapSvg(`
-    <circle cx="65" cy="48" r="34" stroke="${VIO}" stroke-width="1.3"/>
-    <circle cx="65" cy="48" r="24" stroke="${LN}" stroke-width="1.2"/>
-    <circle cx="65" cy="48" r="14" fill="${LIME}"/>
-    <circle cx="65" cy="10" r="4.5" fill="#FFF" stroke="${VIO}" stroke-width="1.3"/>
-    <circle cx="99" cy="66" r="4" fill="${VIOD}"/>`);
-
-  /* moteus — two open padlock-ish rings, fully permissive */
-  document.getElementById('f-moteus').innerHTML = wrapSvg(`
-    <circle cx="48" cy="48" r="22" stroke="${LN}" stroke-width="1.2"/>
-    <circle cx="80" cy="48" r="22" stroke="${VIO}" stroke-width="1.4"/>
-    <rect x="58" y="40" width="14" height="16" rx="3" fill="${LIME}"/>
-    <circle cx="26" cy="26" r="3.5" fill="${VIOD}"/>
-    <circle cx="104" cy="72" r="3.5" fill="${VIO}"/>`);
-
-  /* ODrive — dashed (closing) outline with a solid barrier */
-  document.getElementById('f-odrive').innerHTML = wrapSvg(`
-    <rect x="16" y="24" width="98" height="26" rx="13" stroke="${LN}" stroke-width="1.2" stroke-dasharray="4 4"/>
-    <circle cx="98" cy="37" r="8" fill="#E9E7EE" stroke="#C7C4D1" stroke-width="1.2"/>
-    <rect x="16" y="58" width="98" height="26" rx="13" stroke="${LN}" stroke-width="1.2" stroke-dasharray="4 4"/>
-    <rect x="52" y="14" width="26" height="68" rx="4" fill="${BLK}" opacity=".82"/>`);
-
-  /* SimpleFOC — a small brain-node with no power stage attached */
-  document.getElementById('f-sfoc').innerHTML = wrapSvg(`
-    <circle cx="40" cy="48" r="17" fill="#EFE9FD" stroke="${VIO}" stroke-width="1.4"/>
-    <path d="M57 48h20" stroke="${GREY}" stroke-width="1.4" stroke-dasharray="3 3.5"/>
-    <rect x="80" y="34" width="30" height="28" rx="7" stroke="${LN}" stroke-width="1.3" stroke-dasharray="4 4"/>
-    <circle cx="40" cy="48" r="5" fill="${VIOD}"/>`);
+  document.getElementById('f-vesc').innerHTML   = wrap(bar(6,60,LIME,'1')
+    +`<circle cx="${X(60).toFixed(1)}" cy="49" r="4" fill="${BLK}"/>`, 'VESC spans 6 to 60 volts, clearing the 48 volt line.');
+  document.getElementById('f-moteus').innerHTML = wrap(bar(10,54,VIO,'1'), 'moteus spans 10 to 54 volts, clearing the 48 volt line.');
+  /* ODrive reaches 48V electrically, so the bar crosses the line — but it is
+     drawn as a dashed outline rather than a solid fill, because the newer
+     hardware and firmware are not actually yours to use. */
+  document.getElementById('f-odrive').innerHTML = wrap(bar(12,56,'none','1')
+    +`<rect x="${X(12).toFixed(1)}" y="41" width="${(X(56)-X(12)).toFixed(1)}" height="16" rx="8" fill="none" stroke="${BLK}" stroke-width="1.5" stroke-dasharray="4 3.5"/>`,
+    'ODrive spans 12 to 56 volts but its newer designs are closed.');
+  document.getElementById('f-sfoc').innerHTML   = wrap(bar(8,35,VIO,'.5')
+    +`<circle cx="${X(35).toFixed(1)}" cy="49" r="4.5" fill="#FFF" stroke="${VIO}" stroke-width="1.6"/>`, 'SimpleFOC stops at 35 volts, short of the 48 volt line.');
 })();
 
-/* ── build-decision card art (recipe 3 + 4) ── */
+/* ── build-decision card art ── */
 (function(){
-  /* gate driver — dashed toggle rows with one lime knob */
-  document.getElementById('c-gate').innerHTML=`<svg width="200" height="130" viewBox="0 0 200 130" fill="none">
-    <rect x="34" y="18" width="132" height="26" rx="13" stroke="${LN}" stroke-width="1.2" stroke-dasharray="4 4"/>
-    <circle cx="150" cy="31" r="8" fill="#E9E7EE" stroke="#C7C4D1" stroke-width="1.2"/>
-    <rect x="28" y="52" width="144" height="28" rx="14" fill="#F6F1FE" stroke="${VIO}" stroke-width="1.4"/>
-    <rect x="146" y="57" width="20" height="18" rx="9" fill="${LIME}"/>
-    <rect x="34" y="88" width="132" height="26" rx="13" stroke="${LN}" stroke-width="1.2" stroke-dasharray="4 4"/>
-    <circle cx="150" cy="101" r="8" fill="#E9E7EE" stroke="#C7C4D1" stroke-width="1.2"/>
+  /* 1. gate driver holding a half-bridge — dotted gate drives, one active */
+  document.getElementById('c-gate').innerHTML=`<svg viewBox="0 0 200 130" role="img" aria-label="A gate driver dotted to the high-side and low-side switches of one leg, with the phase output.">
+    <rect x="12" y="42" width="52" height="46" rx="10" fill="${BLK}"/>
+    <text x="38" y="70" text-anchor="middle" font-family="Inter,sans-serif" font-size="12" font-weight="600" fill="${LIME}">DRV</text>
+    <path d="M64 56H88V37h24" stroke="${GREY}" stroke-width="1.4" stroke-dasharray="3 3.5" fill="none"/>
+    <path d="M64 74H88v19h24" stroke="${GREY}" stroke-width="1.4" stroke-dasharray="3 3.5" fill="none"/>
+    <circle cx="88" cy="37" r="4" fill="${LIME}"/>
+    <rect x="112" y="20" width="48" height="34" rx="7" fill="${VIO}"/>
+    <rect x="112" y="76" width="48" height="34" rx="7" fill="#FFF" stroke="${BLK}" stroke-width="1.4"/>
+    <path d="M136 54v22" stroke="${BLK}" stroke-width="1.5"/>
+    <circle cx="136" cy="65" r="5" fill="${VIOD}"/>
+    <path d="M141 65h44" stroke="${VIO}" stroke-width="1.6" stroke-dasharray="3 5"/>
   </svg>`;
 
-  /* MOSFET margin — stacked bars, the tall one lime (headroom) */
-  document.getElementById('c-fet').innerHTML=`<svg width="200" height="130" viewBox="0 0 200 130" fill="none">
-    <rect x="26" y="86" width="34" height="30" rx="6" fill="${VIO}" opacity=".55"/>
-    <rect x="70" y="60" width="34" height="56" rx="6" fill="${VIO}"/>
-    <rect x="114" y="24" width="34" height="92" rx="6" fill="${LIME}"/>
-    <path d="M20 24h136" stroke="${GREY}" stroke-width="1.3" stroke-dasharray="3 3.5"/>
-    <circle cx="164" cy="24" r="4" fill="${VIOD}"/>
-  </svg>`;
-
-  /* control scheme — six-step staircase vs sine, drawn as primitives */
+  /* 2. why a 48V bus needs an 80–100V part — bus, spike, ratings */
   (function(){
-    let step='M20 96 h18 v-26 h18 v-26 h18 v-24 h18';
+    const base=116, px=v=>v*0.92;
+    const b=(x,v,f,op)=>`<rect x="${x}" y="${(base-px(v)).toFixed(1)}" width="34" height="${px(v).toFixed(1)}" rx="6" fill="${f}" opacity="${op}"/>`;
+    document.getElementById('c-fet').innerHTML=`<svg viewBox="0 0 200 130" role="img" aria-label="Bar comparison: a 48 volt bus, its switching spike, and 80 volt and 100 volt MOSFET ratings.">
+      ${b(22,48,VIO,'.5')}${b(66,80,VIO,'1')}${b(110,100,LIME,'1')}
+      <path d="M14 ${(base-px(62)).toFixed(1)}H168" stroke="${BLK}" stroke-width="1.4" stroke-dasharray="3 3.5"/>
+      <text x="172" y="${(base-px(62)+4).toFixed(1)}" font-family="Inter,sans-serif" font-size="10" font-weight="600" fill="${BLK}">spike</text>
+      <text x="39" y="128" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" fill="${GREY}">48V</text>
+      <text x="83" y="128" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" fill="${GREY}">80V</text>
+      <text x="127" y="128" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" fill="${GREY}">100V</text>
+    </svg>`;
+  })();
+
+  /* 3. six-step staircase against the sinusoid FOC actually drives */
+  (function(){
     let sine='M20 84';
-    for(let x=0;x<=112;x+=8){ sine+=` L${20+x} ${84-30*Math.sin(x/112*Math.PI*1.5)}`; }
-    document.getElementById('c-foc').innerHTML=`<svg width="200" height="130" viewBox="0 0 200 130" fill="none">
-      <path d="${step}" stroke="${GREY}" stroke-width="1.6" stroke-dasharray="3 3.5" fill="none"/>
+    for(let x=0;x<=112;x+=4){ sine+=` L${20+x} ${(84-30*Math.sin(x/112*Math.PI*1.5)).toFixed(1)}`; }
+    document.getElementById('c-foc').innerHTML=`<svg viewBox="0 0 200 130" role="img" aria-label="A six-step staircase waveform compared with the smooth sinusoid used by field-oriented control.">
+      <path d="M20 96h18v-26h18v-26h18v-24h18" stroke="${GREY}" stroke-width="1.6" stroke-dasharray="3 3.5" fill="none"/>
       <path d="${sine}" stroke="${VIO}" stroke-width="2" fill="none" stroke-linecap="round"/>
       <circle cx="132" cy="20" r="7" fill="${LIME}"/>
       <circle cx="20" cy="84" r="4" fill="${VIOD}"/>
+      <text x="150" y="24" font-family="Inter,sans-serif" font-size="10" font-weight="600" fill="${BLK}">FOC</text>
+      <text x="150" y="100" font-family="Inter,sans-serif" font-size="10" fill="${GREY}">6-step</text>
     </svg>`;
   })();
 })();
 
-/* ── gotchas: orbit / particle field (UI_REFERENCE recipe 2) ── */
+/* ── gotchas: the switching-node waveform that explains the whole section —
+      the phase node overshoots the 48V rail on every edge and rings, which
+      is why an 80V part is the floor and why loop inductance matters. ── */
 (function(){
-  const cx=250, cy=232;
-  let s='';
-  [108,146,184].forEach(r=>{
-    const step=26/r;
-    for(let a=1.05;a<=5.25;a+=step){
-      s+=`<circle cx="${(cx+r*Math.cos(a)).toFixed(1)}" cy="${(cy+r*Math.sin(a)).toFixed(1)}" r="5.4" fill="${BLK}"/>`;
-    }
-  });
-  const rays=[[-58,232,11,BLK,'fill'],[-24,246,8,BLK,'hollow'],[6,238,10,LIME,'fill'],
-              [34,250,7,LIME,'hollow'],[60,236,10,VIOD,'fill']];
-  rays.forEach(([deg,len,rad,col,kind])=>{
-    const a=deg*Math.PI/180;
-    const x1=cx+72*Math.cos(a), y1=cy+72*Math.sin(a);
-    const x2=cx+len*Math.cos(a), y2=cy+len*Math.sin(a);
-    s+=`<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="${BLK}" stroke-width="2" stroke-dasharray="2 7" stroke-linecap="round" opacity=".8"/>`;
-    s+= kind==='fill'
-      ? `<circle cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="${rad}" fill="${col}"/>`
-      : `<circle cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="${rad}" fill="#FFF" stroke="${col}" stroke-width="1.8"/>`;
-  });
-  s+=`<circle cx="${cx+206}" cy="${cy+8}" r="7" fill="${VIOD}"/>`;
-  s+=`<circle cx="${cx}" cy="${cy}" r="62" fill="${BLK}"/>
-      <circle cx="${cx-30}" cy="${cy-6}" r="6" fill="${LIME}"/>
-      <circle cx="${cx-10}" cy="${cy+16}" r="10" fill="${VIO}"/>
-      <circle cx="${cx+14}" cy="${cy-4}" r="5" fill="${VIO}"/>
-      <circle cx="${cx+2}" cy="${cy-24}" r="5" fill="none" stroke="${VIO}" stroke-width="1.5"/>
-      <circle cx="${cx+28}" cy="${cy+18}" r="4" fill="${LIME}"/>
-      <circle cx="${cx-26}" cy="${cy+28}" r="7" fill="${VIOD}"/>
-      <circle cx="${cx+8}" cy="${cy+34}" r="4" fill="${LIME}"/>`;
-  document.getElementById('orbit').innerHTML=`<svg viewBox="0 0 500 464" role="img" aria-label="Illustration: an orbit field of dots and nodes around a solid disc.">${s}</svg>`;
+  const V0=300, V48=175, V80=96, PK=66;  /* y of 0V, 48V bus, 80V rating, peak */
+  /* one polyline: flat at 0V, the switching edge, then a damped ring that
+     settles onto the bus — drawn as one path so the edge stays connected */
+  let pts=`40 ${V0} 150 ${V0} `;
+  for(let x=150;x<=456;x+=2){
+    const t=x-150;
+    const y=V48-(V48-PK)*Math.exp(-t/58)*Math.cos(t/15);
+    pts+=`${x} ${y.toFixed(1)} `;
+  }
+  document.getElementById('ringing').innerHTML=`
+  <svg viewBox="0 0 500 380" role="img" aria-label="Illustration: the switching node rises from zero past the 48 volt rail, overshoots above the 80 volt MOSFET rating, then rings down and settles at 48 volts.">
+    <path d="M40 ${V0}H470" stroke="${GREY}" stroke-width="1.3" stroke-dasharray="2.5 4"/>
+    <text x="40" y="${V0+24}" font-family="Inter,sans-serif" font-size="12" fill="${GREY}">0V — Switch Off</text>
+
+    <path d="M40 ${V48}H470" stroke="${BLK}" stroke-width="1.8"/>
+    <text x="40" y="${V48-12}" font-family="Inter,sans-serif" font-size="12" font-weight="600" fill="${BLK}">48V Bus</text>
+
+    <path d="M40 ${V80}H470" stroke="${VIO}" stroke-width="1.6" stroke-dasharray="6 5"/>
+    <text x="296" y="${V80-12}" font-family="Inter,sans-serif" font-size="12" font-weight="600" fill="${VIOD}">80V MOSFET Rating</text>
+
+    <polyline points="${pts.trim()}" fill="none" stroke="${BLK}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <circle cx="150" cy="${PK}" r="9" fill="${LIME}"/>
+    <text x="168" y="52" font-family="Inter,sans-serif" font-size="12" font-weight="600" fill="${BLK}">Overshoot</text>
+    <text x="168" y="70" font-family="Inter,sans-serif" font-size="11" fill="${GREY}">Loop Inductance × di/dt</text>
+
+    <rect x="20" y="46" width="10" height="10" rx="2" fill="${VIO}" transform="rotate(-12 25 51)"/>
+    <rect x="470" y="${V48-30}" width="11" height="11" rx="2" fill="${VIOD}"/>
+    <rect x="466" y="330" width="9" height="9" rx="2" fill="${LIME}"/>
+  </svg>`;
 })();
 
 /* ── card-row arrows: scroll the row on click (no idle motion) ── */
