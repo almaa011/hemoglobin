@@ -22,7 +22,10 @@
 
 *,*::before,*::after{box-sizing:border-box;}
 html{scroll-behavior:smooth;}
-:focus-visible{outline:2px solid var(--violet);outline-offset:2px;}
+/* --violet-deep, not --violet: the lighter violet measures 2.2–2.7:1 against
+   white, lime and the canvas, below WCAG's 3:1 minimum for a non-text focus
+   indicator. --violet-deep clears it on every surface (3.9–4.8:1). */
+:focus-visible{outline:2px solid var(--violet-deep);outline-offset:2px;}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;} *{transition:none!important;animation:none!important;}}
 body{
   margin:0;background:var(--bg);color:var(--black);
